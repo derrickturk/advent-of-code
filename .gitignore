@@ -3,3 +3,4 @@
 *.o
 *.hi
 input.txt
+.stack-work
