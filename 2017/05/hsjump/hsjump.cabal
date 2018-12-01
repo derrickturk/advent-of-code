@@ -1,0 +1,42 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 0418491b46a89d1afd8055c00ef15ab88296e675db9793e933d1c7cf8624133b
+
+name:           hsjump
+version:        0.1.0.0
+category:       Web
+homepage:       https://github.com/derrickturk/hsjump#readme
+author:         Derrick W. Turk
+maintainer:     dwt@terminusdatascience.com
+copyright:      dwt | terminus data science, LLC
+license:        GPL-3
+license-file:   LICENSE
+build-type:     Simple
+
+executable hsjump
+  main-is: Main.hs
+  other-modules:
+      Paths_hsjump
+  hs-source-dirs:
+      src
+  ghc-options: -O2 -Wall
+  build-depends:
+      base >=4.7 && <5
+    , vector
+  default-language: Haskell2010
+
+executable hsjump2
+  main-is: Main.hs
+  other-modules:
+      Paths_hsjump
+  hs-source-dirs:
+      src2
+  ghc-options: -O2 -Wall
+  build-depends:
+      base >=4.7 && <5
+    , vector
+  default-language: Haskell2010
