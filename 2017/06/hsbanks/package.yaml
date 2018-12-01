@@ -1,0 +1,25 @@
+name:                hsbanks
+version:             0.1.0.0
+#synopsis:
+#description:
+homepage:            https://github.com/derrickturk/hsbanks#readme
+license:             GPL-3
+author:              Derrick W. Turk
+maintainer:          dwt@terminusdatascience.com
+copyright:           dwt | terminus data science, LLC
+category:            Web
+
+dependencies:
+  - base >= 4.7 && < 5
+  - containers
+  - vector
+
+executables:
+  hsbanks:
+    source-dirs:      src
+    main:             Main.hs
+    ghc-options:      -O2 -Wall
+  hsbanks2:
+    source-dirs:      src2
+    main:             Main.hs
+    ghc-options:      -O2 -Wall
