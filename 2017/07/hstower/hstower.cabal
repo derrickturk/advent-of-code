@@ -1,0 +1,49 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 9d8c7fda0d10feb2d3dd93d45d7eceac73d089ac00e22be1e673b45759964846
+
+name:           hstower
+version:        0.1.0.0
+category:       Web
+homepage:       https://github.com/derrickturk/hstower#readme
+author:         Derrick W. Turk
+maintainer:     dwt@terminusdatascience.com
+copyright:      dwt | terminus data science, LLC
+license:        GPL-3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+
+executable hstower
+  main-is: Main.hs
+  other-modules:
+      ProgramInfo
+      Paths_hstower
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , megaparsec
+    , text
+  default-language: Haskell2010
+
+executable hstower2
+  main-is: Main.hs
+  other-modules:
+      Program
+      ProgramInfo
+      Paths_hstower
+  hs-source-dirs:
+      src2
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , megaparsec
+    , text
+  default-language: Haskell2010
