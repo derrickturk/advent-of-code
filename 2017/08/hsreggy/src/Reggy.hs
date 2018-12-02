@@ -9,6 +9,7 @@ module Reggy (
   , Reggy
   , RegState
   , evalStmt
+  , evalRegOp
   , evalCond
   , evalCmpOp
   , runReggy
@@ -66,20 +67,23 @@ maxReg = do
     else pure $ maximum $ M.elems mem
 
 evalStmt :: MonadState RegState m => Stmt -> m ()
-evalStmt (Stmt r Inc n c) = evalCond c >>= flip when (modifyReg r (+ n))
-evalStmt (Stmt r Dec n c) =
-  evalCond c >>= flip when (modifyReg r (subtract n))
+evalStmt (Stmt r op n c) =
+  evalCond c >>= flip when (modifyReg r (evalRegOp op n))
+
+evalRegOp :: RegOp -> Int -> Int -> Int
+evalRegOp Inc n = (+ n)
+evalRegOp Dec n = subtract n
 
 evalCond :: MonadState RegState m => Cond -> m Bool
 evalCond (Cond r op n) = evalCmpOp op <$> readReg r <*> pure n
 
 evalCmpOp :: CmpOp -> Int -> Int -> Bool
-evalCmpOp Lt x y = x < y
-evalCmpOp Gt x y = x > y
-evalCmpOp LtEq x y = x <= y
-evalCmpOp GtEq x y = x >= y
-evalCmpOp Eq x y = x == y
-evalCmpOp NotEq x y = x /= y
+evalCmpOp Lt = (<)
+evalCmpOp Gt = (>)
+evalCmpOp LtEq = (<=)
+evalCmpOp GtEq = (>=)
+evalCmpOp Eq = (==)
+evalCmpOp NotEq = (/=)
 
 runReggy :: Reggy -> RegState
 runReggy = (`execState` M.empty) . mapM_ evalStmt
