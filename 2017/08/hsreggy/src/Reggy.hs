@@ -71,8 +71,8 @@ evalStmt (Stmt r op n c) =
   evalCond c >>= flip when (modifyReg r (evalRegOp op n))
 
 evalRegOp :: RegOp -> Int -> Int -> Int
-evalRegOp Inc n = (+ n)
-evalRegOp Dec n = subtract n
+evalRegOp Inc = (+)
+evalRegOp Dec = subtract
 
 evalCond :: MonadState RegState m => Cond -> m Bool
 evalCond (Cond r op n) = evalCmpOp op <$> readReg r <*> pure n
