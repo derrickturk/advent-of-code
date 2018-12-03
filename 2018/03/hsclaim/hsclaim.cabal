@@ -1,0 +1,60 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 11ff71080dd0e6fd636a1d5609ed26c610930c4aa6c937f67c963012ee24f039
+
+name:           hsclaim
+version:        0.1.0.0
+category:       Web
+homepage:       https://github.com/derrickturk/hsclaim#readme
+author:         Derrick W. Turk
+maintainer:     dwt@terminusdatascience.com
+copyright:      dwt | terminus data science, LLC
+license:        GPL-3
+license-file:   LICENSE
+build-type:     Simple
+
+library
+  exposed-modules:
+      Claim
+      ParseClaim
+  other-modules:
+      Paths_hsclaim
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , megaparsec
+    , text
+  default-language: Haskell2010
+
+executable hsclaim
+  main-is: Main.hs
+  other-modules:
+      Paths_hsclaim
+  hs-source-dirs:
+      app
+  ghc-options: -O2 -Wall
+  build-depends:
+      base >=4.7 && <5
+    , hsclaim
+    , megaparsec
+    , text
+  default-language: Haskell2010
+
+executable hsclaim2
+  main-is: Main.hs
+  other-modules:
+      Paths_hsclaim
+  hs-source-dirs:
+      app2
+  ghc-options: -O2 -Wall
+  build-depends:
+      base >=4.7 && <5
+    , hsclaim
+    , megaparsec
+    , text
+  default-language: Haskell2010
