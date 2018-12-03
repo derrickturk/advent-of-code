@@ -4,3 +4,4 @@
 *.hi
 input.txt
 .stack-work
+.mypy_cache
