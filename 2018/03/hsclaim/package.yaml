@@ -13,6 +13,7 @@ dependencies:
   - base >= 4.7 && < 5
   - megaparsec
   - text
+  - vector
 
 library:
     source-dirs:      src
@@ -28,6 +29,14 @@ executables:
       - hsclaim
   hsclaim2:
     source-dirs:      app2
+    main:             Main.hs
+    ghc-options:
+      - -O2
+      - -Wall
+    dependencies:
+      - hsclaim
+  hsclaim_fast:
+    source-dirs:      app3
     main:             Main.hs
     ghc-options:
       - -O2

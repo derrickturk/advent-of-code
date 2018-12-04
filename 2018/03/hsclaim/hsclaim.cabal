@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 11ff71080dd0e6fd636a1d5609ed26c610930c4aa6c937f67c963012ee24f039
+-- hash: 4b9d14c0af0d405a8427183a192447c62b890ffe44844efa98190127e14e4e98
 
 name:           hsclaim
 version:        0.1.0.0
@@ -20,6 +20,7 @@ build-type:     Simple
 library
   exposed-modules:
       Claim
+      FastClaim
       ParseClaim
   other-modules:
       Paths_hsclaim
@@ -29,6 +30,7 @@ library
       base >=4.7 && <5
     , megaparsec
     , text
+    , vector
   default-language: Haskell2010
 
 executable hsclaim
@@ -43,6 +45,7 @@ executable hsclaim
     , hsclaim
     , megaparsec
     , text
+    , vector
   default-language: Haskell2010
 
 executable hsclaim2
@@ -57,4 +60,20 @@ executable hsclaim2
     , hsclaim
     , megaparsec
     , text
+    , vector
+  default-language: Haskell2010
+
+executable hsclaim_fast
+  main-is: Main.hs
+  other-modules:
+      Paths_hsclaim
+  hs-source-dirs:
+      app3
+  ghc-options: -O2 -Wall
+  build-depends:
+      base >=4.7 && <5
+    , hsclaim
+    , megaparsec
+    , text
+    , vector
   default-language: Haskell2010
