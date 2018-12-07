@@ -1,6 +1,7 @@
 import Text.Read (readMaybe)
 import Data.List (sortBy, groupBy)
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Maybe (catMaybes)
 import Control.Monad ((<=<))
 import qualified Data.List.NonEmpty as NE
 
@@ -35,16 +36,6 @@ boundingBox ps = BoundingBox (minimum $ x <$> ps)
                              (maximum $ x <$> ps)
                              (maximum $ y <$> ps)
 
--- son of all fucks, this is stupid
-double :: BoundingBox -> BoundingBox
-double (BoundingBox l t r b) =
-  let width = (r - l + 1)
-      height = (b - t + 1) in
-      BoundingBox (l - width `div` 2)
-                  (t - height `div` 2)
-                  (r + width `div` 2)
-                  (b + height `div` 2)
-
 interiorPoints :: BoundingBox -> [Point]
 interiorPoints (BoundingBox l t r b) = [Point (x, y) | x <- [l..r], y <- [t..b]]
 
@@ -59,9 +50,13 @@ nearest p = check . groupBy (manhattanEq p) . sortBy (manhattanOrd p) where
   check ([p]:_) = Just p
   check _ = Nothing
 
-areaNearest :: BoundingBox -> [Point] -> Point -> Int
-areaNearest bbox ps p = length $ filter (isNearest p ps) (interiorPoints bbox)
-  where isNearest o ps p = nearest p ps == Just o
+areaNearest :: BoundingBox -> [Point] -> Point -> Maybe Int
+areaNearest bbox ps p =
+  let areaPts = filter (isNearest p ps) (interiorPoints bbox)
+      isNearest o ps p = nearest p ps == Just o in
+      if any (extreme bbox) areaPts
+        then Nothing -- infinite area
+        else Just $ length areaPts
 
 parse :: String -> Maybe (NonEmpty Point)
 parse = NE.nonEmpty <=< traverse parsePoint . lines where
@@ -73,12 +68,10 @@ parse = NE.nonEmpty <=< traverse parsePoint . lines where
 largestArea :: NonEmpty Point -> Int
 largestArea pts =
   let bbox = boundingBox pts
-      bbox2 = double bbox 
       pts' = NE.toList pts
       nonXPts = filter (not . extreme bbox) pts'
-      areas = areaNearest bbox pts' <$> nonXPts
-      areas2 = areaNearest bbox2 pts' <$> nonXPts in
-      maximum $ fmap fst $ filter (uncurry (==)) $ zip areas areas2
+      areas = areaNearest bbox pts' <$> nonXPts in
+      maximum $ catMaybes areas
 
 areaNearerThan :: NonEmpty Point -> Int -> Int
 areaNearerThan pts dist =
