@@ -5,6 +5,7 @@ module Kahn (
   , Edge(..)
   , Graph
   , topoSort
+  , initials
 ) where
 
 import Control.Monad.State.Strict

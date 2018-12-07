@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fef23a8688b3abe087d135a4458b0143fc655015665903801cdd34c455f07d6d
+-- hash: b1a3b15250fd1632242ea7029f42e537d03af4bb93458a7edf4d5cc71470e291
 
 name:           hskahn
 version:        0.1.0.0
@@ -21,6 +21,7 @@ library
   exposed-modules:
       Kahn
       Parse
+      Workers
   other-modules:
       Paths_hskahn
   hs-source-dirs:
