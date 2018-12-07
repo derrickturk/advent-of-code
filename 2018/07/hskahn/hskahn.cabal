@@ -1,0 +1,50 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: fef23a8688b3abe087d135a4458b0143fc655015665903801cdd34c455f07d6d
+
+name:           hskahn
+version:        0.1.0.0
+category:       Web
+homepage:       https://github.com/derrickturk/hskahn#readme
+author:         Derrick W. Turk
+maintainer:     dwt@terminusdatascience.com
+copyright:      dwt | terminus data science, LLC
+license:        GPL-3
+license-file:   LICENSE
+build-type:     Simple
+
+library
+  exposed-modules:
+      Kahn
+      Parse
+  other-modules:
+      Paths_hskahn
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , megaparsec
+    , mtl
+    , text
+  default-language: Haskell2010
+
+executable hskahn
+  main-is: Main.hs
+  other-modules:
+      Paths_hskahn
+  hs-source-dirs:
+      app
+  ghc-options: -O2 -Wall
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , hskahn
+    , megaparsec
+    , mtl
+    , text
+  default-language: Haskell2010
