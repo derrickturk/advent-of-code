@@ -1,0 +1,46 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: cb1f3f66339e3f9447909568febd3c725212abb9d45fc6749d6bf05e754483fe
+
+name:           hsstream
+version:        0.1.0.0
+category:       Web
+homepage:       https://github.com/derrickturk/hsstream#readme
+author:         Derrick W. Turk
+maintainer:     dwt@terminusdatascience.com
+copyright:      dwt | terminus data science, LLC
+license:        GPL-3
+license-file:   LICENSE
+build-type:     Simple
+
+library
+  exposed-modules:
+      Parse
+      Stream
+  other-modules:
+      Paths_hsstream
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , megaparsec
+    , text
+  default-language: Haskell2010
+
+executable hsstream
+  main-is: Main.hs
+  other-modules:
+      Paths_hsstream
+  hs-source-dirs:
+      app
+  ghc-options: -O2 -Wall
+  build-depends:
+      base >=4.7 && <5
+    , hsstream
+    , megaparsec
+    , text
+  default-language: Haskell2010
