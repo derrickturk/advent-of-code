@@ -32,7 +32,7 @@ fn value(n: &Node) -> i32 {
     } else {
         n.metadata.iter().map(|i| {
             let i = *i as usize;
-            if i > n.children.len() {
+            if i == 0 || i > n.children.len() {
                 0
             } else {
                 value(&n.children[i - 1])
