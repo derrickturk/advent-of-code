@@ -1,6 +1,7 @@
 import qualified Data.Sequence as S
+import Data.Sequence (Seq(..))
 import Control.Monad.State.Strict
-import Data.Foldable (toList)
+import Data.Foldable (toList, foldMap)
 import Text.Read (readMaybe)
 
 newtype Marble = Marble { marbleValue :: Int }
@@ -10,9 +11,8 @@ newtype Player = Player { playerNumber :: Int }
   deriving (Eq, Show)
 
 data GameState = GameState { playerCount :: Int
-                           , playerScores :: S.Seq Int
-                           , marbles :: S.Seq Marble
-                           , currentIndex :: Int
+                           , playerScores :: Seq Int
+                           , marbles :: Seq Marble
                            , currentPlayer :: Player
                            } deriving Show
 
@@ -22,41 +22,34 @@ data RelRef = CW Int
 
 initialState :: Int -> GameState
 initialState ps =
-  GameState ps (S.replicate ps 0) (S.singleton (Marble 0)) 0 (Player 0)
+  GameState ps (S.replicate ps 0) (S.singleton (Marble 0)) (Player 0)
 
-relIndex :: S.Seq a -> Int -> RelRef -> Int
-relIndex s i (CW n) = (i + n) `mod` S.length s
-relIndex s i (CCW n) = (i - n) `mod` S.length s
-
-relTake :: S.Seq a -> Int -> RelRef -> (a, S.Seq a)
-relTake s i rel =
-  let i' = relIndex s i rel
-  in (s `S.index` i', S.deleteAt i' s)
-
-relInsert :: S.Seq a -> Int -> RelRef -> a -> (Int, S.Seq a)
-relInsert s i rel x =
-  let i' = relIndex s i rel
-  in (i', S.insertAt (relIndex s i rel) x s)
+refocus :: RelRef -> Seq a -> Seq a
+refocus (CW 0) s = s
+refocus (CCW 0) s = s
+refocus _ Empty = Empty
+refocus (CCW n) (s :|> x) = refocus (CCW (n - 1)) (x :<| s)
+refocus (CW n) (x :<| s) = refocus (CW (n - 1)) (s :|> x)
 
 gameStep :: GameState -> Marble -> GameState
-gameStep (GameState ps scores marbles i (Player p)) (Marble v)
+gameStep (GameState ps scores marbles (Player p)) (Marble v)
   | v `mod` 23 == 0 =
-      let (Marble m, marbles') = relTake marbles i (CCW 7)
-          i' = relIndex marbles' i (CCW 7)
+      let ((Marble m) :<| marbles') = refocus (CCW 7) marbles
           scores' = S.adjust (+ (v + m)) p scores
-      in GameState ps scores' marbles' i' (Player $ (p + 1) `mod` ps)
+      in GameState ps scores' marbles' (Player $ (p + 1) `mod` ps)
   | otherwise =
-      let (i', marbles') = relInsert marbles i (CW 2) (Marble v)
-      in GameState ps scores marbles' i' (Player $ (p + 1) `mod` ps)
+      let marbles' = (Marble v) :<| (refocus (CW 2) marbles)
+      in GameState ps scores marbles' (Player $ (p + 1) `mod` ps)
 
 prettyGameState :: GameState -> String
-prettyGameState (GameState _ scores marbles i (Player p)) =
-  "[" ++ show p ++ "]" ++ S.foldMapWithIndex (showMarble i) marbles
+prettyGameState (GameState _ scores marbles (Player p)) =
+  "[" ++ show p ++ "]" ++ showMarbles marbles
   ++ " / scores = " ++ show (toList scores)
   where
-    showMarble cur i (Marble v)
-      | i == cur = " (" ++ show v ++ ")"
-      | otherwise = " " ++ show v
+    showMarbles Empty = ""
+    showMarbles ((Marble m) :<| rest) = " (" ++ show m ++ ")"
+      ++ foldMap showMarble' rest
+    showMarble' (Marble m) = " " ++ show m
 
 runGame :: Int -> [GameState]
 runGame ps = runGame' (initialState ps) (Marble 1) where
