@@ -3,5 +3,6 @@
 *.o
 *.hi
 input.txt
+output.txt
 .stack-work
 .mypy_cache
