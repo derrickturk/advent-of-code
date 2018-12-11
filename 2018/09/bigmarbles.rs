@@ -5,6 +5,7 @@
 
 use std::io;
 use std::fmt;
+use std::time::Instant;
 
 #[derive(Copy, Clone, Debug)]
 struct Marble {
@@ -114,6 +115,7 @@ fn parse_description(s: &str) -> Option<(usize, u32)> {
 
 fn main() -> io::Result<()> {
     let mut input = String::new();
+    let begin = Instant::now();
     io::stdin().read_line(&mut input)?;
     match parse_description(&input) {
         Some((players, marbles)) => {
@@ -126,5 +128,8 @@ fn main() -> io::Result<()> {
         },
         None => eprintln!("invalid input"),
     };
+    let elapsed = begin.elapsed();
+    println!("{} s",
+             elapsed.as_secs() as f64 + elapsed.subsec_nanos() as f64 / 1e9);
     Ok(())
 }
