@@ -2,7 +2,6 @@
 *.exe
 *.o
 *.hi
-input.txt
-output.txt
+*.txt
 .stack-work
 .mypy_cache

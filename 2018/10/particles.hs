@@ -1,7 +1,6 @@
 import System.Environment (getArgs)
 import Text.Read (readMaybe)
 import Data.List (stripPrefix, foldl')
-import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 
 newtype Position = Position { getPosition :: (Int, Int) }
@@ -28,7 +27,28 @@ particlePosition t (Particle p v) = positionAt t p v
 positions :: [Particle] -> [[Position]]
 positions ps = (\t -> particlePosition (Time t) <$> ps) <$> enumFrom 0
 
-printPositions :: [Position] -> Maybe String
+averages :: [Particle] -> (Int, Int)
+averages ps =
+  let (avgToOrigin, avgSpeed, len) = foldl' avg (0, 0, 0) ps
+      avg (toO, spd, l) (Particle (Position (x, y)) (Velocity (x', y'))) =
+        ( if x' == 0 then toO else toO + (-x) `div` x' `div` len
+        , spd + sqrt (fromIntegral x' ** 2 + fromIntegral y' ** 2)
+            / fromIntegral len
+        , l + 1
+        )
+  in (avgToOrigin, round avgSpeed)
+
+boundingBox :: [Position] -> (Int, Int, Int, Int)
+boundingBox ps = foldl' update (maxBound, minBound, maxBound, minBound) ps where
+  update (x_min, x_max, y_min, y_max) (Position (x, y)) =
+    (min x_min x, max x_max x, min y_min y, max y_max y)
+
+boundingBoxSize :: [Position] -> (Int, Int)
+boundingBoxSize ps = let (x0, x1, y0, y1) = boundingBox ps
+                     in (x1 - x0, y1 - y0)
+{-# INLINE boundingBoxSize #-}
+
+printPositions :: [Position] -> String
 printPositions ps =
   let (x_min, x_max, y_min, y_max, set) =
         foldl' update (maxBound, minBound, maxBound, minBound, S.empty) ps
@@ -38,10 +58,7 @@ printPositions ps =
       drawPoint s y x = if S.member (x, y) s
         then '#'
         else ' '
-  in if (x_max - x_min < 1000 && y_max - y_min < 1000) -- 'density heuristic'
-    then Just $ unlines $ (makeRow x_min x_max set) <$> (enumFromTo y_min y_max)
-    else Nothing
-  -- in unlines $ (makeRow x_min x_max set) <$> (enumFromTo y_min y_max)
+  in unlines $ (makeRow x_min x_max set) <$> (enumFromTo y_min y_max)
 
 parseParticle :: String -> Maybe Particle
 parseParticle s = do
@@ -66,16 +83,22 @@ parseParticle s = do
 main :: IO ()
 main = do
   args <- getArgs
-  let (nDrop, nTake) = case args of
-        [] -> (0, 5)
-        [n] -> (0, read n)
-        (d:t:_) -> (read d, read t)
+  let nTake = case args of
+        [] -> 5
+        [n] -> read n
   input <- traverse parseParticle . lines <$> getContents
   case input of
     Nothing -> putStrLn "invalid input"
     Just particles -> do
-      mapM_ showLine $ take nTake $ drop nDrop $ zip [0..] (positions particles)
+      let (avgToO, avgSpeed) = averages particles
+          skip = if avgSpeed == 0
+            then avgToO - 10
+            else avgToO - max (30 `div` avgSpeed) 3
+          sparse ps = let (w, h) = boundingBoxSize ps
+                      in w > 240 || h > 40
+      mapM_ showLine $ take nTake $
+        dropWhile (sparse . snd) $ drop skip $ zip [0..] (positions particles)
   where
     showLine (i, pos) = do
       print i
-      putStrLn $ fromMaybe "<too sparse>" $ printPositions pos
+      putStrLn $ printPositions pos
