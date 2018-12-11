@@ -151,11 +151,11 @@ fn main() {
     let (size, serial) = match (args[1].parse(), args[2].parse()) {
         (Ok(sz), Ok(ser)) => (sz, ser),
         (Err(_), _) => {
-            eprintln!("Invalid serial number {}", args[1]);
+            eprintln!("Invalid size \"{}\"", args[1]);
             return;
         },
         (_, Err(_)) => {
-            eprintln!("Invalid serial number {}", args[2]);
+            eprintln!("Invalid serial number \"{}\"", args[2]);
             return;
         },
     };
