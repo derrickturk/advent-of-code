@@ -1,8 +1,6 @@
 use std::env;
 
-const SIZE: usize = 300;
-
-type Matrix = [[i32; SIZE]; SIZE];
+type Matrix = Vec<Vec<i32>>;
 
 #[inline]
 fn hundreds(x: i32) -> i32 {
@@ -24,21 +22,23 @@ fn ij_to_xy(i: usize, j: usize) -> (usize, usize) {
     (j + 1, i + 1)
 }
 
-fn make_grid(serial: i32) -> Matrix {
-    let mut grid = [[0; SIZE]; SIZE];
-    for i in 0..SIZE {
-        for j in 0..SIZE {
+fn make_grid(size: usize, serial: i32) -> Matrix {
+    let mut grid = Vec::with_capacity(size);
+    for i in 0..size {
+        let mut row = Vec::with_capacity(size);
+        for j in 0..size {
             let (x, y) = ij_to_xy(i, j);
-            grid[i][j] = cell_power(serial, x, y);
+            row.push(cell_power(serial, x, y));
         }
+        grid.push(row);
     }
     grid
 }
 
 fn summed_area(grid: &Matrix) -> Matrix {
-    let mut sat = *grid;
-    for i in 0..SIZE {
-        for j in 0..SIZE {
+    let mut sat = grid.clone();
+    for i in 0..grid.len() {
+        for j in 0..grid[i].len() {
             if j > 0 {
                 sat[i][j] += sat[i][j - 1]
             }
@@ -95,13 +95,13 @@ fn cell_square_sum(grid: &Matrix, sat: &Matrix,
 
 fn max_power_square_sized(grid: &Matrix, sat: &Matrix,
                           w: usize) -> (usize, usize, i32) {
-    if w > SIZE {
+    if w > grid.len() {
         panic!("square too large for grid!"); 
     }
 
     let (mut x_max, mut y_max, mut max) = (0, 0, i32::min_value());
-    for x in 1..=SIZE - w + 1 {
-        for y in 1..=SIZE - w + 1 {
+    for x in 1..=grid.len() - w + 1 {
+        for y in 1..=grid.len() - w + 1 {
             let p = cell_square_sum(grid, sat, x, y, w);
             if p > max {
                 x_max = x;
@@ -117,7 +117,7 @@ fn max_power_square_sized(grid: &Matrix, sat: &Matrix,
 fn max_power_square(grid: &Matrix, sat: &Matrix) -> (usize, usize, usize, i32) {
     let (mut x_max, mut y_max, mut w_max, mut max) =
       (0, 0, 0, i32::min_value());
-    for w in 1..=SIZE {
+    for w in 1..=grid.len() {
         let (x, y, p) = max_power_square_sized(grid, sat, w);
         if p > max {
             x_max = x;
@@ -142,21 +142,26 @@ fn print_grid(grid: &Matrix) {
 
 fn main() {
     let args: Vec<_> = env::args().collect();
-    if args.len() != 2 {
-        eprintln!("Usage: {}", args.first().unwrap_or(&String::from("grid")));
+    if args.len() != 3 {
+        eprintln!("Usage: {} size serial",
+          args.first().unwrap_or(&String::from("grid")));
         return;
     }
 
-    let serial: i32 = match args[1].parse() {
-        Ok(s) => s,
-        Err(_) => {
+    let (size, serial) = match (args[1].parse(), args[2].parse()) {
+        (Ok(sz), Ok(ser)) => (sz, ser),
+        (Err(_), _) => {
             eprintln!("Invalid serial number {}", args[1]);
+            return;
+        },
+        (_, Err(_)) => {
+            eprintln!("Invalid serial number {}", args[2]);
             return;
         },
     };
 
-    let grid = make_grid(serial);
-    let sat = summed_area(&grid);
+    let grid = Box::new(make_grid(size, serial));
+    let sat = Box::new(summed_area(&grid));
 
     let (x, y, p) = max_power_square_sized(&grid, &sat, 3);
     println!("{},{} (power {})", x, y, p);
