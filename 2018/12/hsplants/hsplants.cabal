@@ -1,0 +1,35 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.1.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: c4ad91aec2633ba77c1356c5ea48513ab4877d6bc9e58963808421ca714369a2
+
+name:           hsplants
+version:        0.1.0.0
+category:       Web
+homepage:       https://github.com/derrickturk/hsplants#readme
+author:         Derrick W. Turk
+maintainer:     dwt@terminusdatascience.com
+copyright:      dwt | terminus data science, LLC
+license:        GPL-3
+license-file:   LICENSE
+build-type:     Simple
+
+executable hsplants
+  main-is: Main.hs
+  other-modules:
+      Parse
+      Plants
+      Paths_hsplants
+  hs-source-dirs:
+      src
+  ghc-options: -O2 -Wall
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , megaparsec
+    , text
+    , vector
+  default-language: Haskell2010

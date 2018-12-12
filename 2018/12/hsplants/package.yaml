@@ -1,0 +1,25 @@
+name:                hsplants
+version:             0.1.0.0
+#synopsis:
+#description:
+homepage:            https://github.com/derrickturk/hsplants#readme
+license:             GPL-3
+author:              Derrick W. Turk
+maintainer:          dwt@terminusdatascience.com
+copyright:           dwt | terminus data science, LLC
+category:            Web
+
+dependencies:
+  - base >= 4.7 && < 5
+  - containers
+  - megaparsec
+  - text
+  - vector
+
+executables:
+  hsplants:
+    source-dirs:      src
+    main:             Main.hs
+    ghc-options:
+      - -O2
+      - -Wall
