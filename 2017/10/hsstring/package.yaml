@@ -1,0 +1,37 @@
+name:                hsstring
+version:             0.1.0.0
+#synopsis:
+#description:
+homepage:            https://github.com/derrickturk/hsstring#readme
+license:             GPL-3
+author:              Derrick W. Turk
+maintainer:          dwt@terminusdatascience.com
+copyright:           dwt | terminus data science, LLC
+category:            Web
+
+dependencies:
+  - base >= 4.7 && < 5
+  - split
+  - vector
+
+library:
+    source-dirs:      src
+
+executables:
+  hsstring:
+    source-dirs:      app
+    main:             Main.hs
+    ghc-options:
+      - -O2
+      - -Wall
+    dependencies:
+      - hsstring
+
+  hshash:
+    source-dirs:      app2
+    main:             Main.hs
+    ghc-options:
+      - -O2
+      - -Wall
+    dependencies:
+      - hsstring
