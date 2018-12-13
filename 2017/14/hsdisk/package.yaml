@@ -12,6 +12,8 @@ category:            Web
 dependencies:
   - base >= 4.7 && < 5
   - hsstring
+  - containers
+  - vector
 
 executables:
   hsdisk:
@@ -19,6 +21,4 @@ executables:
     main:             Main.hs
     ghc-options:
       - -O2
-      - -Wall
-    dependencies:
-      - hsstring
+      - -Wall -fno-warn-name-shadowing
