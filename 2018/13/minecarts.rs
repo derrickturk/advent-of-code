@@ -119,14 +119,47 @@ fn move_cart(track: &Track, cart: &mut Cart) {
 fn move_carts(track: &Track, carts: &mut CartGroup) -> Option<Crash> {
     // i'd like a priority queue / ordered map
     carts.sort();
+
+    let mut crashes = Vec::new();
+    let mut first_crash = None;
+
     for i in 0..carts.len() {
+        if crashes.contains(&i) {
+            continue;
+        }
+
         move_cart(track, &mut carts[i]);
-        if let Some(_) = carts.iter().enumerate().find(
-              |&(o, c)| o != i && c.i == carts[i].i && c.j == carts[i].j) {
-            return Some(Crash(carts[i].i, carts[i].j));
+
+        let crash = carts.iter().enumerate().find(|&(j, c)| {
+            if j == i {
+                return false;
+            }
+
+            if crashes.contains(&j) {
+                return false;
+            }
+
+            c.i == carts[i].i && c.j == carts[i].j
+        });
+
+        if let Some((j, _)) = crash {
+            let crash = Crash(carts[i].i, carts[i].j);
+
+            crashes.push(i);
+            crashes.push(j);
+
+            if first_crash.is_none() {
+                first_crash = Some(crash);
+            }
         }
     }
-    None
+
+    crashes.sort_by(|a, b| b.cmp(a)); // reverse order
+    for i in crashes {
+        carts.remove(i);
+    }
+    
+    first_crash
 }
 
 fn main() -> io::Result<()> {
@@ -141,12 +174,30 @@ fn main() -> io::Result<()> {
         }
     }
 
+    let mut carts_pt_2 = carts.clone();
+
+    // part 1
     loop {
         if let Some(Crash(i, j)) = move_carts(&mut track, &mut carts) {
             // remember, they use X,Y rather than i, j
             println!("crash @ X,Y = {},{}", j, i);
             break;
         }
+    }
+
+    // part 2
+    loop {
+        if carts_pt_2.len() == 0 {
+            println!("hmm, all carts are gone."); 
+            break;
+        }
+
+        if carts_pt_2.len() == 1 {
+            println!("final cart @ X,Y = {},{}",
+              carts_pt_2[0].j, carts_pt_2[0].i);
+            break;
+        }
+        move_carts(&mut track, &mut carts_pt_2);
     }
 
     Ok(())
