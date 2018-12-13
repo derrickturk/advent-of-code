@@ -116,10 +116,9 @@ fn move_cart(track: &Track, cart: &mut Cart) {
     };
 }
 
-fn move_carts(track: &Track, carts: &mut CartGroup) -> Option<Crash> {
+fn move_carts<F: FnMut(Crash) -> ()>(track: &Track, carts: &mut CartGroup,
+                                     mut crash_fn: F) {
     carts.sort();
-
-    let mut first_crash = None;
 
     let mut i = 0;
     while i < carts.len() {
@@ -127,12 +126,9 @@ fn move_carts(track: &Track, carts: &mut CartGroup) -> Option<Crash> {
 
         let mut crashed = false;
         let mut j = 0;
-        while j < carts.len() {
+        while i < carts.len() && j < carts.len() {
             if i != j && carts[i].i == carts[j].i && carts[i].j == carts[j].j {
-                if first_crash.is_none() {
-                    first_crash = Some(Crash(carts[i].i, carts[i].j));
-                }
-
+                crash_fn(Crash(carts[i].i, carts[i].j));
                 crashed = true;
                 if i < j {
                     carts.remove(j);
@@ -143,10 +139,6 @@ fn move_carts(track: &Track, carts: &mut CartGroup) -> Option<Crash> {
                     carts.remove(j);
                     i -= 1;
                 }
-
-                if i == carts.len() {
-                    break;
-                }
             } else {
                 j += 1;
             }
@@ -156,8 +148,6 @@ fn move_carts(track: &Track, carts: &mut CartGroup) -> Option<Crash> {
             i += 1;
         }
     }
-
-    first_crash
 }
 
 fn main() -> io::Result<()> {
@@ -175,8 +165,10 @@ fn main() -> io::Result<()> {
     let mut carts_pt_2 = carts.clone();
 
     // part 1
+    let mut first_crash = None;
     loop {
-        if let Some(Crash(i, j)) = move_carts(&mut track, &mut carts) {
+        move_carts(&mut track, &mut carts, |c| first_crash = Some(c));
+        if let Some(Crash(i, j)) = first_crash {
             // remember, they use X,Y rather than i, j
             println!("crash @ X,Y = {},{}", j, i);
             break;
@@ -195,7 +187,7 @@ fn main() -> io::Result<()> {
               carts_pt_2[0].j, carts_pt_2[0].i);
             break;
         }
-        move_carts(&mut track, &mut carts_pt_2);
+        move_carts(&mut track, &mut carts_pt_2, |_| {});
     }
 
     Ok(())
