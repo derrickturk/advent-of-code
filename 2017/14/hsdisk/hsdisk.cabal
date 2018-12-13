@@ -1,0 +1,30 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.1.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: fac041d0a84eb645cdee34eef65e2a5d051f0ba5397de29c58fec815e92cf75b
+
+name:           hsdisk
+version:        0.1.0.0
+category:       Web
+homepage:       https://github.com/derrickturk/hsdisk#readme
+author:         Derrick W. Turk
+maintainer:     dwt@terminusdatascience.com
+copyright:      dwt | terminus data science, LLC
+license:        GPL-3
+license-file:   LICENSE
+build-type:     Simple
+
+executable hsdisk
+  main-is: Main.hs
+  other-modules:
+      Paths_hsdisk
+  hs-source-dirs:
+      app
+  ghc-options: -O2 -Wall
+  build-depends:
+      base >=4.7 && <5
+    , hsstring
+  default-language: Haskell2010

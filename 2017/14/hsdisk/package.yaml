@@ -1,0 +1,24 @@
+name:                hsdisk
+version:             0.1.0.0
+#synopsis:
+#description:
+homepage:            https://github.com/derrickturk/hsdisk#readme
+license:             GPL-3
+author:              Derrick W. Turk
+maintainer:          dwt@terminusdatascience.com
+copyright:           dwt | terminus data science, LLC
+category:            Web
+
+dependencies:
+  - base >= 4.7 && < 5
+  - hsstring
+
+executables:
+  hsdisk:
+    source-dirs:      app
+    main:             Main.hs
+    ghc-options:
+      - -O2
+      - -Wall
+    dependencies:
+      - hsstring
