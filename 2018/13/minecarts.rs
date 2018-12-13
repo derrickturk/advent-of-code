@@ -117,48 +117,46 @@ fn move_cart(track: &Track, cart: &mut Cart) {
 }
 
 fn move_carts(track: &Track, carts: &mut CartGroup) -> Option<Crash> {
-    // i'd like a priority queue / ordered map
     carts.sort();
 
-    let mut crashes = Vec::new();
     let mut first_crash = None;
 
-    for i in 0..carts.len() {
-        if crashes.contains(&i) {
-            continue;
-        }
-
+    let mut i = 0;
+    while i < carts.len() {
         move_cart(track, &mut carts[i]);
 
-        let crash = carts.iter().enumerate().find(|&(j, c)| {
-            if j == i {
-                return false;
+        let mut crashed = false;
+        let mut j = 0;
+        while j < carts.len() {
+            if i != j && carts[i].i == carts[j].i && carts[i].j == carts[j].j {
+                if first_crash.is_none() {
+                    first_crash = Some(Crash(carts[i].i, carts[i].j));
+                }
+
+                crashed = true;
+                if i < j {
+                    carts.remove(j);
+                    carts.remove(i);
+                    j -= 1;
+                } else {
+                    carts.remove(i);
+                    carts.remove(j);
+                    i -= 1;
+                }
+
+                if i == carts.len() {
+                    break;
+                }
+            } else {
+                j += 1;
             }
+        }
 
-            if crashes.contains(&j) {
-                return false;
-            }
-
-            c.i == carts[i].i && c.j == carts[i].j
-        });
-
-        if let Some((j, _)) = crash {
-            let crash = Crash(carts[i].i, carts[i].j);
-
-            crashes.push(i);
-            crashes.push(j);
-
-            if first_crash.is_none() {
-                first_crash = Some(crash);
-            }
+        if !crashed {
+            i += 1;
         }
     }
 
-    crashes.sort_by(|a, b| b.cmp(a)); // reverse order
-    for i in crashes {
-        carts.remove(i);
-    }
-    
     first_crash
 }
 
