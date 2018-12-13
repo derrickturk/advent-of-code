@@ -191,16 +191,24 @@ fn render_track_with_carts<W: Write>(stream: &mut BufWriter<W>,
                                      carts: &CartGroup) -> io::Result<()> {
     for (i, chars) in track_chars.iter().enumerate() {
         for (j, c) in chars.iter().enumerate() {
-            let c = match carts.iter().find(|k| k.i == i && k.j == j) {
+            let (c, cart) = match carts.iter().find(|k| k.i == i && k.j == j) {
                 Some(Cart { dir, .. }) => match dir {
-                    Up => b'^',
-                    Down => b'v',
-                    Left => b'<',
-                    Right => b'>',
+                    Up => (b'^', true),
+                    Down => (b'v', true),
+                    Left => (b'<', true),
+                    Right => (b'>', true),
                 },
-                None => *c,
+                None => (*c, false),
             };
-            stream.write(&[c])?;
+
+            if cart {
+                stream.write(&[27u8, b'[', b'1', b';', b'3', b'1', b'm',
+                               c,
+                               27u8, b'[', b'3', b'9', b';', b'4', b'9', b'm']
+                )?;
+            } else {
+                stream.write(&[c])?;
+            }
         }
     }
     Ok(())
