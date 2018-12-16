@@ -47,46 +47,46 @@ runTilLength n s
   | MV.length (scores s) >= n = pure s
   | otherwise = stepGame s >>= runTilLength n
 
-uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
-uncurry3 f (x, y, z) = f x y z
-
-{-
-subseqIndex :: Recipes -> Recipes -> Maybe Int
-subseqIndex vec sub
-  | V.length sub > V.length vec = Nothing
-  | otherwise = (+ fromIx) <$> findIndex (subseq vec sub) [fromIx..toIx] where
-      fromIx = max (V.length vec - V.length sub - 2) 0
-      toIx = V.length vec - V.length sub
-      subseq vec sub i = V.slice i (V.length sub) vec == sub
-
-runTilSubseq :: Recipes
-             -> Int
-             -> Int
-             -> Recipes
-             -> (Recipes, Int, Int, Int)
-runTilSubseq vec i j sub = case subseqIndex vec sub of
-  Just n -> (vec, i, j, n)
-  _ -> let (vec', i', j') = update vec i j in runTilSubseq vec' i' j' sub
--}
-
-fst3 :: (a, b, c) -> a
-fst3 (x, _, _) = x
-
-fourth :: (a, b, c, d) -> d
-fourth (_, _, _, x) = x
+match :: Recipes s -> V.Vector Int8 -> ST s Bool
+match = go 0 where
+  go n mvec vec
+    | n == MV.length mvec = pure True
+    | otherwise = do
+        x <- MV.read mvec n
+        if x == vec V.! n
+          then go (n + 1) mvec vec
+          else pure False
+{-# INLINE match #-}
 
 solvePt1 :: Int -> ST s [Int8]
 solvePt1 n = do
   final <- initial >>= runTilLength (n + 10)
   V.toList <$> (V.freeze $ MV.slice n 10 $ scores final)
 
-{-
-solvePt2 :: Recipes -> Int
-solvePt2 = fourth . runTilSubseq initial 0 1
--}
+solvePt2 :: Int -> ST s Int
+solvePt2 n = do
+  let needle = V.fromList $ fromIntegral <$> digits n
+  s <- initial
+  go needle s
+  where
+    go needle s@(GameState mvec _ _)
+      | MV.length mvec < V.length needle = stepGame s >>= go needle
+      | otherwise = do
+          let lm = MV.length mvec
+              ln = V.length needle
+          m1 <- match (MV.slice (lm - ln) ln mvec) needle
+          if m1
+            then pure (lm - ln)
+            else if lm - ln > 0
+              then do
+                m2 <- match (MV.slice (lm - ln - 1) ln mvec) needle
+                if m2
+                  then pure (lm - ln - 1)
+                  else stepGame s >>= go needle
+              else stepGame s >>= go needle
 
 main :: IO ()
 main = do
   input <- read <$> getLine
   putStrLn $ concatMap show $ runST $ solvePt1 input
-  -- print $ solvePt2 $ V.fromList $ fromIntegral <$> digits input
+  print $ runST $ solvePt2 input
