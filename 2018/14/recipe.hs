@@ -14,9 +14,6 @@ data GameState s = GameState { scores :: Recipes s
                              , i2 :: STRef s Int
                              }
 
-digits :: (Show a, Read a) => a -> [a]
-digits = fmap (read . pure) . show
-
 initial :: ST s (GameState s)
 initial = GameState <$> (V.thaw $ V.fromList [3, 7])
                     <*> newSTRef 0
@@ -63,9 +60,9 @@ solvePt1 n = do
   final <- initial >>= runTilLength (n + 10)
   V.toList <$> (V.freeze $ MV.slice n 10 $ scores final)
 
-solvePt2 :: Int -> ST s Int
-solvePt2 n = do
-  let needle = V.fromList $ fromIntegral <$> digits n
+solvePt2 :: [Int8] -> ST s Int
+solvePt2 digits = do
+  let needle = V.fromList $ digits
   s <- initial
   go needle s
   where
@@ -74,19 +71,24 @@ solvePt2 n = do
       | otherwise = do
           let lm = MV.length mvec
               ln = V.length needle
-          m1 <- match (MV.slice (lm - ln) ln mvec) needle
-          if m1
-            then pure (lm - ln)
-            else if lm - ln > 0
-              then do
-                m2 <- match (MV.slice (lm - ln - 1) ln mvec) needle
-                if m2
-                  then pure (lm - ln - 1)
-                  else stepGame s >>= go needle
-              else stepGame s >>= go needle
+          if lm - ln > 0
+            then do
+              m2 <- match (MV.slice (lm - ln - 1) ln mvec) needle
+              if m2
+                then pure (lm - ln - 1)
+                else do
+                  m1 <- match (MV.slice (lm - ln) ln mvec) needle
+                  if m1
+                    then pure (lm - ln)
+                    else stepGame s >>= go needle
+            else do
+              m1 <- match (MV.slice (lm - ln) ln mvec) needle
+              if m1
+                then pure (lm - ln)
+                else stepGame s >>= go needle
 
 main :: IO ()
 main = do
-  input <- read <$> getLine
-  putStrLn $ concatMap show $ runST $ solvePt1 input
-  print $ runST $ solvePt2 input
+  input <- getLine
+  putStrLn $ concatMap show $ runST $ solvePt1 (read input)
+  print $ runST $ solvePt2 (read . pure <$> input)
