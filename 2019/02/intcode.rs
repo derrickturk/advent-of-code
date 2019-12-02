@@ -88,12 +88,12 @@ impl OpCode {
     }
 }
 
-fn execute(program: &mut [i32]) -> Result<(), IntCodeError> {
+fn execute(program: &mut [i32]) -> Result<i32, IntCodeError> {
     let mut ip = 0;
     loop {
         let opcode = OpCode::parse(program, ip)?;
         match opcode {
-            OpCode::Halt => return Ok(()),
+            OpCode::Halt => return Ok(program[0]),
             _ => opcode.eval(program)?,
         }
         ip += opcode.ip_step();
@@ -103,8 +103,9 @@ fn execute(program: &mut [i32]) -> Result<(), IntCodeError> {
 fn problem1(program: &mut [i32]) -> Result<(), IntCodeError> {
     program[1] = 12;
     program[2] = 2;
-    execute(program)?;
+    let output = execute(program)?;
     println!("final state: {:?}", program);
+    println!("{}", output);
     Ok(())
 }
 
@@ -115,11 +116,9 @@ fn problem2(program: &[i32]) {
             this_prog[1] = noun;
             this_prog[2] = verb;
 
-            if let Ok(_) = execute(&mut this_prog[..]) {
-                if this_prog[0] == 19690720 {
-                    println!("{}", 100 * noun + verb);
-                    return;
-                }
+            if let Ok(19690720) = execute(&mut this_prog[..]) {
+                println!("{}", 100 * noun + verb);
+                return;
             }
         }
     }
