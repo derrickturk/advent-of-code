@@ -1,7 +1,5 @@
 import sys
 
-from abc import ABC, abstractmethod
-
 from typing import NamedTuple, List
 from typing_extensions import Protocol
 
