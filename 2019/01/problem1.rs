@@ -67,6 +67,6 @@ fn main() {
         println!("in {} ms", (elapsed.as_secs() * 1000) as f64 +
             (elapsed.subsec_nanos() as f64 / 1e6));
     } else {
-        eprintln!("Usage: intcode 1|2 <input.txt");
+        eprintln!("Usage: problem1 1|2 <input.txt");
     }
 }
