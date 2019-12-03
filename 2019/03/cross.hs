@@ -3,6 +3,10 @@
 import Control.Monad.State.Strict
 import Text.Read (readMaybe)
 import System.IO (stderr)
+import Data.List (elemIndex, sortBy)
+import Data.Maybe (fromJust, listToMaybe)
+import System.Environment (getArgs)
+
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -34,9 +38,23 @@ path = fmap Loc . concat . (`evalState` (0, 0)) . traverse (state . step) where
   step (L, n) (x, y) = ([(x - i, y) | i <- [1..n]], (x - n, y))
   step (U, n) (x, y) = ([(x, y + j) | j <- [1..n]], (x, y + n))
   step (D, n) (x, y) = ([(x, y - j) | j <- [1..n]], (x, y - n))
+{-# INLINE path #-}
 
 intersect :: Wire -> Wire -> S.Set Loc
 intersect w1 w2 = S.fromList (path w1) `S.intersection` S.fromList (path w2)
+{-# INLINE intersect #-}
+
+shortestSteps :: Wire -> Wire -> Maybe (Loc, Int, Int)
+shortestSteps w1 w2 =
+  let path1 = path w1
+      path2 = path w2
+      int = S.toList $ intersect w1 w2
+      steps seq pt = fromJust (elemIndex pt seq) + 1
+      cmpSteps pt1 pt2 = compare
+        (steps path1 pt1 + steps path2 pt1)
+        (steps path1 pt2 + steps path2 pt2)
+      mkResult pt = (pt, steps path1 pt, steps path2 pt) in
+      mkResult <$> (listToMaybe $ sortBy cmpSteps int)
 
 parseWire :: T.Text -> Maybe Wire
 parseWire = traverse parseStep . T.splitOn "," where
@@ -50,11 +68,27 @@ parseWire = traverse parseStep . T.splitOn "," where
   parseDir 'D' = Just D
   parseDir _ = Nothing
 
+problem1 :: Wire -> Wire -> IO ()
+problem1 w1 w2 = case S.lookupMin (intersect w1 w2) of
+  Just loc -> print $ manhattanFromOrigin loc
+  _ -> TIO.hPutStrLn stderr "No intersections."
+
+problem2 :: Wire -> Wire -> IO ()
+problem2 w1 w2 = case shortestSteps w1 w2 of
+  Just (loc, steps1, steps2) -> print $ steps1 + steps2
+  _ -> TIO.hPutStrLn stderr "No intersections."
+
 main :: IO ()
 main = do
-  wires <- traverse parseWire . T.lines <$> TIO.getContents
-  case wires of
-    Just [w1, w2] -> case S.lookupMin (intersect w1 w2) of
-      Just loc -> print $ manhattanFromOrigin loc
-      _ -> TIO.hPutStrLn stderr "No intersections."
-    _ -> TIO.hPutStrLn stderr "Invalid input."
+  args <- getArgs
+  let action = case args of
+        ["1"] -> Just problem1
+        ["2"] -> Just problem2
+        _ -> Nothing
+  case action of
+    Just m -> do
+      wires <- traverse parseWire . T.lines <$> TIO.getContents
+      case wires of
+        Just [w1, w2] -> m w1 w2
+        _ -> TIO.hPutStrLn stderr "Invalid input."
+    Nothing -> TIO.hPutStrLn stderr "Usage: cross 1|2 <input.txt"
