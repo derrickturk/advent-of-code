@@ -23,7 +23,7 @@ async fn problem1(pool: &ThreadPool, program: Vec<i32>
         res
     }).expect("failed to spawn task on ThreadPool");
 
-    input_send.send(33).await
+    input_send.send(1).await
         .expect("unexpected error writing to input channel");
 
     let output_handle = pool.spawn_with_handle(async move {

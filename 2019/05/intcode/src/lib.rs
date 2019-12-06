@@ -13,6 +13,7 @@ pub enum IntCodeError {
     ParseError,
     OutOfProgram,
     UnknownOpCode(i32),
+    UnknownAddrMode(i32),
     InvalidAddress(i32),
     OutOfInput,
     OutputError,
@@ -42,11 +43,28 @@ impl ProgramState {
 }
 
 #[derive(Debug, Copy, Clone)]
+pub enum Operand {
+    Immediate(i32),
+    Indirect(usize),
+}
+
+impl Operand {
+    #[inline]
+    pub fn fetch(&self, memory: &[i32]) -> Result<i32, IntCodeError> {
+        match *self {
+            Operand::Immediate(n) => Ok(n),
+            Operand::Indirect(ptr) => Ok(*memory.get(ptr)
+                .ok_or(IntCodeError::InvalidAddress(ptr as i32))?),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
 pub enum OpCode {
-    Add(usize, usize, usize),
-    Mul(usize, usize, usize),
+    Add(Operand, Operand, usize),
+    Mul(Operand, Operand, usize),
     Input(usize),
-    Output(usize),
+    Output(Operand),
     Halt,
 }
 
@@ -55,19 +73,23 @@ impl OpCode {
         let mem = &program.memory;
         let ip = program.ip;
 
-        match *mem.get(ip).ok_or(IntCodeError::OutOfProgram)? {
+        let instr = *mem.get(ip).ok_or(IntCodeError::OutOfProgram)?;
+        let opcode = instr % 100;
+        let addr_modes = instr / 100;
+
+        match opcode {
             1 => {
                 Ok(OpCode::Add(
-                    indirect_address(mem, ip + 1)?,
-                    indirect_address(mem, ip + 2)?,
+                    operand(addr_modes, 0, mem, ip + 1)?,
+                    operand(addr_modes, 1, mem, ip + 2)?,
                     indirect_address(mem, ip + 3)?,
                 ))
             },
 
             2 => {
                 Ok(OpCode::Mul(
-                    indirect_address(mem, ip + 1)?,
-                    indirect_address(mem, ip + 2)?,
+                    operand(addr_modes, 0, mem, ip + 1)?,
+                    operand(addr_modes, 1, mem, ip + 2)?,
                     indirect_address(mem, ip + 3)?,
                 ))
             },
@@ -80,7 +102,7 @@ impl OpCode {
 
             4 => {
                 Ok(OpCode::Output(
-                    indirect_address(mem, ip + 1)?,
+                    operand(addr_modes, 0, mem, ip + 1)?,
                 ))
             },
 
@@ -99,20 +121,16 @@ impl OpCode {
 
         match *self {
             OpCode::Add(src1, src2, dst) => {
-                let arg1 = *mem.get(src1)
-                    .ok_or(IntCodeError::InvalidAddress(src1 as i32))?;
-                let arg2 = *mem.get(src2)
-                    .ok_or(IntCodeError::InvalidAddress(src2 as i32))?;
+                let arg1 = src1.fetch(mem)?;
+                let arg2 = src2.fetch(mem)?;
                 let dst = mem.get_mut(dst)
                     .ok_or(IntCodeError::InvalidAddress(dst as i32))?;
                 *dst = arg1 + arg2;
             },
 
             OpCode::Mul(src1, src2, dst) => {
-                let arg1 = *mem.get(src1)
-                    .ok_or(IntCodeError::InvalidAddress(src1 as i32))?;
-                let arg2 = *mem.get(src2)
-                    .ok_or(IntCodeError::InvalidAddress(src2 as i32))?;
+                let arg1 = src1.fetch(mem)?;
+                let arg2 = src2.fetch(mem)?;
                 let dst = mem.get_mut(dst)
                     .ok_or(IntCodeError::InvalidAddress(dst as i32))?;
                 *dst = arg1 * arg2;
@@ -125,8 +143,7 @@ impl OpCode {
             },
 
             OpCode::Output(src) => {
-                let val = *mem.get(src)
-                    .ok_or(IntCodeError::InvalidAddress(src as i32))?;
+                let val = src.fetch(mem)?;
                 output.send(val).await.map_err(|_| IntCodeError::OutputError)?;
             },
 
@@ -167,4 +184,21 @@ fn indirect_address(memory: &[i32], ptr: usize)
   -> Result<usize, IntCodeError> {
     let addr = *memory.get(ptr).ok_or(IntCodeError::OutOfProgram)?;
     addr.try_into().map_err(|_| IntCodeError::InvalidAddress(addr))
+}
+
+#[inline]
+fn operand(addr_modes: i32, operand_index: usize, memory: &[i32], ptr: usize
+      ) -> Result<Operand, IntCodeError> {
+    let addr_mode = if operand_index > 0 {
+        addr_modes / (10 * operand_index as i32) % 10
+    } else {
+        addr_modes % 10
+    };
+
+    match addr_mode {
+        0 => Ok(Operand::Indirect(indirect_address(memory, ptr)?)),
+        1 => Ok(Operand::Immediate(
+                *memory.get(ptr).ok_or(IntCodeError::OutOfProgram)?)),
+        _ => Err(IntCodeError::UnknownAddrMode(addr_mode)),
+    }
 }
