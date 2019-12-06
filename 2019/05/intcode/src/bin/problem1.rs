@@ -1,5 +1,9 @@
 use std::io;
-use futures::executor::block_on;
+use futures::{
+    executor::block_on,
+    stream,
+    sink,
+};
 
 use intcode::*;
 
@@ -8,7 +12,7 @@ async fn problem1(mut program: Vec<i32>) -> Result<(), IntCodeError> {
     program[2] = 2;
 
     let mut state = ProgramState::from(program);
-    execute(&mut state).await?;
+    execute(&mut state, &mut stream::empty(), &mut sink::drain()).await?;
 
     println!("final state: {:?}", state.memory());
     println!("{}", state.memory()[0]);

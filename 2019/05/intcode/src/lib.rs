@@ -2,6 +2,11 @@ use std::{
     convert::TryInto,
 };
 
+use futures::{
+    stream::{Stream},
+    sink::{Sink},
+};
+
 #[derive(Debug, Copy, Clone)]
 pub enum IntCodeError {
     ParseError,
@@ -68,8 +73,10 @@ impl OpCode {
         }
     }
 
-    pub async fn eval(&self, program: &mut ProgramState
-      ) -> Result<(), IntCodeError> {
+    pub async fn eval(&self, program: &mut ProgramState,
+          input: &mut impl Stream<Item = i32>,
+          output: &mut impl Sink<i32>
+          ) -> Result<(), IntCodeError> {
         let mem = &mut program.memory;
         let ip = &mut program.ip;
 
@@ -111,12 +118,15 @@ impl OpCode {
     }
 }
 
-pub async fn execute(program: &mut ProgramState) -> Result<(), IntCodeError> {
+pub async fn execute(program: &mut ProgramState,
+      input: &mut impl Stream<Item = i32>,
+      output: &mut impl Sink<i32>
+      ) -> Result<(), IntCodeError> {
     loop {
         let opcode = OpCode::parse_next(program)?;
         match opcode {
             OpCode::Halt => return Ok(()),
-            _ => opcode.eval(program).await?,
+            _ => opcode.eval(program, input, output).await?,
         }
     }
 }
