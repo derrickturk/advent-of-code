@@ -1,10 +1,11 @@
 use std::{
     convert::TryInto,
+    marker::Unpin,
 };
 
 use futures::{
-    stream::{Stream},
-    sink::{Sink},
+    stream::{Stream, StreamExt},
+    sink::{Sink, SinkExt},
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -13,6 +14,8 @@ pub enum IntCodeError {
     OutOfProgram,
     UnknownOpCode(i32),
     InvalidAddress(i32),
+    OutOfInput,
+    OutputError,
 }
 
 #[derive(Debug, Clone)]
@@ -42,6 +45,8 @@ impl ProgramState {
 pub enum OpCode {
     Add(usize, usize, usize),
     Mul(usize, usize, usize),
+    Input(usize),
+    Output(usize),
     Halt,
 }
 
@@ -67,6 +72,18 @@ impl OpCode {
                 ))
             },
 
+            3 => {
+                Ok(OpCode::Input(
+                    indirect_address(mem, ip + 1)?,
+                ))
+            },
+
+            4 => {
+                Ok(OpCode::Output(
+                    indirect_address(mem, ip + 1)?,
+                ))
+            },
+
             99 => Ok(OpCode::Halt),
 
             n => Err(IntCodeError::UnknownOpCode(n)),
@@ -74,8 +91,8 @@ impl OpCode {
     }
 
     pub async fn eval(&self, program: &mut ProgramState,
-          input: &mut impl Stream<Item = i32>,
-          output: &mut impl Sink<i32>
+          input: &mut (impl Stream<Item = i32> + Unpin),
+          output: &mut (impl Sink<i32> + Unpin)
           ) -> Result<(), IntCodeError> {
         let mem = &mut program.memory;
         let ip = &mut program.ip;
@@ -101,6 +118,18 @@ impl OpCode {
                 *dst = arg1 * arg2;
             },
 
+            OpCode::Input(dst) => {
+                let dst = mem.get_mut(dst)
+                    .ok_or(IntCodeError::InvalidAddress(dst as i32))?;
+                *dst = input.next().await.ok_or(IntCodeError::OutOfInput)?;
+            },
+
+            OpCode::Output(src) => {
+                let val = *mem.get(src)
+                    .ok_or(IntCodeError::InvalidAddress(src as i32))?;
+                output.send(val).await.map_err(|_| IntCodeError::OutputError)?;
+            },
+
             OpCode::Halt => {},
         }
 
@@ -113,14 +142,16 @@ impl OpCode {
         match self {
             OpCode::Add(..) => 4,
             OpCode::Mul(..) => 4,
+            OpCode::Input(..) => 2,
+            OpCode::Output(..) => 2,
             OpCode::Halt => 1,
         }
     }
 }
 
 pub async fn execute(program: &mut ProgramState,
-      input: &mut impl Stream<Item = i32>,
-      output: &mut impl Sink<i32>
+      input: &mut (impl Stream<Item = i32> + Unpin),
+      output: &mut (impl Sink<i32> + Unpin)
       ) -> Result<(), IntCodeError> {
     loop {
         let opcode = OpCode::parse_next(program)?;
