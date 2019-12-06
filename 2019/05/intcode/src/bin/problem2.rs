@@ -11,7 +11,7 @@ use intcode::*;
 
 const IO_BUF_SZ: usize = 512;
 
-async fn problem1(pool: &ThreadPool, program: Vec<i32>
+async fn problem2(pool: &ThreadPool, program: Vec<i32>
       ) -> Result<(), IntCodeError> {
     let mut state = ProgramState::from(program);
     let (mut input_send, mut input_recv) = mpsc::channel(IO_BUF_SZ);
@@ -47,5 +47,5 @@ fn main() -> Result<(), IntCodeError> {
     let program: Vec<i32> = program.trim_end().split(',')
         .map(|word| word.parse().map_err(|_| IntCodeError::ParseError))
         .collect::<Result<_, _>>()?;
-    block_on(problem1(&pool, program))
+    block_on(problem2(&pool, program))
 }
