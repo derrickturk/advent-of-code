@@ -7,12 +7,24 @@ use sif::SIFImage;
 fn main() {
     let args: Vec<_> = env::args().collect();
 
-    let (width, height) = match &args[..] {
+    let (width, height, ascii) = match &args[..] {
+        [_, width, height, mode] => {
+            let w_parsed = width.parse::<usize>();
+            let h_parsed = height.parse::<usize>();
+            match (w_parsed, h_parsed) {
+                (Ok(width), Ok(height)) => (width, height, mode == "ascii"),
+                _ => {
+                    eprintln!("Invalid dimensions: {} x {}", width, height);
+                    return;
+                },
+            }
+        },
+
         [_, width, height] => {
             let w_parsed = width.parse::<usize>();
             let h_parsed = height.parse::<usize>();
             match (w_parsed, h_parsed) {
-                (Ok(width), Ok(height)) => (width, height),
+                (Ok(width), Ok(height)) => (width, height, false),
                 _ => {
                     eprintln!("Invalid dimensions: {} x {}", width, height);
                     return;
@@ -35,8 +47,15 @@ fn main() {
         }
     };
 
-    match img.write_netpbm(&mut io::stdout()) {
-        Ok(_) => { },
-        Err(_) => eprintln!("error writing NetPBM"),
-    };
+    if ascii {
+        match img.write_ascii(&mut io::stdout()) {
+            Ok(_) => { },
+            Err(_) => eprintln!("error writing ASCII"),
+        };
+    } else {
+        match img.write_netpbm(&mut io::stdout()) {
+            Ok(_) => { },
+            Err(_) => eprintln!("error writing NetPBM"),
+        };
+    }
 }

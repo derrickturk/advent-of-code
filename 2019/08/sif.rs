@@ -94,6 +94,17 @@ impl SIFImage {
         }
         Ok(())
     }
+
+    pub fn write_ascii(&self, write: &mut impl Write) -> io::Result<()> {
+        let flat = self.flatten();
+        for row in flat.chunks(self.width) {
+            for pix in row {
+                write!(write, "{}", if *pix == b'0' { '\u{2588}' } else { ' ' })?;
+            }
+            writeln!(write)?;
+        }
+        Ok(())
+    }
 }
 
 fn flatten1(dst: &mut [u8], src: &[u8]) {
