@@ -1,72 +1,65 @@
-use std::env;
 use std::io::{self, Read};
 
-fn main() {
-    let args: Vec<_> = env::args().collect();
+#[derive(Debug)]
+pub enum SIFError {
+    WrongImageSize { bytes: usize, width: usize, height: usize },
+    BadPixel { value: u8 },
+    IOError { error: io::Error },
+}
 
-    let (width, height) = match &args[..] {
-        [_, width, height] => {
-            let w_parsed = width.parse::<usize>();
-            let h_parsed = height.parse::<usize>();
-            match (w_parsed, h_parsed) {
-                (Ok(width), Ok(height)) => (width, height),
-                _ => {
-                    eprintln!("Invalid dimensions: {} x {}", width, height);
-                    return;
-                },
-            }
-        },
+pub struct SIFImage {
+    width: usize,
+    height: usize,
+    buf: Vec<u8>,
+}
 
-        _ => {
-            eprintln!("Usage: {} width height <input.txt",
-                args.first().map(|s| s.as_str()).unwrap_or("sif"));
-            return;
+impl SIFImage {
+    #[inline]
+    pub fn read(width: usize, height: usize, mut src: impl Read
+          ) -> Result<Self, SIFError> {
+        let mut buf = Vec::new();
+
+        match src.read_to_end(&mut buf) {
+            Ok(mut bytes) => {
+                while buf.last().map(u8::is_ascii_whitespace).unwrap_or(false) {
+                    buf.pop();
+                    bytes -= 1;
+                }
+
+                for b in &buf {
+                    if *b != b'0' && *b != b'1' && *b != b'2' {
+                        return Err(SIFError::BadPixel { value: *b });
+                    }
+                }
+
+                if bytes % (width * height) == 0 {
+                    Ok(Self { width, height, buf, })
+                } else {
+                    Err(SIFError::WrongImageSize { bytes, width, height })
+                }
+            },
+
+            Err(error) => Err(SIFError::IOError { error }),
         }
-    };
-
-    let mut buf = Vec::new();
-    let mut stdin = io::stdin();
-    if let Ok(mut bytes) = stdin.read_to_end(&mut buf) {
-        while buf.last().map(u8::is_ascii_whitespace).unwrap_or(false) {
-            buf.pop();
-            bytes -= 1;
-        }
-
-        if bytes % (width * height) != 0 {
-            eprintln!("Invalid image size ({} bytes) for dimensions {} x {}",
-              bytes, width, height);
-            return;
-        }
-    } else {
-        eprintln!("Error reading from stdin.");
-        return;
     }
 
-    #[derive(Debug, Copy, Clone)]
-    struct DigitCount {
-        zero: usize,
-        one: usize,
-        two: usize,
+    #[inline]
+    pub fn buf(&self) -> &[u8] {
+        &self.buf[..]
     }
 
-    let mut counts = Vec::new();
-
-    for layer in buf.chunks(width * height) {
-        let mut count = DigitCount { zero: 0, one: 0, two: 0 };
-        for digit in layer {
-            match digit {
-                b'0' => count.zero += 1,
-                b'1' => count.one += 1,
-                b'2' => count.two += 1,
-                _ => {},
-            };
-        }
-        counts.push(count);
+    #[inline]
+    pub fn width(&self) -> usize {
+        self.width
     }
 
-    if let Some(c) = counts.iter().min_by_key(|c| c.zero) {
-        println!("{} x {} = {}", c.one, c.two, c.one * c.two);
-    } else {
-        eprintln!("Empty buffer.");
+    #[inline]
+    pub fn height(&self) -> usize {
+        self.height
+    }
+
+    #[inline]
+    pub fn layers(&self) -> impl Iterator<Item = &[u8]> {
+        self.buf.chunks(self.width * self.height)
     }
 }
