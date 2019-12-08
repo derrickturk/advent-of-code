@@ -1,4 +1,4 @@
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 
 #[derive(Debug)]
 pub enum SIFError {
@@ -15,7 +15,7 @@ pub struct SIFImage {
 
 impl SIFImage {
     #[inline]
-    pub fn read(width: usize, height: usize, mut src: impl Read
+    pub fn read(width: usize, height: usize, src: &mut impl Read
           ) -> Result<Self, SIFError> {
         let mut buf = Vec::new();
 
@@ -58,8 +58,48 @@ impl SIFImage {
         self.height
     }
 
+    // front to back
     #[inline]
     pub fn layers(&self) -> impl Iterator<Item = &[u8]> {
         self.buf.chunks(self.width * self.height)
+    }
+
+    // back to front
+    #[inline]
+    pub fn layers_rev(&self) -> impl Iterator<Item = &[u8]> {
+        self.buf.rchunks(self.width * self.height)
+    }
+
+    #[inline]
+    pub fn flatten(&self) -> Vec<u8> {
+        let mut flat = vec![0u8; self.width * self.height];
+        for layer in self.layers_rev() {
+            flatten1(&mut flat[..], layer);
+        }
+        flat
+    }
+
+    pub fn write_netpbm(&self, write: &mut impl Write) -> io::Result<()> {
+        let flat = self.flatten();
+        writeln!(write, "P1")?;
+        writeln!(write, "{} {}", self.width, self.height)?;
+        for row in flat.chunks(self.width) {
+            for (i, pix) in row.iter().enumerate() {
+                if i != 0 {
+                    write!(write, " ")?;
+                }
+                write!(write, "{}", if *pix == b'0' { 1 } else { 0 })?;
+            }
+            writeln!(write)?;
+        }
+        Ok(())
+    }
+}
+
+fn flatten1(dst: &mut [u8], src: &[u8]) {
+    for (i, pix) in src.iter().enumerate() {
+        if *pix != b'2' {
+            dst[i] = *pix;
+        }
     }
 }
