@@ -23,12 +23,13 @@ pub enum IntCodeError {
 pub struct ProgramState {
     memory: Vec<i64>,
     ip: usize,
+    relative_base: i64,
 }
 
 impl ProgramState {
     #[inline]
     pub fn from(memory: Vec<i64>) -> Self {
-        ProgramState { memory, ip: 0 }
+        ProgramState { memory, ip: 0, relative_base: 0, }
     }
 
     #[inline]
@@ -40,21 +41,37 @@ impl ProgramState {
     pub fn ip(&self) -> usize {
         self.ip
     }
+
+    #[inline]
+    pub fn relative_base(&self) -> i64 {
+        self.relative_base
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
 pub enum Operand {
     Immediate(i64),
-    Indirect(usize),
+    Position(usize),
+    Relative(i64),
 }
 
 impl Operand {
     #[inline]
-    pub fn fetch(&self, memory: &[i64]) -> Result<i64, IntCodeError> {
+    pub fn fetch(&self, program: &ProgramState) -> Result<i64, IntCodeError> {
         match *self {
             Operand::Immediate(n) => Ok(n),
-            Operand::Indirect(ptr) => Ok(*memory.get(ptr)
-                .ok_or(IntCodeError::InvalidAddress(ptr as i64))?),
+            Operand::Position(ptr) => Ok(
+                *program.memory.get(ptr)
+                  .ok_or(IntCodeError::InvalidAddress(ptr as i64))?
+            ),
+            Operand::Relative(offset) => {
+                let ptr = program.relative_base + offset;
+                let ptr: usize = ptr.try_into()
+                    .map_err(|_| IntCodeError::InvalidAddress(ptr))?;
+                Ok(*program.memory.get(ptr)
+                     .ok_or(IntCodeError::InvalidAddress(ptr as i64))?
+                )
+            },
         }
     }
 }
@@ -69,6 +86,7 @@ pub enum OpCode {
     JmpFalse(Operand, Operand),
     Less(Operand, Operand, usize),
     Eql(Operand, Operand, usize),
+    AdjustRelBase(Operand),
     Halt,
 }
 
@@ -140,6 +158,12 @@ impl OpCode {
                 ))
             },
 
+            9 => {
+                Ok(OpCode::AdjustRelBase(
+                    operand(addr_modes, 0, mem, ip + 1)?,
+                ))
+            },
+
             99 => Ok(OpCode::Halt),
 
             n => Err(IntCodeError::UnknownOpCode(n)),
@@ -150,78 +174,80 @@ impl OpCode {
           input: &mut (impl Stream<Item = i64> + Unpin),
           output: &mut (impl Sink<i64> + Unpin)
           ) -> Result<(), IntCodeError> {
-        let mem = &mut program.memory;
-        let ip = &mut program.ip;
-
         let mut jmp_ip = None;
 
         match *self {
             OpCode::Add(src1, src2, dst) => {
-                let arg1 = src1.fetch(mem)?;
-                let arg2 = src2.fetch(mem)?;
-                let dst = mem.get_mut(dst)
+                let arg1 = src1.fetch(program)?;
+                let arg2 = src2.fetch(program)?;
+                let dst = program.memory.get_mut(dst)
                     .ok_or(IntCodeError::InvalidAddress(dst as i64))?;
                 *dst = arg1 + arg2;
             },
 
             OpCode::Mul(src1, src2, dst) => {
-                let arg1 = src1.fetch(mem)?;
-                let arg2 = src2.fetch(mem)?;
-                let dst = mem.get_mut(dst)
+                let arg1 = src1.fetch(program)?;
+                let arg2 = src2.fetch(program)?;
+                let dst = program.memory.get_mut(dst)
                     .ok_or(IntCodeError::InvalidAddress(dst as i64))?;
                 *dst = arg1 * arg2;
             },
 
             OpCode::Input(dst) => {
-                let dst = mem.get_mut(dst)
+                let dst = program.memory.get_mut(dst)
                     .ok_or(IntCodeError::InvalidAddress(dst as i64))?;
                 *dst = input.next().await.ok_or(IntCodeError::OutOfInput)?;
             },
 
             OpCode::Output(src) => {
-                let val = src.fetch(mem)?;
+                let val = src.fetch(program)?;
                 output.send(val).await.map_err(|_| IntCodeError::OutputError)?;
             },
 
             OpCode::JmpTrue(cnd, dst) => {
-                if cnd.fetch(mem)? != 0 {
-                    let dst = dst.fetch(mem)?;
+                if cnd.fetch(program)? != 0 {
+                    let dst = dst.fetch(program)?;
                     jmp_ip = Some(dst.try_into()
                         .map_err(|_| IntCodeError::InvalidAddress(dst))?);
                 }
             },
 
             OpCode::JmpFalse(cnd, dst) => {
-                if cnd.fetch(mem)? == 0 {
-                    let dst = dst.fetch(mem)?;
+                if cnd.fetch(program)? == 0 {
+                    let dst = dst.fetch(program)?;
                     jmp_ip = Some(dst.try_into()
                         .map_err(|_| IntCodeError::InvalidAddress(dst))?);
                 }
             },
 
             OpCode::Less(src1, src2, dst) => {
-                let arg1 = src1.fetch(mem)?;
-                let arg2 = src2.fetch(mem)?;
-                let dst = mem.get_mut(dst)
+                let arg1 = src1.fetch(program)?;
+                let arg2 = src2.fetch(program)?;
+                let dst = program.memory.get_mut(dst)
                     .ok_or(IntCodeError::InvalidAddress(dst as i64))?;
                 *dst = (arg1 < arg2).into();
             },
 
             OpCode::Eql(src1, src2, dst) => {
-                let arg1 = src1.fetch(mem)?;
-                let arg2 = src2.fetch(mem)?;
-                let dst = mem.get_mut(dst)
+                let arg1 = src1.fetch(program)?;
+                let arg2 = src2.fetch(program)?;
+                let dst = program.memory.get_mut(dst)
                     .ok_or(IntCodeError::InvalidAddress(dst as i64))?;
                 *dst = (arg1 == arg2).into();
+            },
+
+            OpCode::AdjustRelBase(offset) => {
+                let offset = offset.fetch(program)?;
+                program.relative_base += offset;
             },
 
             OpCode::Halt => {},
         }
 
         if let Some(jmp_ip) = jmp_ip {
-            *ip = jmp_ip;
+            program.ip = jmp_ip;
         } else {
-            *ip += self.ip_step();
+            program.ip += self.ip_step();
         }
 
         Ok(())
@@ -238,6 +264,7 @@ impl OpCode {
             OpCode::JmpFalse(..) => 3,
             OpCode::Less(..) => 4,
             OpCode::Eql(..) => 4,
+            OpCode::AdjustRelBase(..) => 2,
             OpCode::Halt => 1,
         }
     }
@@ -281,8 +308,10 @@ fn operand(addr_modes: i64, operand_index: usize, memory: &[i64], ptr: usize
     };
 
     match addr_mode {
-        0 => Ok(Operand::Indirect(indirect_address(memory, ptr)?)),
+        0 => Ok(Operand::Position(indirect_address(memory, ptr)?)),
         1 => Ok(Operand::Immediate(
+                *memory.get(ptr).ok_or(IntCodeError::OutOfProgram)?)),
+        2 => Ok(Operand::Relative(
                 *memory.get(ptr).ok_or(IntCodeError::OutOfProgram)?)),
         _ => Err(IntCodeError::UnknownAddrMode(addr_mode)),
     }
