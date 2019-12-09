@@ -8,9 +8,9 @@ edition = "2018"
 name = "problem1"
 path = "src/bin/problem1.rs"
 
-# [[bin]]
-# name = "problem2"
-# path = "src/bin/problem2.rs"
+[[bin]]
+name = "problem2"
+path = "src/bin/problem2.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

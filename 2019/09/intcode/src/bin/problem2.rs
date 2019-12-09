@@ -8,7 +8,7 @@ use intcode::*;
 
 async fn problem1(program: Vec<i64>) -> Result<(), IntCodeError> {
     let mut state = ProgramState::<ExpandoVec>::from(program);
-    let output = execute_static_io(&mut state, &[1]).await?;
+    let output = execute_static_io(&mut state, &[2]).await?;
 
     let mut sep = "";
     for o in output {
