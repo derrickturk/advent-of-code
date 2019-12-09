@@ -264,10 +264,10 @@ fn indirect_address(memory: &[i32], ptr: usize)
 }
 
 #[inline]
-fn operand(addr_modes: i32, operand_index: usize, memory: &[i32], ptr: usize
+fn operand(addr_modes: i32, operand_index: u8, memory: &[i32], ptr: usize
       ) -> Result<Operand, IntCodeError> {
     let addr_mode = if operand_index > 0 {
-        addr_modes / (10 * operand_index as i32) % 10
+        addr_modes / 10i32.pow(operand_index.into()) % 10
     } else {
         addr_modes % 10
     };
