@@ -265,7 +265,7 @@ impl OpCode {
         if let Some(jmp_ip) = jmp_ip {
             program.ip = jmp_ip;
         } else {
-            program.ip += self.ip_step();
+            program.ip += self.width();
         }
 
         Ok(())
@@ -354,7 +354,7 @@ impl OpCode {
     }
 
     #[inline]
-    fn ip_step(&self) -> usize {
+    pub fn width(&self) -> usize {
         match self {
             OpCode::Add(..) => 4,
             OpCode::Mul(..) => 4,
