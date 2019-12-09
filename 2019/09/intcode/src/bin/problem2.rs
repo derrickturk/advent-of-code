@@ -7,7 +7,7 @@ use futures::{
 use intcode::*;
 
 async fn problem1(program: Vec<i64>) -> Result<(), IntCodeError> {
-    let mut state = ProgramState::<ExpandoVec>::from(program);
+    let mut state = ProgramState::<ExpandoSparse>::from(program);
     let output = execute_static_io(&mut state, &[2]).await?;
 
     let mut sep = "";
