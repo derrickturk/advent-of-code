@@ -24,6 +24,8 @@ pub use memory::*;
 mod opcode;
 pub use opcode::*;
 
+pub mod asm;
+
 pub async fn execute<T: ExpandoMemory>(program: &mut ProgramState<T>,
       input: &mut (impl Stream<Item = i64> + Unpin),
       output: &mut (impl Sink<i64> + Unpin)

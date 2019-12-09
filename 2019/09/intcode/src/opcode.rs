@@ -47,6 +47,22 @@ impl WriteOperand {
             },
         }
     }
+
+    #[inline]
+    pub fn mode(&self) -> i64 {
+        match self {
+            WriteOperand::Position(_) => 0,
+            WriteOperand::Relative(_) => 2,
+        }
+    }
+
+    #[inline]
+    pub fn emit(&self) -> i64 {
+        match *self {
+            WriteOperand::Position(ptr) => ptr as i64,
+            WriteOperand::Relative(offset) => offset,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -62,6 +78,22 @@ impl ReadOperand {
         match *self {
             ReadOperand::Immediate(n) => Ok(n),
             ReadOperand::Memory(op) => op.fetch(program),
+        }
+    }
+
+    #[inline]
+    pub fn mode(&self) -> i64 {
+        match self {
+            ReadOperand::Immediate(_) => 1,
+            ReadOperand::Memory(op) => op.mode(),
+        }
+    }
+
+    #[inline]
+    pub fn emit(&self) -> i64 {
+        match *self {
+            ReadOperand::Immediate(n) => n,
+            ReadOperand::Memory(op) => op.emit(),
         }
     }
 }
@@ -237,6 +269,88 @@ impl OpCode {
         }
 
         Ok(())
+    }
+
+    #[inline]
+    pub fn emit(&self) -> Vec<i64> {
+        match self {
+            OpCode::Add(src1, src2, dst) => vec![
+                self.opcode() + 100 * src1.mode() + 1000 * src2.mode()
+                    + 10000 * dst.mode(),
+                src1.emit(),
+                src2.emit(),
+                dst.emit(),
+            ],
+
+            OpCode::Mul(src1, src2, dst) => vec![
+                self.opcode() + 100 * src1.mode() + 1000 * src2.mode()
+                    + 10000 * dst.mode(),
+                src1.emit(),
+                src2.emit(),
+                dst.emit(),
+            ],
+
+            OpCode::Input(dst) => vec![
+                self.opcode() + 100 * dst.mode(),
+                dst.emit(),
+            ],
+
+            OpCode::Output(src) => vec![
+                self.opcode() + 100 * src.mode(),
+                src.emit(),
+            ],
+
+            OpCode::JmpTrue(cnd, dst) => vec![
+                self.opcode() + 100 * cnd.mode() + 1000 * dst.mode(),
+                cnd.emit(),
+                dst.emit(),
+            ],
+
+            OpCode::JmpFalse(cnd, dst) => vec![
+                self.opcode() + 100 * cnd.mode() + 1000 * dst.mode(),
+                cnd.emit(),
+                dst.emit(),
+            ],
+
+            OpCode::Less(src1, src2, dst) => vec![
+                self.opcode() + 100 * src1.mode() + 1000 * src2.mode()
+                    + 10000 * dst.mode(),
+                src1.emit(),
+                src2.emit(),
+                dst.emit(),
+            ],
+
+            OpCode::Eql(src1, src2, dst) => vec![
+                self.opcode() + 100 * src1.mode() + 1000 * src2.mode()
+                    + 10000 * dst.mode(),
+                src1.emit(),
+                src2.emit(),
+                dst.emit(),
+            ],
+
+            OpCode::AdjustRelBase(offset) => vec![
+                self.opcode() + 100 * offset.mode(),
+                offset.emit(),
+            ],
+
+            OpCode::Halt => vec![self.opcode()],
+        }
+    }
+
+    #[inline]
+    pub fn opcode(&self) -> i64 {
+        match self {
+            OpCode::Add(..) => 1,
+            OpCode::Mul(..) => 2,
+            OpCode::Input(..) => 3,
+            OpCode::Output(..) => 4,
+            OpCode::JmpTrue(..) => 5,
+            OpCode::JmpFalse(..) => 6,
+            OpCode::Less(..) => 7,
+            OpCode::Eql(..) => 8,
+            OpCode::AdjustRelBase(..) => 9,
+            OpCode::Halt => 99,
+        }
     }
 
     #[inline]
