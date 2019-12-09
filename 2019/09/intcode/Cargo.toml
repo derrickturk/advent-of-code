@@ -12,7 +12,12 @@ path = "src/bin/problem1.rs"
 name = "problem2"
 path = "src/bin/problem2.rs"
 
+[[bin]]
+name = "feedback"
+path = "src/bin/feedback.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 futures = { version = "0.3", features = ["thread-pool"] }
+permutohedron = "0.2.4"
