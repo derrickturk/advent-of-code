@@ -2,7 +2,7 @@
 
 import Data.Ratio
 import Data.Array
-import Data.List (foldl')
+import Data.List (foldl', maximumBy, sortBy, groupBy)
 import qualified Data.Map.Strict as M
 
 import Debug.Trace
@@ -59,6 +59,34 @@ visibleAsteroids i map =
       see m (slope, dist) = M.insertWith min slope dist m in
       M.size nearest
 
+toPolar :: Asteroid -> Asteroid -> (Double, Double)
+toPolar (x0, y0) (x1, y1) =
+  let delX = fromIntegral $ x1 - x0
+      delY = fromIntegral $ y1 - y0
+      adjRadians = atan2 delY delX + (pi / 2)
+      normRadians rads
+        | rads < 0 = normRadians (2 * pi + rads)
+        | otherwise = rads
+      in (normRadians adjRadians, sqrt $ delX * delX + delY * delY)
+
+sortPolarByDepth :: [(Asteroid, (Double, Double))]
+                 -> [(Asteroid, (Double, Double))]
+sortPolarByDepth = concatGroups
+                 . groupBy grpPolar
+                 . sortBy (\(_, p1) (_, p2) -> cmpPolar p1 p2) where
+  grpPolar (_, (r1, _)) (_, (r2, _)) = abs (r1 - r2) < 0.001
+  concatGroups = go []
+  go [] [] = []
+  go acc [] = concatGroups (reverse acc)
+  go acc ([]:xs) = go acc xs
+  go acc ((x:xs):ys) = x:(go (xs:acc) ys)
+
+-- not quite - need to group by rads, take firsts, then seconds...
+cmpPolar :: (Double, Double) -> (Double, Double) -> Ordering
+cmpPolar (theta1, r1) (theta2, r2) = if abs (theta2 - theta1) < 0.001
+  then compare r1 r2
+  else compare theta1 theta2
+
 parseAsteroids :: [String] -> [Asteroid]
 parseAsteroids = concatMap parseRow . enumerate where
   parseRow :: (Int, String) -> [Asteroid]
@@ -69,6 +97,14 @@ main = do
   asteroids <- parseAsteroids . lines <$> getContents
   let slopeMap = slopesBetween asteroids
       (_, (n, _)) = bounds slopeMap
-      visible = [visibleAsteroids i slopeMap | i <- [0..n]]
-      maxVisible = maximum visible
-  print maxVisible
+      visible = enumerate [visibleAsteroids i slopeMap | i <- [0..n]]
+      (which, count) = maximumBy (\v1 v2 -> compare (snd v1) (snd v2)) visible
+      best = asteroids !! which
+      others = filter (/= best) asteroids
+      polar = zip others (toPolar best <$> others)
+      sortedPolar = sortPolarByDepth polar
+      ((x, y), _) = sortedPolar !! 199
+  print count
+  print best
+  print (x, y)
+  print $ x * 100 + y
