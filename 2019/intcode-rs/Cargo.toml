@@ -5,7 +5,7 @@ authors = ["derrickturk <dwt@terminusdatascience.com>"]
 edition = "2018"
 
 [[bin]]
-name = "disasm"
+name = "icdis"
 path = "src/bin/disasm.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
