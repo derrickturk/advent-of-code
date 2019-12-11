@@ -10,8 +10,8 @@ use futures::{
 #[derive(Debug, Copy, Clone)]
 pub enum IntCodeError {
     ParseError,
-    UnknownOpCode(i64),
-    UnknownAddrMode(i64),
+    UnknownOpCode(i64, i64),
+    UnknownAddrMode(i64, i64),
     InvalidAddress(i64),
     ImmediateWrite,
     OutOfInput,

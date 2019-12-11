@@ -197,15 +197,21 @@ impl DisAsm for DisAsmStmt {
     }
 }
 
+pub struct MemoryParse {
+    pub stmts: Vec<(usize, DisAsmStmt)>,
+    pub original_size: usize,
+    pub labels: LabelMap,
+}
+
 pub fn parse_memory(memory: &[i64], opts: &DisAsmOpts
-      ) -> Result<(Vec<(usize, DisAsmStmt)>, LabelMap), IntCodeError> {
+      ) -> Result<MemoryParse, IntCodeError> {
     let mut state = ProgramState::<ExpandoVec>::from(memory.to_vec());
-    let original_len = state.memory.0.len();
+    let original_size = state.memory.0.len();
 
     let mut stmts = Vec::new();
     let mut labels = HashMap::new();
 
-    while state.ip < original_len {
+    while state.ip < original_size {
         let opcode = OpCode::parse_next(&mut state);
         match opcode {
             Ok(opcode) => {
@@ -216,8 +222,8 @@ pub fn parse_memory(memory: &[i64], opts: &DisAsmOpts
                 state.ip += opcode.width();
             },
 
-            Err(IntCodeError::UnknownOpCode(n)) => {
-                stmts.push((state.ip, DisAsmStmt::Value(n)));
+            Err(IntCodeError::UnknownOpCode(_, instr)) => {
+                stmts.push((state.ip, DisAsmStmt::Value(instr)));
                 state.ip += 1;
             },
 
@@ -225,18 +231,20 @@ pub fn parse_memory(memory: &[i64], opts: &DisAsmOpts
         };
     }
 
-    Ok((stmts, labels))
+    labels.retain(|ptr, _| *ptr < original_size);
+
+    Ok(MemoryParse { stmts, original_size, labels })
 }
 
 pub fn disassemble_memory(writer: &mut impl Write, memory: &[i64],
       opts: &DisAsmOpts) -> Result<(), DisAsmError> {
-    let (stmts, labels) = parse_memory(memory, opts)?;
-    for (ip, stmt) in stmts {
+    let parsed = parse_memory(memory, opts)?;
+    for (ip, stmt) in &parsed.stmts {
         if opts.line_addrs {
             write!(writer, "{}\t", ip)?;
         }
 
-        stmt.disassemble_at(writer, &labels, ip)?;
+        stmt.disassemble_at(writer, &parsed.labels, *ip)?;
         writeln!(writer)?;
     }
 

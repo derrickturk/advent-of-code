@@ -120,76 +120,75 @@ impl OpCode {
 
         let instr = *mem.get(ip);
         let opcode = instr % 100;
-        let addr_modes = instr / 100;
 
         match opcode {
             1 => {
                 Ok(OpCode::Add(
-                    read_operand(addr_modes, 0, mem, ip + 1)?,
-                    read_operand(addr_modes, 1, mem, ip + 2)?,
-                    write_operand(addr_modes, 2, mem, ip + 3)?,
+                    read_operand(instr, 0, mem, ip + 1)?,
+                    read_operand(instr, 1, mem, ip + 2)?,
+                    write_operand(instr, 2, mem, ip + 3)?,
                 ))
             },
 
             2 => {
                 Ok(OpCode::Mul(
-                    read_operand(addr_modes, 0, mem, ip + 1)?,
-                    read_operand(addr_modes, 1, mem, ip + 2)?,
-                    write_operand(addr_modes, 2, mem, ip + 3)?,
+                    read_operand(instr, 0, mem, ip + 1)?,
+                    read_operand(instr, 1, mem, ip + 2)?,
+                    write_operand(instr, 2, mem, ip + 3)?,
                 ))
             },
 
             3 => {
                 Ok(OpCode::Input(
-                    write_operand(addr_modes, 0, mem, ip + 1)?
+                    write_operand(instr, 0, mem, ip + 1)?
                 ))
             },
 
             4 => {
                 Ok(OpCode::Output(
-                    read_operand(addr_modes, 0, mem, ip + 1)?,
+                    read_operand(instr, 0, mem, ip + 1)?,
                 ))
             },
 
             5 => {
                 Ok(OpCode::JmpTrue(
-                    read_operand(addr_modes, 0, mem, ip + 1)?,
-                    read_operand(addr_modes, 1, mem, ip + 2)?,
+                    read_operand(instr, 0, mem, ip + 1)?,
+                    read_operand(instr, 1, mem, ip + 2)?,
                 ))
             },
 
             6 => {
                 Ok(OpCode::JmpFalse(
-                    read_operand(addr_modes, 0, mem, ip + 1)?,
-                    read_operand(addr_modes, 1, mem, ip + 2)?,
+                    read_operand(instr, 0, mem, ip + 1)?,
+                    read_operand(instr, 1, mem, ip + 2)?,
                 ))
             },
 
             7 => {
                 Ok(OpCode::Less(
-                    read_operand(addr_modes, 0, mem, ip + 1)?,
-                    read_operand(addr_modes, 1, mem, ip + 2)?,
-                    write_operand(addr_modes, 2, mem, ip + 3)?,
+                    read_operand(instr, 0, mem, ip + 1)?,
+                    read_operand(instr, 1, mem, ip + 2)?,
+                    write_operand(instr, 2, mem, ip + 3)?,
                 ))
             },
 
             8 => {
                 Ok(OpCode::Eql(
-                    read_operand(addr_modes, 0, mem, ip + 1)?,
-                    read_operand(addr_modes, 1, mem, ip + 2)?,
-                    write_operand(addr_modes, 2, mem, ip + 3)?,
+                    read_operand(instr, 0, mem, ip + 1)?,
+                    read_operand(instr, 1, mem, ip + 2)?,
+                    write_operand(instr, 2, mem, ip + 3)?,
                 ))
             },
 
             9 => {
                 Ok(OpCode::AdjustRelBase(
-                    read_operand(addr_modes, 0, mem, ip + 1)?,
+                    read_operand(instr, 0, mem, ip + 1)?,
                 ))
             },
 
             99 => Ok(OpCode::Halt),
 
-            n => Err(IntCodeError::UnknownOpCode(n)),
+            n => Err(IntCodeError::UnknownOpCode(n, instr)),
         }
     }
 
@@ -378,8 +377,9 @@ fn indirect_address<T: ExpandoMemory>(memory: &mut T, ptr: usize)
 }
 
 #[inline]
-fn read_operand<T: ExpandoMemory>(addr_modes: i64, operand_index: u8,
+fn read_operand<T: ExpandoMemory>(instr: i64, operand_index: u8,
     memory: &mut T, ptr: usize) -> Result<ReadOperand, IntCodeError> {
+    let addr_modes = instr / 100;
     let addr_mode = if operand_index > 0 {
         addr_modes / 10i64.pow(operand_index.into()) % 10
     } else {
@@ -392,13 +392,14 @@ fn read_operand<T: ExpandoMemory>(addr_modes: i64, operand_index: u8,
         1 => Ok(ReadOperand::Immediate(*memory.get(ptr))),
         2 => Ok(ReadOperand::Memory(
                 WriteOperand::Relative(*memory.get(ptr)))),
-        _ => Err(IntCodeError::UnknownAddrMode(addr_mode)),
+        _ => Err(IntCodeError::UnknownAddrMode(addr_mode, instr)),
     }
 }
 
 #[inline]
-fn write_operand<T: ExpandoMemory>(addr_modes: i64, operand_index: u8,
+fn write_operand<T: ExpandoMemory>(instr: i64, operand_index: u8,
     memory: &mut T, ptr: usize) -> Result<WriteOperand, IntCodeError> {
+    let addr_modes = instr / 100;
     let addr_mode = if operand_index > 0 {
         addr_modes / 10i64.pow(operand_index.into()) % 10
     } else {
@@ -409,6 +410,6 @@ fn write_operand<T: ExpandoMemory>(addr_modes: i64, operand_index: u8,
         0 => Ok(WriteOperand::Position(indirect_address(memory, ptr)?)),
         1 => Err(IntCodeError::ImmediateWrite),
         2 => Ok(WriteOperand::Relative(*memory.get(ptr))),
-        _ => Err(IntCodeError::UnknownAddrMode(addr_mode)),
+        _ => Err(IntCodeError::UnknownAddrMode(addr_mode, instr)),
     }
 }
