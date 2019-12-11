@@ -66,7 +66,40 @@ struct WorldState {
 
 impl WorldState {
     fn new() -> Self {
-        Self { colors: HashMap::new() }
+        let mut colors = HashMap::new();
+        colors.insert((0, 0), Color::White);
+        Self { colors }
+    }
+
+    fn bounds(&self) -> ((i32, i32), (i32, i32)) {
+        let mut x_min = std::i32::MAX;
+        let mut x_max = std::i32::MIN;
+        let mut y_min = std::i32::MAX;
+        let mut y_max = std::i32::MIN;
+
+        if self.colors.is_empty() {
+            return ((0, 0), (0, 0));
+        }
+
+        for &(x, y) in self.colors.keys() {
+            if x < x_min {
+                x_min = x;
+            }
+
+            if x > x_max {
+                x_max = x;
+            }
+
+            if y < y_min {
+                y_min = y;
+            }
+
+            if y > y_max {
+                y_max = y;
+            }
+        }
+
+        ((x_min, y_min), (x_max, y_max))
     }
 
     fn color(&self, pos: (i32, i32)) -> Color {
@@ -131,9 +164,24 @@ async fn problem1(pool: &ThreadPool, program: Vec<i64>
     drop(input_send);
     exec_handle.await?;
 
-    println!("painted {} panels", world.colors.len());
+    print_map(&world);
 
     Ok(())
+}
+
+fn print_map(world: &WorldState) {
+    let ((xmin, ymin), (xmax, ymax)) = world.bounds();
+
+    for y in ((ymin - 1)..=(ymax + 1)).rev() {
+        for x in xmin..=xmax {
+            let c = match world.color((x, y)) {
+                Color::Black => '\u{2588}',
+                Color::White => ' ',
+            };
+            print!("{}", c);
+        }
+        println!();
+    }
 }
 
 fn main() -> Result<(), IntCodeError> {
