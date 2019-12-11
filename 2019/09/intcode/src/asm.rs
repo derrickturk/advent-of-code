@@ -1,5 +1,6 @@
 use std::{
     collections::hash_map::HashMap,
+    convert::TryInto,
     io::{self, Write},
 };
 
@@ -114,14 +115,14 @@ impl DisAsm for OpCode {
                 write!(writer, "jnz ")?;
                 cnd.disassemble_at(writer, labels, ip + 1)?;
                 write!(writer, ", ")?;
-                dst.disassemble_at(writer, labels, ip + 2)?;
+                disassemble_jmp_dst_at(&dst, writer, labels, ip + 2)?;
             },
 
             OpCode::JmpFalse(cnd, dst) => {
                 write!(writer, "jz ")?;
                 cnd.disassemble_at(writer, labels, ip + 1)?;
                 write!(writer, ", ")?;
-                dst.disassemble_at(writer, labels, ip + 2)?;
+                disassemble_jmp_dst_at(&dst, writer, labels, ip + 2)?;
             },
 
             OpCode::Less(src1, src2, dst) => {
@@ -275,12 +276,12 @@ fn add_labels(labels: &mut LabelMap, opcode: &OpCode) {
 
         OpCode::JmpTrue(cnd, dst) => {
             add_roperand_label(labels, cnd);
-            add_roperand_label(labels, dst);
+            add_jmp_dst_label(labels, dst);
         },
 
         OpCode::JmpFalse(cnd, dst) => {
             add_roperand_label(labels, cnd);
-            add_roperand_label(labels, dst);
+            add_jmp_dst_label(labels, dst);
         },
 
         OpCode::Less(src1, src2, dst) => {
@@ -314,5 +315,41 @@ fn add_roperand_label(labels: &mut LabelMap, param: &ReadOperand) {
 fn add_woperand_label(labels: &mut LabelMap, param: &WriteOperand) {
     if let WriteOperand::Position(n) = *param {
         labels.entry(n).or_insert_with(|| format!("lbl{}", n));
+    }
+}
+
+#[inline]
+fn add_jmp_dst_label(labels: &mut LabelMap, param: &ReadOperand) {
+    if let ReadOperand::Memory(WriteOperand::Position(n)) = *param {
+        labels.entry(n).or_insert_with(|| format!("lbl{}", n));
+    } else if let ReadOperand::Immediate(n) = *param {
+        if let Ok(n) = n.try_into() {
+            labels.entry(n).or_insert_with(|| format!("lbl{}", n));
+        }
+    }
+}
+
+fn disassemble_jmp_dst_at(op: &ReadOperand, writer: &mut impl Write,
+      labels: &LabelMap, ip: usize) -> Result<(), DisAsmError> {
+    match *op {
+        ReadOperand::Immediate(n) => {
+            if let Some(lbl) = labels.get(&ip) {
+                write!(writer, "{}: ", lbl)?;
+            }
+
+            if let Ok(n) = n.try_into() {
+                if let Some(lbl) = labels.get(&n) {
+                    write!(writer, "${}", lbl)?;
+                } else {
+                    write!(writer, "${}", n)?;
+                }
+            } else {
+                write!(writer, "${}", n)?;
+            }
+
+            Ok(())
+        },
+
+        ReadOperand::Memory(op) => op.disassemble_at(writer, labels, ip),
     }
 }
