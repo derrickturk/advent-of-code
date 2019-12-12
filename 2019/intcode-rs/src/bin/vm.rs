@@ -117,9 +117,10 @@ async fn run_vm(pool: &ThreadPool, program: Vec<i64>, options: &Options,
         }
     })?;
 
-    exec_handle.await?;
+    let res = exec_handle.await;
     drop(input_handle);
     output_handle.await;
+    res?;
 
     Ok(())
 }
