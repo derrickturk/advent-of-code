@@ -12,3 +12,4 @@ path = "src/bin/disasm.rs"
 
 [dependencies]
 futures = { version = "0.3", features = ["thread-pool"] }
+structopt = "0.3"

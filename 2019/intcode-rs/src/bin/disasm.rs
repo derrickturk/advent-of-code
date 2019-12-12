@@ -1,17 +1,73 @@
-use std::io;
+use std::{
+    io::{self, Read},
+    fs::File,
+    path::PathBuf,
+};
+
+use structopt::StructOpt;
 
 use intcode::*;
 
-fn main() -> Result<(), disasm::DisAsmError> {
+#[derive(StructOpt, Debug)]
+struct Options {
+    #[structopt(short, long)]
+    line_addrs: bool,
+
+    #[structopt(short, long)]
+    autolabel: bool,
+
+    #[structopt(short, long, parse(from_os_str))]
+    output_file: Option<PathBuf>,
+
+    #[structopt(name="FILE", parse(from_os_str))]
+    input_file: Option<PathBuf>,
+}
+
+#[derive(Debug)]
+enum Error {
+    DisAsmError(disasm::DisAsmError),
+    IOError(io::Error),
+}
+
+impl From<disasm::DisAsmError> for Error {
+    fn from(other: disasm::DisAsmError) -> Self {
+        Error::DisAsmError(other)
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(other: io::Error) -> Self {
+        Error::IOError(other)
+    }
+}
+
+fn main() -> Result<(), Error> {
+    let options = Options::from_args();
+
     let mut program = String::new();
-    io::stdin().read_line(&mut program)
-        .expect("failed to read program from stdin");
+    if let Some(path) = options.input_file {
+        File::open(path)?.read_to_string(&mut program)?;
+    } else {
+        io::stdin().read_line(&mut program)?;
+    }
+
     let program: Vec<i64> = program.trim_end().split(',')
-        .map(|word| word.parse().map_err(|_| IntCodeError::ParseError))
+        .map(|word| word.parse()
+            .map_err(|_| disasm::DisAsmError::from(IntCodeError::ParseError)))
         .collect::<Result<_, _>>()?;
-    disasm::disassemble_memory(&mut io::stdout(), &program[..],
-      &disasm::DisAsmOpts {
-          line_addrs: true,
-          labels: true,
-      })
+
+    let disasm_opts = disasm::DisAsmOpts {
+        line_addrs: options.line_addrs,
+        labels: options.autolabel,
+    };
+
+    if let Some(path) = options.output_file {
+        disasm::disassemble_memory(&mut File::create(path)?, &program[..],
+          &disasm_opts)?;
+    } else {
+        disasm::disassemble_memory(&mut io::stdout(), &program[..],
+          &disasm_opts)?;
+    }
+
+    Ok(())
 }
