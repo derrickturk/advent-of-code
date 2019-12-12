@@ -19,15 +19,15 @@ use intcode::*;
 #[derive(StructOpt, Debug)]
 struct Options {
     #[structopt(short, long, default_value="512")]
-    io_buf: usize,
+    buf_size: usize,
 
     #[structopt(short, long)]
-    sparse_ext_mem: bool,
+    extended_sparse: bool,
 
-    #[structopt(short, long)]
+    #[structopt(short="s", long)]
     start_input: Option<Vec<i64>>,
 
-    #[structopt(short, long, parse(from_os_str))]
+    #[structopt(short="f", long, parse(from_os_str))]
     start_input_file: Option<PathBuf>,
 
     #[structopt(name="FILE", parse(from_os_str))]
@@ -62,10 +62,10 @@ impl From<SpawnError> for Error {
 
 async fn run_vm(pool: &ThreadPool, program: Vec<i64>, options: &Options,
       ) -> Result<(), Error> {
-    let (mut input_send, mut input_recv) = mpsc::channel(options.io_buf);
-    let (mut output_send, mut output_recv) = mpsc::channel(options.io_buf);
+    let (mut input_send, mut input_recv) = mpsc::channel(options.buf_size);
+    let (mut output_send, mut output_recv) = mpsc::channel(options.buf_size);
 
-    let exec_handle = if options.sparse_ext_mem {
+    let exec_handle = if options.extended_sparse {
         let mut state = ProgramState::<ExpandoSparse>::from(program);
         pool.spawn_with_handle(async move {
             let res = execute(&mut state, &mut input_recv, &mut output_send).await;
