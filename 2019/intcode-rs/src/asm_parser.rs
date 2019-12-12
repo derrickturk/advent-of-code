@@ -33,7 +33,17 @@ pub fn parse<'a>(lines: impl Iterator<Item = &'a str>
       ) -> ParseResult<Vec<Labeled<Stmt>>> {
     let mut offset = 0;
     let mut ast = Vec::new();
-    for (i, line) in lines.enumerate() {
+    for (i, mut line) in lines.enumerate() {
+        if COMMENTLINE.is_match(line) {
+            continue;
+        }
+
+        if let Some(com_match) = LINEENDCOMMENT.captures(line)
+              .and_then(|caps| caps.get(1)) {
+            let (begin, _) = line.split_at(com_match.start());
+            line = begin;
+        }
+
         ast.push(stmt(line, i + 1, &mut offset)?);
     }
     Ok(ast)
@@ -52,6 +62,9 @@ lazy_static! {
         r"^\$?([A-Za-z_][A-Za-z0-9_]*|\(-?\d+\)|-?\d+)$").unwrap();
 
     static ref DELIM: Regex = Regex::new(r"\s*,\s*").unwrap();
+
+    static ref COMMENTLINE: Regex = Regex::new(r"^\s*#").unwrap();
+    static ref LINEENDCOMMENT: Regex = Regex::new(r"#.*$").unwrap();
 }
 
 fn stmt(line: &str, line_num: usize, offset: &mut usize
