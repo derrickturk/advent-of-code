@@ -1,5 +1,5 @@
 use std::{
-    io::{self, Read},
+    io::{self, Read, BufRead, BufReader},
     fs::File,
     path::PathBuf,
 };
@@ -24,6 +24,12 @@ struct Options {
     #[structopt(short, long)]
     sparse_ext_mem: bool,
 
+    #[structopt(short, long)]
+    start_input: Option<Vec<i64>>,
+
+    #[structopt(short, long, parse(from_os_str))]
+    start_input_file: Option<PathBuf>,
+
     #[structopt(name="FILE", parse(from_os_str))]
     input_file: PathBuf,
 }
@@ -33,6 +39,7 @@ enum Error {
     IntCodeError(IntCodeError),
     IOError(io::Error),
     SpawnError(SpawnError),
+    StartInputError,
 }
 
 impl From<IntCodeError> for Error {
@@ -73,6 +80,21 @@ async fn run_vm(pool: &ThreadPool, program: Vec<i64>, options: &Options,
             res
         })?
     };
+
+    if let Some(input) = &options.start_input {
+        for i in input {
+            input_send.send(*i).await.map_err(|_| Error::StartInputError)?;
+        }
+    }
+
+    if let Some(input_file) = &options.start_input_file {
+        let file = File::open(input_file)?;
+        for line in BufReader::new(file).lines() {
+            let i = line?.trim_end().parse::<i64>()
+                .map_err(|_| IntCodeError::ParseError)?;
+            input_send.send(i).await.map_err(|_| Error::StartInputError)?;
+        }
+    }
 
     let input_handle = pool.spawn_with_handle(async move {
         let mut line = String::new();
