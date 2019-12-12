@@ -1,5 +1,5 @@
 use std::{
-    io::{self, Read},
+    io::{self, BufRead, BufReader},
     fs::File,
     path::PathBuf,
 };
@@ -19,8 +19,15 @@ struct Options {
 
 #[derive(Debug)]
 enum Error {
+    ParseError(asm_parser::ParseError),
     AsmError(asm::AsmError),
     IOError(io::Error),
+}
+
+impl From<asm_parser::ParseError> for Error {
+    fn from(other: asm_parser::ParseError) -> Self {
+        Error::ParseError(other)
+    }
 }
 
 impl From<asm::AsmError> for Error {
@@ -38,39 +45,16 @@ impl From<io::Error> for Error {
 fn main() -> Result<(), Error> {
     let options = Options::from_args();
 
-    /*
-    let mut program = String::new();
-    if let Some(path) = options.input_file {
-        File::open(path)?.read_to_string(&mut program)?;
+    let asm: Vec<String> = if let Some(path) = options.input_file {
+        let file = File::open(path)?;
+        BufReader::new(file).lines().collect::<Result<_,_>>()?
     } else {
-        io::stdin().read_line(&mut program)?;
-    }
+        let stdin = io::stdin();
+        stdin.lock().lines().collect::<Result<_,_>>()?
+    };
 
-    let program: Vec<i64> = program.trim_end().split(',')
-        .map(|word| word.parse()
-            .map_err(|_| asm::AsmError::from(IntCodeError::ParseError)))
-        .collect::<Result<_, _>>()?;
-    */
-
-    let program = asm::assemble(&[
-        asm::Labeled {
-            item: asm::Stmt::Instr(asm::Instruction::Add, vec![
-                asm::Labeled {
-                    item: asm::Operand::Immediate(asm::Word::Number(3)),
-                    label: None,
-                },
-                asm::Labeled {
-                    item: asm::Operand::Immediate(asm::Word::Number(7)),
-                    label: None,
-                },
-                asm::Labeled {
-                    item: asm::Operand::Position(asm::Word::Label(String::from("begin"))),
-                    label: None,
-                },
-            ]),
-            label: Some((0usize, String::from("begin"))),
-        },
-    ])?;
+    let stmts = asm_parser::parse(asm.iter().map(|s| s.as_str()))?;
+    let program = asm::assemble(&stmts[..])?;
 
     if let Some(path) = options.output_file {
         asm::emit_program(&mut File::create(path)?, &program[..])?;

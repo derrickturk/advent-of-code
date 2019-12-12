@@ -17,3 +17,5 @@ path = "src/bin/asm.rs"
 [dependencies]
 futures = { version = "0.3", features = ["thread-pool"] }
 structopt = "0.3"
+regex = "1"
+lazy_static = "1.4.0"

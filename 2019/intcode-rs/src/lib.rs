@@ -25,6 +25,7 @@ mod opcode;
 pub use opcode::*;
 
 pub mod asm;
+pub mod asm_parser;
 pub mod disasm;
 
 pub async fn execute<T: ExpandoMemory>(program: &mut ProgramState<T>,

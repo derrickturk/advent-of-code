@@ -64,7 +64,7 @@ pub enum Operand {
 #[derive(Debug, Clone)]
 pub enum Stmt {
     Instr(Instruction, Vec<Labeled<Operand>>),
-    Value(Word),
+    Immediate(Word),
 }
 
 #[derive(Debug, Clone)]
@@ -196,6 +196,18 @@ pub fn assemble(program: &[Labeled<Stmt>]) -> Result<Vec<AsmItem>, AsmError> {
                         }
                     },
 
+                    Instruction::AdjustRelBase => {
+                        match &operands[..] {
+                            [offset] => {
+                                AsmItem::OpCode(OpCode::AdjustRelBase(
+                                    assemble_roperand(offset, labels)?,
+                                ))
+                            },
+                            _ => return Err(AsmError::WrongOperandCount(
+                                    *instr, operands.len(), 3)),
+                        }
+                    },
+
                     Instruction::Halt => {
                         if operands.is_empty() {
                             AsmItem::OpCode(OpCode::Halt)
@@ -203,18 +215,16 @@ pub fn assemble(program: &[Labeled<Stmt>]) -> Result<Vec<AsmItem>, AsmError> {
                             return Err(AsmError::WrongOperandCount(
                                     *instr, operands.len(), 0));
                         }
-                    }
-
-                    _ => unimplemented!(),
+                    },
                 };
                 items.push(item);
             },
 
-            Stmt::Value(Word::Number(n)) => {
+            Stmt::Immediate(Word::Number(n)) => {
                 items.push(AsmItem::Value(*n));
             }
 
-            Stmt::Value(Word::Label(lbl)) => {
+            Stmt::Immediate(Word::Label(lbl)) => {
                 let ptr = *labels.get(lbl.as_str())
                     .ok_or(AsmError::UnknownLabel(lbl.clone()))?;
                 let ptr: i64 = ptr.try_into()
