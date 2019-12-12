@@ -10,6 +10,10 @@ use intcode::*;
 
 #[derive(StructOpt, Debug)]
 struct Options {
+    // as in, strip them
+    #[structopt(short, long)]
+    line_addrs: bool,
+
     #[structopt(short, long, parse(from_os_str))]
     output_file: Option<PathBuf>,
 
@@ -53,7 +57,13 @@ fn main() -> Result<(), Error> {
         stdin.lock().lines().collect::<Result<_,_>>()?
     };
 
-    let stmts = asm_parser::parse(asm.iter().map(|s| s.as_str()))?;
+    let stmts = if options.line_addrs {
+        asm_parser::parse(asm.iter().map(|s| s.as_str().trim_start_matches(
+            |c: char| c.is_ascii_digit() || c == '\t')))?
+    } else {
+        asm_parser::parse(asm.iter().map(|s| s.as_str()))?
+    };
+
     let program = asm::assemble(&stmts[..])?;
 
     if let Some(path) = options.output_file {
