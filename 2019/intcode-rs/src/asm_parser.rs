@@ -46,10 +46,10 @@ lazy_static! {
     static ref INSTR: Regex = Regex::new(r"^([A-Za-z]+)").unwrap();
 
     static ref WORDSTMT: Regex = Regex::new(
-        r"^\$([A-Za-z_][A-Za-z0-9_]*|-?\d\+)$").unwrap();
+        r"^\$([A-Za-z_][A-Za-z0-9_]*|-?\d+)$").unwrap();
 
     static ref WORDOPERAND: Regex = Regex::new(
-        r"^\$?([A-Za-z_][A-Za-z0-9_]*|\(-?\d\+\)|-?\d\+)$").unwrap();
+        r"^\$?([A-Za-z_][A-Za-z0-9_]*|\(-?\d+\)|-?\d+)$").unwrap();
 
     static ref DELIM: Regex = Regex::new(r"\s*,\s*").unwrap();
 }
@@ -154,15 +154,15 @@ fn make_operand(mut operand: &str, line_num: usize, offset: usize
         err.kind = ParseErrorKind::ExpectedOperand;
     }
 
+    let mut imm = false;
+    if operand.chars().next() == Some('$') {
+        imm = true;
+    }
+
     WORDOPERAND.captures(operand)
         .and_then(|caps| caps.get(1))
         .and_then(|wmatch| {
             let word = wmatch.as_str();
-            let mut imm = false;
-            if word.chars().next().unwrap() == '$' {
-                imm = true;
-                operand = operand.trim_start_matches('$');
-            }
 
             if word.chars().next().unwrap() == '(' {
                 if imm {
@@ -170,14 +170,15 @@ fn make_operand(mut operand: &str, line_num: usize, offset: usize
                 }
                 operand = operand.trim_start_matches('(')
                     .trim_end_matches(')');
-                let word = word.parse::<i64>().ok()?;
+                let word = operand.parse::<i64>().ok()?;
                 return Some(Labeled {
                     item: Operand::Relative(word),
                     label: label,
                 })
             }
 
-            if word.chars().next().unwrap().is_ascii_digit() {
+            let c = word.chars().next().unwrap();
+            if c.is_ascii_digit() || c == '-' {
                 let word = word.parse::<i64>().ok()?;
                 Some(Labeled {
                     item: if imm {

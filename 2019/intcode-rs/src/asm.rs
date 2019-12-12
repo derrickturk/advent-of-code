@@ -254,7 +254,7 @@ pub fn emit_program(writer: &mut impl Write, items: &[AsmItem]
         write!(writer, "{}{}", sep, v)?;
         sep = ",";
     }
-    Ok(())
+    writeln!(writer)
 }
 
 fn extract_labels(program: &[Labeled<Stmt>]) -> LabelMap {
