@@ -8,6 +8,10 @@ edition = "2018"
 name = "icdis"
 path = "src/bin/disasm.rs"
 
+[[bin]]
+name = "icasm"
+path = "src/bin/asm.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

@@ -13,7 +13,7 @@ use super::{
     ExpandoVec,
 };
 
-type LabelMap = HashMap<usize, String>;
+pub type LabelMap = HashMap<usize, String>;
 
 #[derive(Debug)]
 pub enum DisAsmError {
