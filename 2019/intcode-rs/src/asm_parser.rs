@@ -38,8 +38,7 @@ pub fn parse<'a>(lines: impl Iterator<Item = &'a str>
             continue;
         }
 
-        if let Some(com_match) = LINEENDCOMMENT.captures(line)
-              .and_then(|caps| caps.get(1)) {
+        if let Some(com_match) = LINEENDCOMMENT.find(line) {
             let (begin, _) = line.split_at(com_match.start());
             line = begin;
         }
