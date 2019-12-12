@@ -12,6 +12,10 @@ path = "src/bin/disasm.rs"
 name = "icasm"
 path = "src/bin/asm.rs"
 
+[[bin]]
+name = "icvm"
+path = "src/bin/vm.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
