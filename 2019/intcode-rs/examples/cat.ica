@@ -1,0 +1,3 @@
+loop: in char
+out char: $0
+jz $0, $loop

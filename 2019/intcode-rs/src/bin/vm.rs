@@ -1,4 +1,5 @@
 use std::{
+    convert::TryInto,
     io::{self, Read, BufRead, BufReader},
     fs::File,
     path::PathBuf,
@@ -23,6 +24,9 @@ struct Options {
 
     #[structopt(short, long)]
     extended_sparse: bool,
+
+    #[structopt(short, long)]
+    text: bool,
 
     #[structopt(short="s", long)]
     start_input: Option<Vec<i64>>,
@@ -89,33 +93,68 @@ async fn run_vm(pool: &ThreadPool, program: Vec<i64>, options: &Options,
 
     if let Some(input_file) = &options.start_input_file {
         let file = File::open(input_file)?;
-        for line in BufReader::new(file).lines() {
-            let i = line?.trim_end().parse::<i64>()
-                .map_err(|_| IntCodeError::ParseError)?;
-            input_send.send(i).await.map_err(|_| Error::StartInputError)?;
+        if options.text {
+            for line in BufReader::new(file).lines() {
+                let i = line?.trim_end().parse::<i64>()
+                    .map_err(|_| IntCodeError::ParseError)?;
+                input_send.send(i).await.map_err(|_| Error::StartInputError)?;
+            }
+        } else {
+            for line in BufReader::new(file).lines() {
+                for c in line?.chars() {
+                    input_send.send(c as i64)
+                        .await.map_err(|_| Error::StartInputError)?;
+                }
+            }
         }
     }
 
-    let input_handle = pool.spawn_with_handle(async move {
-        let mut line = String::new();
-        while io::stdin().read_line(&mut line)? != 0 {
-            let input = line.trim_end().parse::<i64>()
-                .map_err(|_| IntCodeError::ParseError)?;
-            match input_send.send(input).await {
-                Ok(_) => { },
-                Err(_) => { break; },
+    let input_handle = if options.text {
+        pool.spawn_with_handle(async move {
+            let mut line = String::new();
+            while io::stdin().read_line(&mut line)? != 0 {
+                for c in line.chars() {
+                    match input_send.send(c as i64).await {
+                        Ok(_) => { },
+                        Err(_) => { break; },
+                    }
+                }
+                line.clear();
             }
-            line.clear();
-        }
-        drop(input_send);
-        Ok::<(), Error>(())
-    })?;
+            drop(input_send);
+            Ok::<(), Error>(())
+        })?
+    } else {
+        pool.spawn_with_handle(async move {
+            let mut line = String::new();
+            while io::stdin().read_line(&mut line)? != 0 {
+                let input = line.trim_end().parse::<i64>()
+                    .map_err(|_| IntCodeError::ParseError)?;
+                match input_send.send(input).await {
+                    Ok(_) => { },
+                    Err(_) => { break; },
+                }
+                line.clear();
+            }
+            drop(input_send);
+            Ok::<(), Error>(())
+        })?
+    };
 
-    let output_handle = pool.spawn_with_handle(async move {
-        while let Some(out) = output_recv.next().await {
-            println!("{}", out);
-        }
-    })?;
+    let output_handle = if options.text {
+        pool.spawn_with_handle(async move {
+            while let Some(out) = output_recv.next().await {
+                print!("{}", (out as u32).try_into()
+                    .unwrap_or(std::char::REPLACEMENT_CHARACTER));
+            }
+        })?
+    } else {
+        pool.spawn_with_handle(async move {
+            while let Some(out) = output_recv.next().await {
+                println!("{}", out);
+            }
+        })?
+    };
 
     let res = exec_handle.await;
     drop(input_handle);
