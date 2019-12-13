@@ -8,8 +8,13 @@ edition = "2018"
 name = "problem1"
 path = "src/problem1.rs"
 
+[[bin]]
+name = "problem2"
+path = "src/problem2.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 futures = { version = "0.3", features = ["thread-pool"] }
 intcode = { path = "../../intcode-rs" }
+winapi = { version = "0.3.8", features = ["winuser"] }
