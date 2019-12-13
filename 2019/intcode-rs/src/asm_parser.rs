@@ -116,7 +116,8 @@ fn stmt(line: &str, line_num: usize, offset: &mut usize
         .and_then(|caps| caps.get(1))
         .and_then(|wmatch| {
             let word = wmatch.as_str();
-            if word.chars().next().unwrap().is_ascii_digit() {
+            let c = word.chars().next().unwrap();
+            if c.is_ascii_digit() || c == '-' {
                 let word = word.parse::<i64>().ok()?;
                 *offset += 1;
                 Some(Labeled {
