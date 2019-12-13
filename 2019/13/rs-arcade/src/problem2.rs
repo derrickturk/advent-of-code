@@ -7,7 +7,7 @@ use std::{
 
 use futures::{
     executor::{block_on, ThreadPool},
-    channel::mpsc,
+    channel::{mpsc, oneshot},
     stream::{StreamExt},
     sink::{SinkExt},
     task::{SpawnExt},
@@ -85,6 +85,8 @@ async fn problem2(pool: &ThreadPool, program: Vec<i64>
     let mut state = ProgramState::<ExpandoVec>::from(program);
     let (mut input_send, mut input_recv) = mpsc::channel(IO_BUF_SZ);
     let (mut output_send, mut output_recv) = mpsc::channel(IO_BUF_SZ);
+    let (go_send, go_recv) = oneshot::channel();
+    let mut go_send = Some(go_send);
 
     let mut world = WorldState::new();
 
@@ -94,7 +96,9 @@ async fn problem2(pool: &ThreadPool, program: Vec<i64>
         res
     }).expect("failed to spawn task on ThreadPool");
 
-    let joy_handle = pool.spawn_with_handle(async move {
+    let _joy_handle = pool.spawn_with_handle(async move {
+        if let Err(_) = go_recv.await { return; }
+        thread::sleep(Duration::from_millis(1000));
         loop {
             let msg = unsafe {
                 if GetAsyncKeyState(VK_LEFT) as u16 & 0x8001 != 0 {
@@ -106,7 +110,7 @@ async fn problem2(pool: &ThreadPool, program: Vec<i64>
                 }
             };
             if let Err(_) = input_send.send(msg).await { break; }
-            thread::sleep(Duration::from_millis(1500));
+            thread::sleep(Duration::from_millis(250));
         }
     }).expect("failed to spawn task on ThreadPool");
 
@@ -146,6 +150,9 @@ async fn problem2(pool: &ThreadPool, program: Vec<i64>
             panic!("no tile message after coord messages");
         }
 
+        if let Some(go_send) = go_send.take() {
+            go_send.send(()).unwrap();
+        }
         reset_cursor(&mut io::stdout(), rows).unwrap();
         rows = 1;
         rows += print_map(&mut stdout, &world).unwrap();
