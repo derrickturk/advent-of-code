@@ -1,0 +1,37 @@
+name:                icc
+version:             0.1.0.0
+github:              "derrickturk/adventofcode"
+license:             BSD3
+author:              "Derrick W. Turk"
+maintainer:          "dwt@terminusdatascience.com"
+copyright:           "dwt | terminus data science, LLC"
+
+extra-source-files:
+- README.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         IntCodeC (ICC) compiler
+
+dependencies:
+- base >= 4.7 && < 5
+- text >= 1.2 && < 2
+
+library:
+  source-dirs: src
+
+executables:
+  icc:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - icc
