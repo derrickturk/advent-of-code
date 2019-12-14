@@ -1,7 +1,8 @@
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE OverloadedStrings, DeriveFunctor #-}
 
 module IntCodeC.Asm (
-    ReadOperand(..)
+    W(..)
+  , ReadOperand(..)
   , WriteOperand(..)
   , L(..)
   , Instruction(..)
@@ -15,14 +16,19 @@ import Data.Word (Word64)
 import System.IO (Handle)
 import qualified Data.Text.IO as TIO
 
+data W -- "W"ord
+  = Num Int64 
+  | Lbl T.Text
+  deriving (Eq, Show)
+
 data ReadOperand
-  = Immediate Int64
-  | Memory WriteOperand
+  = Imm W
+  | Mem WriteOperand
   deriving (Eq, Show)
 
 data WriteOperand
-  = Position Word64
-  | Relative Int64
+  = Abs W
+  | Rel Int64
   deriving (Eq, Show)
 
 data L a -- "L"abeled
@@ -53,3 +59,15 @@ class Emit a where
 
   hEmit :: Handle -> a -> IO ()
   hEmit h = TIO.putStr . emit
+
+instance Emit W where
+  emit (Num n) = T.pack $ show n
+  emit (Lbl l) = l
+
+instance Emit ReadOperand where
+  emit (Imm n) = T.cons '$' (emit n)
+  emit (Mem wop) = emit wop
+
+instance Emit WriteOperand where
+  emit (Abs ptr) = emit ptr
+  emit (Rel n) = T.cons '(' $ T.snoc (T.pack $ show n) ')' 
