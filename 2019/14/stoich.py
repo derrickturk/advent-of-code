@@ -29,6 +29,17 @@ def oreFor(graph, target, n, surplus=None):
         needed += oreFor(graph, i, c * repeat, surplus)
     return needed
 
+def makeMany(graph, target, ore_available, min_bound=1, max_bound=None):
+    if max_bound is None:
+        max_bound = ore_available
+    if max_bound - min_bound <= 1:
+        return min_bound
+    try_make = min_bound + (max_bound - min_bound) // 2
+    needed = oreFor(graph, target, try_make)
+    if needed > ore_available:
+        return makeMany(graph, target, ore_available, min_bound, try_make)
+    return makeMany(graph, target, ore_available, try_make, max_bound)
+
 def parseStoich(line):
     inputs, product = line.rstrip().split(' => ')
     product_count, product = product.split(' ')
@@ -44,5 +55,5 @@ def stoichGraph(stoichs):
 
 if __name__ == '__main__':
     graph = stoichGraph(parseStoich(l) for l in sys.stdin)
-    # print(graph)
     print(oreFor(graph, 'FUEL', 1))
+    print(makeMany(graph, 'FUEL', 1000000000000))
