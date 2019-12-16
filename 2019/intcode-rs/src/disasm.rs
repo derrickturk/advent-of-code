@@ -34,7 +34,7 @@ impl From<io::Error> for DisAsmError {
     }
 }
 
-trait DisAsm {
+pub trait DisAsm {
     fn disassemble_at(&self, writer: &mut impl Write,
           labels: &LabelMap, ip: usize) -> Result<(), DisAsmError>;
 }

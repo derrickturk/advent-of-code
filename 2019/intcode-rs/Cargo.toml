@@ -16,6 +16,10 @@ path = "src/bin/asm.rs"
 name = "icvm"
 path = "src/bin/vm.rs"
 
+[[bin]]
+name = "ictrace"
+path = "src/bin/tracevm.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
