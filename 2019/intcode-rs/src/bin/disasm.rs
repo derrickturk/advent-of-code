@@ -1,5 +1,5 @@
 use std::{
-    io::{self, Read},
+    io::{self, Read, BufReader},
     fs::File,
     path::PathBuf,
 };
@@ -19,6 +19,9 @@ struct Options {
     #[structopt(short, long, parse(from_os_str))]
     output_file: Option<PathBuf>,
 
+    #[structopt(short, long, parse(from_os_str))]
+    map_file: Option<PathBuf>,
+
     #[structopt(name="FILE", parse(from_os_str))]
     input_file: Option<PathBuf>,
 }
@@ -26,12 +29,19 @@ struct Options {
 #[derive(Debug)]
 enum Error {
     DisAsmError(disasm::DisAsmError),
+    MapFileError(map_file::MapFileError),
     IOError(io::Error),
 }
 
 impl From<disasm::DisAsmError> for Error {
     fn from(other: disasm::DisAsmError) -> Self {
         Error::DisAsmError(other)
+    }
+}
+
+impl From<map_file::MapFileError> for Error {
+    fn from(other: map_file::MapFileError) -> Self {
+        Error::MapFileError(other)
     }
 }
 
@@ -56,9 +66,16 @@ fn main() -> Result<(), Error> {
             .map_err(|_| disasm::DisAsmError::from(IntCodeError::ParseError)))
         .collect::<Result<_, _>>()?;
 
+    let labels = if let Some(path) = options.map_file {
+        Some(map_file::read_map(&mut BufReader::new(File::open(path)?))?)
+    } else {
+        None
+    };
+
     let disasm_opts = disasm::DisAsmOpts {
         line_addrs: options.line_addrs,
-        labels: options.autolabel,
+        autolabel: options.autolabel,
+        labels: labels,
     };
 
     if let Some(path) = options.output_file {

@@ -158,17 +158,19 @@ impl DisAsm for OpCode {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct DisAsmOpts {
     pub line_addrs: bool,
-    pub labels: bool,
+    pub autolabel: bool,
+    pub labels: Option<LabelMap>,
 }
 
 impl Default for DisAsmOpts {
     fn default() -> Self {
         Self {
             line_addrs: false,
-            labels: false,
+            autolabel: false,
+            labels: None,
         }
     }
 }
@@ -216,7 +218,7 @@ pub fn parse_memory(memory: &[i64], opts: &DisAsmOpts) -> MemoryParse {
         let opcode = OpCode::parse_next(&mut state);
         match opcode {
             Ok(opcode) => {
-                if opts.labels {
+                if opts.autolabel {
                     add_labels(&mut labels, &opcode);
                 }
                 stmts.push((state.ip, DisAsmStmt::OpCode(opcode)));
@@ -229,6 +231,12 @@ pub fn parse_memory(memory: &[i64], opts: &DisAsmOpts) -> MemoryParse {
                 state.ip += 1;
             },
         };
+    }
+
+    if let Some(file_labels) = &opts.labels {
+        for (ptr, lbl) in file_labels.iter() {
+            labels.insert(*ptr, lbl.clone());
+        }
     }
 
     labels.retain(|ptr, _| *ptr < original_size);
