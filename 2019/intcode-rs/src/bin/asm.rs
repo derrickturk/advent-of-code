@@ -17,6 +17,9 @@ struct Options {
     #[structopt(short, long, parse(from_os_str))]
     output_file: Option<PathBuf>,
 
+    #[structopt(short, long, parse(from_os_str))]
+    map_file: Option<PathBuf>,
+
     #[structopt(name="FILE", parse(from_os_str))]
     input_file: Option<PathBuf>,
 }
@@ -70,6 +73,11 @@ fn main() -> Result<(), Error> {
         asm::emit_program(&mut File::create(path)?, &program[..])?;
     } else {
         asm::emit_program(&mut io::stdout(), &program[..])?;
+    }
+
+    if let Some(path) = options.map_file {
+        map_file::write_map(&mut File::create(path)?,
+            &asm::extract_labels(&stmts[..]))?;
     }
 
     Ok(())

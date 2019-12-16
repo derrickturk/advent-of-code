@@ -121,6 +121,17 @@ enum TracerCommandResult {
     WaitCommands,
 }
 
+/* "nice to have" / TODO list
+ * interpret label as address for x, d, w, b
+ * implicit arguments: ptr = ip, len = 1
+ * d with len (instructions or words?)
+ * (a)ssemble ptr instr
+ * set relative base
+ * reset program
+ * save labels
+ * load labels
+ */
+
 enum TracerCommand {
     Step,
     Input(i64),
@@ -245,21 +256,6 @@ impl TracerCommand {
         };
 
         Ok(res)
-
-        /*
-        eprintln!("ictrace - tracer commands:");
-        eprintln!("(s)tep");
-        eprintln!("(i)nput <num>");
-        eprintln!("e(x)amine <ptr> <len>");
-        eprintln!("(d)isassemble <ptr>");
-        eprintln!("(l)abel <ptr> <lbl>");
-        eprintln!("clea(r) <lbl>|<breakpoint>");
-        eprintln!("(b)reak <ptr>");
-        eprintln!("(j)ump <ptr>");
-        eprintln!("(c)ontinue <ptr>");
-        eprintln!("(w)rite <ptr> <num>");
-        eprintln!("(h)elp");
-        */
     }
 
     async fn exec<T, I>(self, program: &mut ProgramState<T>,

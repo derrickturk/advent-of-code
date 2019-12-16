@@ -257,7 +257,7 @@ pub fn emit_program(writer: &mut impl Write, items: &[AsmItem]
     writeln!(writer)
 }
 
-fn extract_labels(program: &[Labeled<Stmt>]) -> LabelMap {
+pub fn extract_labels(program: &[Labeled<Stmt>]) -> LabelMap {
     let mut labels = HashMap::new();
     for stmt in program {
         if let Some((ptr, lbl)) = &stmt.label {
