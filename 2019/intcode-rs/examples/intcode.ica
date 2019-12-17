@@ -14,51 +14,80 @@ done_reading: add $0, $0, ip
 interpret_instr: add ip, $program, instr
 add $0, instr: program, word
 # add handlers
-eq word, $1, is_add_000
+eq word, $00001, is_add_000
 jnz is_add_000: $0, $do_add_000
-eq word, $1, is_add_100
+eq word, $00101, is_add_100
 jnz is_add_100: $0, $do_add_100
-eq word, $1, is_add_200
+eq word, $00201, is_add_200
 jnz is_add_200: $0, $do_add_200
-eq word, $1, is_add_010
+eq word, $01001, is_add_010
 jnz is_add_010: $0, $do_add_010
-eq word, $1, is_add_020
+eq word, $02001, is_add_020
 jnz is_add_020: $0, $do_add_020
-eq word, $1, is_add_110
+eq word, $01101, is_add_110
 jnz is_add_110: $0, $do_add_110
-eq word, $1, is_add_210
+eq word, $01201, is_add_210
 jnz is_add_210: $0, $do_add_210
-eq word, $1, is_add_120
+eq word, $02101, is_add_120
 jnz is_add_120: $0, $do_add_120
-eq word, $1, is_add_220
+eq word, $02201, is_add_220
 jnz is_add_220: $0, $do_add_220
-eq word, $1, is_add_002
+eq word, $20001, is_add_002
 jnz is_add_002: $0, $do_add_002
-eq word, $1, is_add_102
+eq word, $20101, is_add_102
 jnz is_add_102: $0, $do_add_102
-eq word, $1, is_add_202
+eq word, $20201, is_add_202
 jnz is_add_202: $0, $do_add_202
-eq word, $1, is_add_012
+eq word, $21001, is_add_012
 jnz is_add_012: $0, $do_add_012
-eq word, $1, is_add_022
+eq word, $22001, is_add_022
 jnz is_add_022: $0, $do_add_022
-eq word, $1, is_add_112
+eq word, $21101, is_add_112
 jnz is_add_112: $0, $do_add_112
-eq word, $1, is_add_212
+eq word, $21201, is_add_212
 jnz is_add_212: $0, $do_add_212
-eq word, $1, is_add_122
+eq word, $22101, is_add_122
 jnz is_add_122: $0, $do_add_122
-eq word, $1, is_add_222
+eq word, $22201, is_add_222
 jnz is_add_222: $0, $do_add_222
 # mul handlers
-eq word, $2, is_mul_000
+eq word, $00002, is_mul_000
 jnz is_mul_000: $0, $do_mul_000
-eq word, $102, is_mul_100
+eq word, $00102, is_mul_100
 jnz is_mul_100: $0, $do_mul_100
-eq word, $1002, is_mul_010
+eq word, $00202, is_mul_200
+jnz is_mul_200: $0, $do_mul_200
+eq word, $01002, is_mul_010
 jnz is_mul_010: $0, $do_mul_010
-eq word, $1102, is_mul_110
+eq word, $02002, is_mul_020
+jnz is_mul_020: $0, $do_mul_020
+eq word, $01102, is_mul_110
 jnz is_mul_110: $0, $do_mul_110
+eq word, $01202, is_mul_210
+jnz is_mul_210: $0, $do_mul_210
+eq word, $02102, is_mul_120
+jnz is_mul_120: $0, $do_mul_120
+eq word, $02202, is_mul_220
+jnz is_mul_220: $0, $do_mul_220
+eq word, $20002, is_mul_002
+jnz is_mul_002: $0, $do_mul_002
+eq word, $20102, is_mul_102
+jnz is_mul_102: $0, $do_mul_102
+eq word, $20202, is_mul_202
+jnz is_mul_202: $0, $do_mul_202
+eq word, $21002, is_mul_012
+jnz is_mul_012: $0, $do_mul_012
+eq word, $22002, is_mul_022
+jnz is_mul_022: $0, $do_mul_022
+eq word, $21102, is_mul_112
+jnz is_mul_112: $0, $do_mul_112
+eq word, $21202, is_mul_212
+jnz is_mul_212: $0, $do_mul_212
+eq word, $22102, is_mul_122
+jnz is_mul_122: $0, $do_mul_122
+eq word, $22202, is_mul_222
+jnz is_mul_222: $0, $do_mul_222
+# in handlers
 eq word, $3, is_in_0
 jnz is_in_0: $0, $do_in_0
 eq word, $4, is_out_0
@@ -328,6 +357,17 @@ add mul_100_dst_ptr: 0, $program, mul_100_dst
 mul mul_100_src_1: $0, mul_100_src_2: 0, mul_100_dst: 0
 add ip, $4, ip
 jz $0, $interpret_instr
+# mul rel, pos, pos
+do_mul_200: add instr, $1, mul_200_src_1_ptr
+add instr, $2, mul_200_src_2_ptr
+add instr, $3, mul_200_dst_ptr
+add mul_200_src_1_ptr: 0, $program, mul_200_src_1
+add mul_200_src_1, rel_base, mul_200_src_1
+add mul_200_src_2_ptr: 0, $program, mul_200_src_2
+add mul_200_dst_ptr: 0, $program, mul_200_dst
+mul mul_200_src_1: 0, mul_200_src_2: 0, mul_200_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
 # mul pos, imm, pos
 do_mul_010: add instr, $1, mul_010_src_1_ptr
 add instr, $2, mul_010_src_2_ptr
@@ -338,6 +378,17 @@ add mul_010_dst_ptr: 0, $program, mul_010_dst
 mul mul_010_src_1: 0, mul_010_src_2: $0, mul_010_dst: 0
 add ip, $4, ip
 jz $0, $interpret_instr
+# mul pos, rel, pos
+do_mul_020: add instr, $1, mul_020_src_1_ptr
+add instr, $2, mul_020_src_2_ptr
+add instr, $3, mul_020_dst_ptr
+add mul_020_src_1_ptr: 0, $program, mul_020_src_1
+add mul_020_src_2_ptr: 0, $program, mul_020_src_2
+add mul_200_src_2, rel_base, mul_200_src_2
+add mul_020_dst_ptr: 0, $program, mul_020_dst
+mul mul_020_src_1: 0, mul_020_src_2: 0, mul_020_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
 # mul imm, imm, pos
 do_mul_110: add instr, $1, mul_110_src_1_ptr
 add instr, $2, mul_110_src_2_ptr
@@ -346,6 +397,145 @@ add mul_110_src_1_ptr: 0, $0, mul_110_src_1
 add mul_110_src_2_ptr: 0, $0, mul_110_src_2
 add mul_110_dst_ptr: 0, $program, mul_110_dst
 mul mul_110_src_1: $0, mul_110_src_2: $0, mul_110_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# mul rel, imm, pos
+do_mul_210: add instr, $1, mul_210_src_1_ptr
+add instr, $2, mul_210_src_2_ptr
+add instr, $3, mul_210_dst_ptr
+add mul_210_src_1_ptr: 0, $program, mul_210_src_1
+add mul_210_src_1, rel_base, mul_210_src_1
+add mul_210_src_2_ptr: 0, $0, mul_210_src_2
+add mul_210_dst_ptr: 0, $program, mul_210_dst
+mul mul_210_src_1: 0, mul_210_src_2: $0, mul_210_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# mul imm, rel, pos
+do_mul_120: add instr, $1, mul_120_src_1_ptr
+add instr, $2, mul_120_src_2_ptr
+add instr, $3, mul_120_dst_ptr
+add mul_120_src_1_ptr: 0, $0, mul_120_src_1
+add mul_120_src_2_ptr: 0, $program, mul_120_src_2
+add mul_120_src_2, rel_base, mul_120_src_2
+add mul_120_dst_ptr: 0, $program, mul_120_dst
+mul mul_120_src_1: $0, mul_120_src_2: 0, mul_120_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# mul rel, rel, pos
+do_mul_220: add instr, $1, mul_220_src_1_ptr
+add instr, $2, mul_220_src_2_ptr
+add instr, $3, mul_220_dst_ptr
+add mul_220_src_1_ptr: 0, $program, mul_220_src_1
+add mul_220_src_1, rel_base, mul_220_src_1
+add mul_220_src_2_ptr: 0, $program, mul_220_src_2
+add mul_220_src_2, rel_base, mul_220_src_2
+add mul_220_dst_ptr: 0, $program, mul_220_dst
+mul mul_220_src_1: 0, mul_220_src_2: 0, mul_220_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# mul pos, pos, rel
+do_mul_002: add instr, $1, mul_002_src_1_ptr
+add instr, $2, mul_002_src_2_ptr
+add instr, $3, mul_002_dst_ptr
+add mul_002_src_1_ptr: 0, $program, mul_002_src_1
+add mul_002_src_2_ptr: 0, $program, mul_002_src_2
+add mul_002_dst_ptr: 0, $program, mul_002_dst
+add mul_002_dst, rel_base, mul_002_dst
+mul mul_002_src_1: 0, mul_002_src_2: 0, mul_002_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# mul imm, pos, rel
+do_mul_102: add instr, $1, mul_102_src_1_ptr
+add instr, $2, mul_102_src_2_ptr
+add instr, $3, mul_102_dst_ptr
+add mul_102_src_1_ptr: 0, $0, mul_102_src_1
+add mul_102_src_2_ptr: 0, $program, mul_102_src_2
+add mul_102_dst_ptr: 0, $program, mul_102_dst
+add mul_102_dst, rel_base, mul_102_dst
+mul mul_102_src_1: $0, mul_102_src_2: 0, mul_102_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# mul rel, pos, rel
+do_mul_202: add instr, $1, mul_202_src_1_ptr
+add instr, $2, mul_202_src_2_ptr
+add instr, $3, mul_202_dst_ptr
+add mul_202_src_1_ptr: 0, $program, mul_202_src_1
+add mul_202_src_1, rel_base, mul_202_src_1
+add mul_202_src_2_ptr: 0, $program, mul_202_src_2
+add mul_202_dst_ptr: 0, $program, mul_202_dst
+add mul_202_dst, rel_base, mul_202_dst
+mul mul_202_src_1: 0, mul_202_src_2: 0, mul_202_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# mul pos, imm, rel
+do_mul_012: add instr, $1, mul_012_src_1_ptr
+add instr, $2, mul_012_src_2_ptr
+add instr, $3, mul_012_dst_ptr
+add mul_012_src_1_ptr: 0, $program, mul_012_src_1
+add mul_012_src_2_ptr: 0, $0, mul_012_src_2
+add mul_012_dst_ptr: 0, $program, mul_012_dst
+add mul_012_dst, rel_base, mul_012_dst
+mul mul_012_src_1: 0, mul_012_src_2: $0, mul_012_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# mul pos, rel, rel
+do_mul_022: add instr, $1, mul_022_src_1_ptr
+add instr, $2, mul_022_src_2_ptr
+add instr, $3, mul_022_dst_ptr
+add mul_022_src_1_ptr: 0, $program, mul_022_src_1
+add mul_022_src_2_ptr: 0, $program, mul_022_src_2
+add mul_202_src_2, rel_base, mul_202_src_2
+add mul_022_dst_ptr: 0, $program, mul_022_dst
+add mul_022_dst, rel_base, mul_022_dst
+mul mul_022_src_1: 0, mul_022_src_2: 0, mul_022_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# mul imm, imm, rel
+do_mul_112: add instr, $1, mul_112_src_1_ptr
+add instr, $2, mul_112_src_2_ptr
+add instr, $3, mul_112_dst_ptr
+add mul_112_src_1_ptr: 0, $0, mul_112_src_1
+add mul_112_src_2_ptr: 0, $0, mul_112_src_2
+add mul_112_dst_ptr: 0, $program, mul_112_dst
+add mul_112_dst, rel_base, mul_112_dst
+mul mul_112_src_1: $0, mul_112_src_2: $0, mul_112_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# mul rel, imm, rel
+do_mul_212: add instr, $1, mul_212_src_1_ptr
+add instr, $2, mul_212_src_2_ptr
+add instr, $3, mul_212_dst_ptr
+add mul_212_src_1_ptr: 0, $program, mul_212_src_1
+add mul_212_src_1, rel_base, mul_212_src_1
+add mul_212_src_2_ptr: 0, $0, mul_212_src_2
+add mul_212_dst_ptr: 0, $program, mul_212_dst
+add mul_212_dst, rel_base, mul_212_dst
+mul mul_212_src_1: 0, mul_212_src_2: $0, mul_212_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# mul imm, rel, rel
+do_mul_122: add instr, $1, mul_122_src_1_ptr
+add instr, $2, mul_122_src_2_ptr
+add instr, $3, mul_122_dst_ptr
+add mul_122_src_1_ptr: 0, $0, mul_122_src_1
+add mul_122_src_2_ptr: 0, $program, mul_122_src_2
+add mul_122_src_2, rel_base, mul_122_src_2
+add mul_122_dst_ptr: 0, $program, mul_122_dst
+add mul_122_dst, rel_base, mul_122_dst
+mul mul_122_src_1: $0, mul_122_src_2: 0, mul_122_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# mul rel, rel, rel
+do_mul_222: add instr, $1, mul_222_src_1_ptr
+add instr, $2, mul_222_src_2_ptr
+add instr, $3, mul_222_dst_ptr
+add mul_222_src_1_ptr: 0, $program, mul_222_src_1
+add mul_222_src_1, rel_base, mul_222_src_1
+add mul_222_src_2_ptr: 0, $program, mul_222_src_2
+add mul_222_src_2, rel_base, mul_222_src_2
+add mul_222_dst_ptr: 0, $program, mul_222_dst
+add mul_222_dst, rel_base, mul_222_dst
+mul mul_222_src_1: 0, mul_222_src_2: 0, mul_222_dst: 0
 add ip, $4, ip
 jz $0, $interpret_instr
 # in pos
