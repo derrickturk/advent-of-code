@@ -95,16 +95,16 @@ async fn run_vm(pool: &ThreadPool, program: Vec<i64>, options: &Options,
         let file = File::open(input_file)?;
         if options.text {
             for line in BufReader::new(file).lines() {
-                let i = line?.trim_end().parse::<i64>()
-                    .map_err(|_| IntCodeError::ParseError)?;
-                input_send.send(i).await.map_err(|_| Error::StartInputError)?;
-            }
-        } else {
-            for line in BufReader::new(file).lines() {
                 for c in line?.chars() {
                     input_send.send(c as i64)
                         .await.map_err(|_| Error::StartInputError)?;
                 }
+            }
+        } else {
+            for line in BufReader::new(file).lines() {
+                let i = line?.trim_end().parse::<i64>()
+                    .map_err(|_| IntCodeError::ParseError)?;
+                input_send.send(i).await.map_err(|_| Error::StartInputError)?;
             }
         }
     }

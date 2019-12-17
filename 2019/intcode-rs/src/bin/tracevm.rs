@@ -1,15 +1,14 @@
 use std::{
     collections::HashSet,
-    io::{self, Read, BufRead, BufReader},
+    io::{self, Read, BufRead, BufReader, Write},
     fs::File,
-    marker::Unpin,
     path::PathBuf,
 };
 
 use futures::{
     executor::block_on,
     channel::mpsc,
-    sink::{Sink, SinkExt},
+    stream,
 };
 
 use structopt::StructOpt;
@@ -41,7 +40,6 @@ enum Error {
     IOError(io::Error),
     MapFileError(map_file::MapFileError),
     UnknownCommand(String),
-    StartInputError,
 }
 
 impl From<IntCodeError> for Error {
@@ -151,7 +149,6 @@ enum TracerCommandResult {
 
 enum TracerCommand {
     Step,
-    Input(i64),
     Examine(usize, usize),
     DisAsm(usize),
     SetLabel(usize, String),
@@ -182,14 +179,6 @@ impl TracerCommand {
         let res = match cmd_word {
             "s" | "step" => {
                 TracerCommand::Step
-            },
-
-            "i" | "input" => {
-                let num = cmd.next()
-                    .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
-                let num = num.parse::<i64>()
-                    .map_err(|_| IntCodeError::ParseError)?;
-                TracerCommand::Input(num)
             },
 
             "x" | "examine" => {
@@ -282,20 +271,11 @@ impl TracerCommand {
         Ok(res)
     }
 
-    async fn exec<T, I>(self, program: &mut ProgramState<T>,
-          tracer: &mut TracerState, input_send: &mut I) -> TracerCommandResult
-          where T: ExpandoMemory
-              , I: Sink<i64> + Unpin {
+    async fn exec<T>(self, program: &mut ProgramState<T>,
+          tracer: &mut TracerState) -> TracerCommandResult
+          where T: ExpandoMemory {
         match self {
             TracerCommand::Step => TracerCommandResult::Step,
-
-            TracerCommand::Input(n) => {
-                match input_send.send(n).await {
-                    Ok(_) => { },
-                    Err(_) => { eprintln!("failed to send!") },
-                };
-                TracerCommandResult::WaitCommands
-            },
 
             TracerCommand::Examine(ptr, len) => {
                 let mut sep = "";
@@ -378,7 +358,6 @@ impl TracerCommand {
             TracerCommand::Help => {
                 eprintln!("ictrace - tracer commands:");
                 eprintln!("(s)tep");
-                eprintln!("(i)nput <num>");
                 eprintln!("e(x)amine <ptr> <len>");
                 eprintln!("(d)isassemble <ptr>");
                 eprintln!("(l)abel <ptr> <lbl>");
@@ -396,23 +375,41 @@ impl TracerCommand {
     }
 }
 
+struct InputIter { }
+
+impl Iterator for InputIter {
+    type Item = i64;
+
+    fn next(&mut self) -> Option<i64> {
+        loop {
+            let mut buf = String::new();
+            print!("input> ");
+            io::stdout().flush().ok()?;
+            io::stdin().read_line(&mut buf).ok()?;
+            if let Ok(num) = buf.trim().parse::<i64>() {
+                return Some(num);
+            }
+        }
+    }
+}
+
 async fn run_vm(program: Vec<i64>, options: &Options) -> Result<(), Error> {
-    let (mut input_send, mut input_recv) = mpsc::channel(options.buf_size);
     let (mut output_send, mut output_recv) = mpsc::channel(options.buf_size);
+
+    let mut start_input = Vec::new();
 
     if let Some(input) = &options.start_input {
         for i in input {
-            input_send.send(*i).await.map_err(|_| Error::StartInputError)?;
+            start_input.push(*i);
         }
     }
 
     if let Some(input_file) = &options.start_input_file {
         let file = File::open(input_file)?;
         for line in BufReader::new(file).lines() {
-            for c in line?.chars() {
-                input_send.send(c as i64)
-                    .await.map_err(|_| Error::StartInputError)?;
-            }
+            let i = line?.trim_end().parse::<i64>()
+                .map_err(|_| IntCodeError::ParseError)?;
+            start_input.push(i);
         }
     }
 
@@ -423,6 +420,8 @@ async fn run_vm(program: Vec<i64>, options: &Options) -> Result<(), Error> {
     } else {
         TracerState::new()
     };
+
+    let mut input = stream::iter(start_input.drain(..).chain(InputIter { }));
 
     loop {
         let opcode = OpCode::parse_next(&mut program)?;
@@ -445,7 +444,7 @@ async fn run_vm(program: Vec<i64>, options: &Options) -> Result<(), Error> {
                     },
                 };
 
-                match cmd.exec(&mut program, &mut tracer, &mut input_send).await {
+                match cmd.exec(&mut program, &mut tracer).await {
                     TracerCommandResult::Step => break,
                     TracerCommandResult::Jump => { should_jump = true; break; },
                     TracerCommandResult::WaitCommands => continue,
@@ -456,8 +455,7 @@ async fn run_vm(program: Vec<i64>, options: &Options) -> Result<(), Error> {
 
         match opcode {
             OpCode::Halt => return Ok(()),
-            _ => opcode.eval(&mut program, &mut input_recv,
-                &mut output_send).await?,
+            _ => opcode.eval(&mut program, &mut input, &mut output_send).await?,
         }
 
         if let Ok(msg) = output_recv.try_next() {
