@@ -35,6 +35,22 @@ eq word, $4, is_out_0
 jnz is_out_0: $0, $do_out_0
 eq word, $104, is_out_1
 jnz is_out_1: $0, $do_out_1
+eq word, $7, is_lt_000
+jnz is_lt_000: $0, $do_lt_000
+eq word, $107, is_lt_100
+jnz is_lt_100: $0, $do_lt_100
+eq word, $1007, is_lt_010
+jnz is_lt_010: $0, $do_lt_010
+eq word, $1107, is_lt_110
+jnz is_lt_110: $0, $do_lt_110
+eq word, $8, is_eq_000
+jnz is_eq_000: $0, $do_eq_000
+eq word, $108, is_eq_100
+jnz is_eq_100: $0, $do_eq_100
+eq word, $1008, is_eq_010
+jnz is_eq_010: $0, $do_eq_010
+eq word, $1108, is_eq_110
+jnz is_eq_110: $0, $do_eq_110
 eq word, $99, is_hlt
 jnz is_hlt: $0, $exit
 # if we get here, we didn't recognize the instruction
@@ -122,7 +138,8 @@ add mul_110_src_2_ptr: 0, $0, mul_110_src_2
 add mul_110_dst_ptr: 0, $program, mul_110_dst
 mul mul_110_src_1: $0, mul_110_src_2: $0, mul_110_dst: 0
 add ip, $4, ip
-jz $0, $interpret_instr# in pos
+jz $0, $interpret_instr
+# in pos
 do_in_0: add instr, $1, in_0_dst_ptr
 add in_0_dst_ptr: 0, $program, in_0_dst
 in in_0_dst: 0
@@ -139,6 +156,86 @@ do_out_1: add instr, $1, out_1_src_ptr
 add out_1_src_ptr: 0, $0, out_1_src
 out out_1_src: $0
 add ip, $2, ip
+jz $0, $interpret_instr
+# lt pos, pos, pos
+do_lt_000: add instr, $1, lt_000_src_1_ptr
+add instr, $2, lt_000_src_2_ptr
+add instr, $3, lt_000_dst_ptr
+add lt_000_src_1_ptr: 0, $program, lt_000_src_1
+add lt_000_src_2_ptr: 0, $program, lt_000_src_2
+add lt_000_dst_ptr: 0, $program, lt_000_dst
+lt lt_000_src_1: 0, lt_000_src_2: 0, lt_000_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# lt imm, pos, pos
+do_lt_100: add instr, $1, lt_100_src_1_ptr
+add instr, $2, lt_100_src_2_ptr
+add instr, $3, lt_100_dst_ptr
+add lt_100_src_1_ptr: 0, $0, lt_100_src_1
+add lt_100_src_2_ptr: 0, $program, lt_100_src_2
+add lt_100_dst_ptr: 0, $program, lt_100_dst
+lt lt_100_src_1: $0, lt_100_src_2: 0, lt_100_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# lt pos, imm, pos
+do_lt_010: add instr, $1, lt_010_src_1_ptr
+add instr, $2, lt_010_src_2_ptr
+add instr, $3, lt_010_dst_ptr
+add lt_010_src_1_ptr: 0, $program, lt_010_src_1
+add lt_010_src_2_ptr: 0, $0, lt_010_src_2
+add lt_010_dst_ptr: 0, $program, lt_010_dst
+lt lt_010_src_1: 0, lt_010_src_2: $0, lt_010_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# lt imm, imm, pos
+do_lt_110: add instr, $1, lt_110_src_1_ptr
+add instr, $2, lt_110_src_2_ptr
+add instr, $3, lt_110_dst_ptr
+add lt_110_src_1_ptr: 0, $0, lt_110_src_1
+add lt_110_src_2_ptr: 0, $0, lt_110_src_2
+add lt_110_dst_ptr: 0, $program, lt_110_dst
+lt lt_110_src_1: $0, lt_110_src_2: $0, lt_110_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# eq pos, pos, pos
+do_eq_000: add instr, $1, eq_000_src_1_ptr
+add instr, $2, eq_000_src_2_ptr
+add instr, $3, eq_000_dst_ptr
+add eq_000_src_1_ptr: 0, $program, eq_000_src_1
+add eq_000_src_2_ptr: 0, $program, eq_000_src_2
+add eq_000_dst_ptr: 0, $program, eq_000_dst
+eq eq_000_src_1: 0, eq_000_src_2: 0, eq_000_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# eq imm, pos, pos
+do_eq_100: add instr, $1, eq_100_src_1_ptr
+add instr, $2, eq_100_src_2_ptr
+add instr, $3, eq_100_dst_ptr
+add eq_100_src_1_ptr: 0, $0, eq_100_src_1
+add eq_100_src_2_ptr: 0, $program, eq_100_src_2
+add eq_100_dst_ptr: 0, $program, eq_100_dst
+eq eq_100_src_1: $0, eq_100_src_2: 0, eq_100_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# eq pos, imm, pos
+do_eq_010: add instr, $1, eq_010_src_1_ptr
+add instr, $2, eq_010_src_2_ptr
+add instr, $3, eq_010_dst_ptr
+add eq_010_src_1_ptr: 0, $program, eq_010_src_1
+add eq_010_src_2_ptr: 0, $0, eq_010_src_2
+add eq_010_dst_ptr: 0, $program, eq_010_dst
+eq eq_010_src_1: 0, eq_010_src_2: $0, eq_010_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# eq imm, imm, pos
+do_eq_110: add instr, $1, eq_110_src_1_ptr
+add instr, $2, eq_110_src_2_ptr
+add instr, $3, eq_110_dst_ptr
+add eq_110_src_1_ptr: 0, $0, eq_110_src_1
+add eq_110_src_2_ptr: 0, $0, eq_110_src_2
+add eq_110_dst_ptr: 0, $program, eq_110_dst
+eq eq_110_src_1: $0, eq_110_src_2: $0, eq_110_dst: 0
+add ip, $4, ip
 jz $0, $interpret_instr
 # global variables
 ip: $0
