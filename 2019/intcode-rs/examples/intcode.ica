@@ -100,14 +100,24 @@ jnz is_out_1: $0, $do_out_1
 eq word, $204, is_out_2
 jnz is_out_2: $0, $do_out_2
 # jnz handlers
-eq word, $5, is_jnz_00
+eq word, $0005, is_jnz_00
 jnz is_jnz_00: $0, $do_jnz_00
-eq word, $105, is_jnz_10
+eq word, $0105, is_jnz_10
 jnz is_jnz_10: $0, $do_jnz_10
+eq word, $0205, is_jnz_20
+jnz is_jnz_20: $0, $do_jnz_20
 eq word, $1005, is_jnz_01
 jnz is_jnz_01: $0, $do_jnz_01
+eq word, $1205, is_jnz_21
+jnz is_jnz_21: $0, $do_jnz_21
+eq word, $2005, is_jnz_02
+jnz is_jnz_02: $0, $do_jnz_02
 eq word, $1105, is_jnz_11
 jnz is_jnz_11: $0, $do_jnz_11
+eq word, $2105, is_jnz_12
+jnz is_jnz_12: $0, $do_jnz_12
+eq word, $2205, is_jnz_22
+jnz is_jnz_22: $0, $do_jnz_22
 # jz handlers
 eq word, $6, is_jz_00
 jnz is_jz_00: $0, $do_jz_00
@@ -657,6 +667,17 @@ add ip, $3, ip
 jz $0, $interpret_instr
 jnz_10_take_jump: add jnz_10_dst: 0, $0, ip
 jz $0, $interpret_instr
+# jnz rel, pos
+do_jnz_20: add instr, $1, jnz_20_cnd_ptr
+add instr, $2, jnz_20_dst_ptr
+add jnz_20_cnd_ptr: 0, $program, jnz_20_cnd
+add jnz_20_cnd, rel_base, jnz_20_cnd
+add jnz_20_dst_ptr: 0, $program, jnz_20_dst
+jnz jnz_20_cnd: 0, $jnz_20_take_jump
+add ip, $3, ip
+jz $0, $interpret_instr
+jnz_20_take_jump: add jnz_20_dst: 0, $0, ip
+jz $0, $interpret_instr
 # jnz pos, imm
 do_jnz_01: add instr, $1, jnz_01_cnd_ptr
 add instr, $2, jnz_01_dst_ptr
@@ -667,6 +688,28 @@ add ip, $3, ip
 jz $0, $interpret_instr
 jnz_01_take_jump: add jnz_01_dst: $0, $0, ip
 jz $0, $interpret_instr
+# jnz rel, imm
+do_jnz_21: add instr, $1, jnz_21_cnd_ptr
+add instr, $2, jnz_21_dst_ptr
+add jnz_21_cnd_ptr: 0, $program, jnz_21_cnd
+add jnz_21_cnd, rel_base, jnz_21_cnd
+add jnz_21_dst_ptr: 0, $0, jnz_21_dst
+jnz jnz_21_cnd: 0, $jnz_21_take_jump
+add ip, $3, ip
+jz $0, $interpret_instr
+jnz_21_take_jump: add jnz_21_dst: $0, $0, ip
+jz $0, $interpret_instr
+# jnz pos, rel
+do_jnz_02: add instr, $1, jnz_02_cnd_ptr
+add instr, $2, jnz_02_dst_ptr
+add jnz_02_cnd_ptr: 0, $program, jnz_02_cnd
+add jnz_02_dst_ptr: 0, $program, jnz_02_dst
+add jnz_02_dst, rel_base, jnz_02_dst
+jnz jnz_02_cnd: 0, $jnz_02_take_jump
+add ip, $3, ip
+jz $0, $interpret_instr
+jnz_02_take_jump: add jnz_02_dst: 0, $0, ip
+jz $0, $interpret_instr
 # jnz imm, imm
 do_jnz_11: add instr, $1, jnz_11_cnd_ptr
 add instr, $2, jnz_11_dst_ptr
@@ -676,6 +719,29 @@ jnz jnz_11_cnd: $0, $jnz_11_take_jump
 add ip, $3, ip
 jz $0, $interpret_instr
 jnz_11_take_jump: add jnz_11_dst: $0, $0, ip
+jz $0, $interpret_instr
+# jnz imm, rel
+do_jnz_12: add instr, $1, jnz_12_cnd_ptr
+add instr, $2, jnz_12_dst_ptr
+add jnz_12_cnd_ptr: 0, $0, jnz_12_cnd
+add jnz_12_dst_ptr: 0, $program, jnz_12_dst
+add jnz_12_dst, rel_base, jnz_12_dst
+jnz jnz_12_cnd: $0, $jnz_12_take_jump
+add ip, $3, ip
+jz $0, $interpret_instr
+jnz_12_take_jump: add jnz_12_dst: 0, $0, ip
+jz $0, $interpret_instr
+# jnz rel, rel
+do_jnz_22: add instr, $1, jnz_22_cnd_ptr
+add instr, $2, jnz_22_dst_ptr
+add jnz_22_cnd_ptr: 0, $program, jnz_22_cnd
+add jnz_22_cnd, rel_base, jnz_22_cnd
+add jnz_22_dst_ptr: 0, $program, jnz_22_dst
+add jnz_22_dst, rel_base, jnz_22_dst
+jnz jnz_22_cnd: 0, $jnz_22_take_jump
+add ip, $3, ip
+jz $0, $interpret_instr
+jnz_22_take_jump: add jnz_22_dst: 0, $0, ip
 jz $0, $interpret_instr
 # jz pos, pos
 do_jz_00: add instr, $1, jz_00_cnd_ptr
