@@ -28,6 +28,9 @@ struct Options {
     #[structopt(short="f", long, parse(from_os_str))]
     start_input_file: Option<PathBuf>,
 
+    #[structopt(short, long, parse(from_os_str))]
+    map_file: Option<PathBuf>,
+
     #[structopt(name="FILE", parse(from_os_str))]
     input_file: PathBuf,
 }
@@ -36,6 +39,7 @@ struct Options {
 enum Error {
     IntCodeError(IntCodeError),
     IOError(io::Error),
+    MapFileError(map_file::MapFileError),
     UnknownCommand(String),
     StartInputError,
 }
@@ -52,6 +56,12 @@ impl From<io::Error> for Error {
     }
 }
 
+impl From<map_file::MapFileError> for Error {
+    fn from(other: map_file::MapFileError) -> Self {
+        Error::MapFileError(other)
+    }
+}
+
 struct TracerState {
     labels: LabelMap,
     breakpoints: HashSet<usize>,
@@ -62,6 +72,14 @@ impl TracerState {
     fn new() -> Self {
         Self {
             labels: LabelMap::new(),
+            breakpoints: HashSet::new(),
+            continue_til: None,
+        }
+    }
+
+    fn with_labels(labels: LabelMap) -> Self {
+        Self {
+            labels,
             breakpoints: HashSet::new(),
             continue_til: None,
         }
@@ -101,6 +119,7 @@ impl TracerState {
     #[inline]
     fn should_continue(&mut self, ip: usize) -> bool {
         if self.breakpoints.contains(&ip) {
+            self.continue_til = None;
             false
         } else if let Some(til) = self.continue_til {
             if ip == til {
@@ -128,8 +147,6 @@ enum TracerCommandResult {
  * (a)ssemble ptr instr
  * set relative base
  * reset program
- * save labels
- * load labels
  */
 
 enum TracerCommand {
@@ -144,6 +161,7 @@ enum TracerCommand {
     Jump(usize),
     Continue(usize),
     Write(usize, i64),
+    SaveLabels(String),
     Help,
 }
 
@@ -250,6 +268,12 @@ impl TracerCommand {
                 TracerCommand::Write(ptr, num)
             },
 
+            "v" | "savelabels" => {
+                let path = cmd.next()
+                    .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
+                TracerCommand::SaveLabels(path.to_string())
+            },
+
             "h" | "help" => TracerCommand::Help,
 
             _ => return Err(Error::UnknownCommand(line.clone())),
@@ -338,6 +362,19 @@ impl TracerCommand {
                 TracerCommandResult::WaitCommands
             },
 
+            TracerCommand::SaveLabels(path) => {
+                let out_labels = map_file::to_output_map(&tracer.labels);
+                if let Ok(mut file) = File::create(path) {
+                    match map_file::write_map(&mut file, &out_labels) {
+                        Ok(_) => { },
+                        Err(e) => { eprintln!("unable to write: {:?}", e); }
+                    }
+                } else {
+                    eprintln!("unable to open file");
+                }
+                TracerCommandResult::WaitCommands
+            },
+
             TracerCommand::Help => {
                 eprintln!("ictrace - tracer commands:");
                 eprintln!("(s)tep");
@@ -350,6 +387,7 @@ impl TracerCommand {
                 eprintln!("(j)ump <ptr>");
                 eprintln!("(c)ontinue <ptr>");
                 eprintln!("(w)rite <ptr> <num>");
+                eprintln!("sa(v)elabels <file>");
                 eprintln!("(h)elp");
                 eprintln!();
                 TracerCommandResult::WaitCommands
@@ -379,7 +417,12 @@ async fn run_vm(program: Vec<i64>, options: &Options) -> Result<(), Error> {
     }
 
     let mut program = ProgramState::<ExpandoSparse>::from(program);
-    let mut tracer = TracerState::new();
+    let mut tracer = if let Some(map_file) = &options.map_file {
+        TracerState::with_labels(map_file::read_map(
+                &mut BufReader::new(File::open(map_file)?))?)
+    } else {
+        TracerState::new()
+    };
 
     loop {
         let opcode = OpCode::parse_next(&mut program)?;
