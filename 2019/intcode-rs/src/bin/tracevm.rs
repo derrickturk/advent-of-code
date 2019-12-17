@@ -148,7 +148,6 @@ enum TracerCommandResult {
 /* "nice to have" / TODO list
  * interpret label as address for x, d, w, b
  * implicit arguments: ptr = ip, len = 1
- * d with len (instructions or words?)
  * (a)ssemble ptr instr
  * set relative base
  * reset program
@@ -163,6 +162,7 @@ enum TracerCommand {
     SetBreakpoint(usize),
     ClearBreakpoint(usize),
     Jump(usize),
+    SetRelBase(i64),
     Continue(usize),
     Write(usize, i64),
     SaveLabels(String),
@@ -253,6 +253,14 @@ impl TracerCommand {
                 TracerCommand::Jump(ptr)
             },
 
+            "t" | "relative" => {
+                let offset = cmd.next()
+                    .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
+                let offset = offset.parse::<i64>()
+                    .map_err(|_| IntCodeError::ParseError)?;
+                TracerCommand::SetRelBase(offset)
+            },
+
             "c" | "continue" => {
                 let ptr = cmd.next()
                     .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
@@ -312,7 +320,6 @@ impl TracerCommand {
                 TracerCommandResult::WaitCommands
             },
 
-            // TODO: disassemble range?
             TracerCommand::DisAsm(ptr, len, nums) => {
                 let orig_ip = program.ip;
 
@@ -370,6 +377,11 @@ impl TracerCommand {
                 TracerCommandResult::Jump
             },
 
+            TracerCommand::SetRelBase(rb) => {
+                program.relative_base = rb;
+                TracerCommandResult::WaitCommands
+            },
+
             TracerCommand::Continue(ip) => {
                 tracer.set_continue(ip);
                 TracerCommandResult::Step
@@ -408,6 +420,7 @@ impl TracerCommand {
                 println!("clea(r) <lbl>|<breakpoint>");
                 println!("(b)reak <ptr>");
                 println!("(j)ump <ptr>");
+                println!("rela(t)ive <ptr>");
                 println!("(c)ontinue <ptr>");
                 println!("(w)rite <ptr> <num>");
                 println!("sa(v)elabels <file>");
