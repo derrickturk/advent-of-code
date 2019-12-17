@@ -404,7 +404,9 @@ impl TracerCommand {
 
             TracerCommand::Write(ptr, val) => {
                 *program.memory.get_mut(ptr) = val;
-                TracerCommandResult::WaitCommands
+                // we might have written over the current instruction!
+                // trigger a "jump" to re-parse it
+                TracerCommandResult::Jump
             },
 
             TracerCommand::Asm(ptr) => {
@@ -461,7 +463,9 @@ impl TracerCommand {
                     }
                 }
 
-                TracerCommandResult::WaitCommands
+                // we might have assembled over the current instruction!
+                // trigger a "jump" to re-parse it
+                TracerCommandResult::Jump
             },
 
             TracerCommand::SaveLabels(path) => {
