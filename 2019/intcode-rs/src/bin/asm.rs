@@ -77,7 +77,7 @@ fn main() -> Result<(), Error> {
 
     if let Some(path) = options.map_file {
         map_file::write_map(&mut File::create(path)?,
-            &asm::extract_labels(&stmts[..]))?;
+            &asm::extract_labels(&stmts[..])?)?;
     }
 
     Ok(())

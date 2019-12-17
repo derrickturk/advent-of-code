@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashSet, hash_map::Entry},
     io::{self, Read, BufRead, BufReader, Write},
     fs::File,
     path::PathBuf,
@@ -436,11 +436,44 @@ impl TracerCommand {
                     Ok(stmts) => {
                         let mut labels = map_file::to_output_map(
                             &tracer.labels);
-                        for (k, v) in asm::extract_labels(&stmts[..]).iter() {
-                            labels.insert(k, *v);
-                        }
+
+                        match asm::extract_labels(&stmts[..]) {
+                            Ok(new_labels) => {
+                                for (k, v) in new_labels.iter() {
+                                    match labels.entry(k) {
+                                        Entry::Occupied(_) => {
+                                            eprintln!(
+                                                "{}label already defined: {}{}",
+                                                BEGIN_RED, k, CLEAR_COLOR);
+                                        },
+                                        Entry::Vacant(place) => {
+                                            place.insert(*v);
+                                        },
+                                    };
+                                }
+                            },
+                            Err(e) => {
+                                eprintln!("{}assembler error: {:?}{}",
+                                    BEGIN_RED, e, CLEAR_COLOR);
+                            },
+                        };
+
                         match asm::assemble_with_labels(&stmts[..], &labels) {
                             Ok(items) => {
+                                let mut new_map = map_file::to_input_map(
+                                    &labels);
+                                for (ptr, lbl) in new_map.drain() {
+                                    /* insert any new labels (as defined by
+                                     * previously unlabeled addrs) into
+                                     * the label map */
+                                    match tracer.labels.entry(ptr) {
+                                        Entry::Occupied(_) => { },
+                                        Entry::Vacant(place) => {
+                                            place.insert(lbl);
+                                        },
+                                    }
+                                }
+
                                 Some(asm::program_values(&items[..]))
                             },
                             Err(e) => {

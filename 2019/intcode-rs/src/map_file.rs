@@ -49,6 +49,14 @@ pub fn write_map(write: &mut impl Write, map: &asm::LabelMap
     Ok(())
 }
 
+pub fn to_input_map(output_map: &asm::LabelMap) -> disasm::LabelMap {
+    let mut in_map = disasm::LabelMap::new();
+    for (lbl, ptr) in output_map.iter() {
+        in_map.insert(*ptr, lbl.to_string());
+    }
+    in_map
+}
+
 pub fn to_output_map(input_map: &disasm::LabelMap) -> asm::LabelMap {
     let mut out_map = asm::LabelMap::new();
     for (ptr, lbl) in input_map.iter() {

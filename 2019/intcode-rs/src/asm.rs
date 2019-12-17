@@ -19,6 +19,7 @@ pub enum AsmError {
     AddressTooLarge(usize),
     InvalidAddress(i64),
     UnknownLabel(String),
+    LabelAlreadyDefined(String),
     IOError(io::Error),
 }
 
@@ -85,7 +86,7 @@ impl AsmItem {
 
 #[inline]
 pub fn assemble(program: &[Labeled<Stmt>]) -> Result<Vec<AsmItem>, AsmError> {
-    let labels = extract_labels(program);
+    let labels = extract_labels(program)?;
     assemble_with_labels(program, &labels)
 }
 
@@ -263,22 +264,27 @@ pub fn emit_program(writer: &mut impl Write, items: &[AsmItem]
     writeln!(writer)
 }
 
-pub fn extract_labels(program: &[Labeled<Stmt>]) -> LabelMap {
+pub fn extract_labels(program: &[Labeled<Stmt>]) -> Result<LabelMap, AsmError> {
     let mut labels = HashMap::new();
     for stmt in program {
         if let Some((ptr, lbl)) = &stmt.label {
-            labels.insert(lbl.as_str(), *ptr);
+            if let Some(_) = labels.insert(lbl.as_str(), *ptr) {
+                return Err(AsmError::LabelAlreadyDefined(lbl.clone()));
+            }
         }
 
         if let Stmt::Instr(_, operands) = &stmt.item {
             for op in operands {
                 if let Some((ptr, lbl)) = &op.label {
-                    labels.insert(lbl.as_str(), *ptr);
+                    if let Some(_) = labels.insert(lbl.as_str(), *ptr) {
+                        return Err(AsmError::LabelAlreadyDefined(lbl.clone()));
+                    }
                 }
             }
         }
     }
-    labels
+
+    Ok(labels)
 }
 
 fn assemble_roperand(op: &Labeled<Operand>, labels: &LabelMap
