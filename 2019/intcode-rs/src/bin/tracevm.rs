@@ -126,7 +126,7 @@ impl TracerState {
             self.continue_til = None;
             false
         } else if let Some(til) = self.continue_til {
-            if ip == til {
+            if ip >= til {
                 self.continue_til = None;
                 false
             } else {
@@ -142,6 +142,7 @@ enum TracerCommandResult {
     Step,
     Jump,
     WaitCommands,
+    Restart,
     Quit,
 }
 
@@ -149,8 +150,6 @@ enum TracerCommandResult {
  * interpret label as address for x, d, w, b
  * implicit arguments: ptr = ip, len = 1
  * (a)ssemble ptr instr
- * set relative base
- * reset program
  */
 
 enum TracerCommand {
@@ -167,6 +166,7 @@ enum TracerCommand {
     Write(usize, i64),
     SaveLabels(String),
     Help,
+    Restart,
     Quit,
 }
 
@@ -288,6 +288,8 @@ impl TracerCommand {
             },
 
             "h" | "help" => TracerCommand::Help,
+
+            "restart" => TracerCommand::Restart,
 
             "q" | "quit" => TracerCommand::Quit,
 
@@ -424,9 +426,15 @@ impl TracerCommand {
                 println!("(c)ontinue <ptr>");
                 println!("(w)rite <ptr> <num>");
                 println!("sa(v)elabels <file>");
-                println!("(h)elp{}", CLEAR_COLOR);
+                println!("(h)elp");
+                println!("restart");
+                println!("(q)uit{}", CLEAR_COLOR);
                 println!();
                 TracerCommandResult::WaitCommands
+            },
+
+            TracerCommand::Restart => {
+                TracerCommandResult::Restart
             },
 
             TracerCommand::Quit => {
@@ -455,7 +463,7 @@ impl Iterator for InputIter {
     }
 }
 
-async fn run_vm(program: Vec<i64>, options: &Options) -> Result<(), Error> {
+async fn run_vm(image: Vec<i64>, options: &Options) -> Result<(), Error> {
     let (mut output_send, mut output_recv) = mpsc::channel(options.buf_size);
 
     let mut start_input = Vec::new();
@@ -475,7 +483,7 @@ async fn run_vm(program: Vec<i64>, options: &Options) -> Result<(), Error> {
         }
     }
 
-    let mut program = ProgramState::<ExpandoSparse>::from(program);
+    let mut program = ProgramState::<ExpandoSparse>::from(image.clone());
     let mut tracer = if let Some(map_file) = &options.map_file {
         TracerState::with_labels(map_file::read_map(
                 &mut BufReader::new(File::open(map_file)?))?)
@@ -519,6 +527,12 @@ async fn run_vm(program: Vec<i64>, options: &Options) -> Result<(), Error> {
                     TracerCommandResult::Step => break,
                     TracerCommandResult::Jump => { should_jump = true; break; },
                     TracerCommandResult::WaitCommands => continue,
+                    TracerCommandResult::Restart => {
+                        program = ProgramState::<ExpandoSparse>::from(
+                            image.clone());
+                        should_jump = true;
+                        break;
+                    },
                     TracerCommandResult::Quit => return Ok(()),
                 };
             }
