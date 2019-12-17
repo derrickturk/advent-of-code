@@ -83,8 +83,14 @@ impl AsmItem {
     }
 }
 
+#[inline]
 pub fn assemble(program: &[Labeled<Stmt>]) -> Result<Vec<AsmItem>, AsmError> {
-    let labels = &extract_labels(program);
+    let labels = extract_labels(program);
+    assemble_with_labels(program, &labels)
+}
+
+pub fn assemble_with_labels(program: &[Labeled<Stmt>], labels: &LabelMap
+      ) -> Result<Vec<AsmItem>, AsmError> {
     let mut items = Vec::new();
     for stmt in program {
         match &stmt.item {

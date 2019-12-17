@@ -147,24 +147,19 @@ enum TracerCommandResult {
     Quit,
 }
 
-/* "nice to have" / TODO list
- * interpret label as address for x, d, w, b
- * implicit arguments: ptr = ip, len = 1
- */
-
 enum TracerCommand {
     Step,
     Examine(Option<usize>, usize, bool),
-    DisAsm(usize, usize, bool),
+    DisAsm(Option<usize>, usize, bool),
     SetLabel(usize, String),
     ClearLabel(String),
     SetBreakpoint(usize),
     ClearBreakpoint(usize),
     Jump(usize),
     SetRelBase(i64),
-    Continue(usize),
+    Continue(Option<usize>),
     Write(usize, i64),
-    Asm(usize),
+    Asm(Option<usize>),
     SaveLabels(String),
     Help,
     Restart,
@@ -204,56 +199,55 @@ impl TracerCommand {
                     cmd_word == "xn" || cmd_word == "examine-nums")
             },
 
-            "d" | "disassemble" | "dn" | "disassemble-nums" => {
+            "d" | "disassemble" | "dn" | "disassemble-nums" | "dis" => {
                 let ptr = cmd.next()
-                    .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
-                let ptr = ptr.parse::<usize>()
-                    .map_err(|_| IntCodeError::ParseError)?;
+                    .map(|ptr| ptr_or_label(ptr, labels))
+                    .transpose()?;
                 let len = cmd.next()
-                    .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
-                let len = len.parse::<usize>()
-                    .map_err(|_| IntCodeError::ParseError)?;
-                TracerCommand::DisAsm(ptr, len,
+                    .map(|len| len.parse::<usize>()
+                        .map_err(|_| IntCodeError::ParseError))
+                    .transpose()?;
+                TracerCommand::DisAsm(ptr, len.unwrap_or(1),
                     cmd_word == "dn" || cmd_word == "disassemble-nums")
             },
 
-            "l" | "label" => {
+            "l" | "label" | "lbl" => {
                 let ptr = cmd.next()
                     .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
-                let ptr = ptr.parse::<usize>()
-                    .map_err(|_| IntCodeError::ParseError)?;
+                let ptr = ptr_or_label(ptr, labels)?;
                 let lbl = cmd.next()
                     .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
                 TracerCommand::SetLabel(ptr, lbl.to_string())
             },
 
-            "r" | "clear" => {
-                let ptr_or_label = cmd.next()
+            "u" | "unlabel" => {
+                let label = cmd.next()
                     .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
-                if let Ok(ptr) = ptr_or_label.parse::<usize>() {
-                    TracerCommand::ClearBreakpoint(ptr)
-                } else {
-                    TracerCommand::ClearLabel(ptr_or_label.to_string())
-                }
+                TracerCommand::ClearLabel(label.to_string())
+            },
+
+            "r" | "clear" => {
+                let ptr = cmd.next()
+                    .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
+                let ptr = ptr_or_label(ptr, labels)?;
+                TracerCommand::ClearBreakpoint(ptr)
             },
 
             "b" | "break" => {
                 let ptr = cmd.next()
                     .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
-                let ptr = ptr.parse::<usize>()
-                    .map_err(|_| IntCodeError::ParseError)?;
+                let ptr = ptr_or_label(ptr, labels)?;
                 TracerCommand::SetBreakpoint(ptr)
             },
 
             "j" | "jump" => {
                 let ptr = cmd.next()
                     .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
-                let ptr = ptr.parse::<usize>()
-                    .map_err(|_| IntCodeError::ParseError)?;
+                let ptr = ptr_or_label(ptr, labels)?;
                 TracerCommand::Jump(ptr)
             },
 
-            "t" | "relative" => {
+            "t" | "relative" | "rel" => {
                 let offset = cmd.next()
                     .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
                 let offset = offset.parse::<i64>()
@@ -263,17 +257,15 @@ impl TracerCommand {
 
             "c" | "continue" => {
                 let ptr = cmd.next()
-                    .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
-                let ptr = ptr.parse::<usize>()
-                    .map_err(|_| IntCodeError::ParseError)?;
+                    .map(|ptr| ptr_or_label(ptr, labels))
+                    .transpose()?;
                 TracerCommand::Continue(ptr)
             },
 
             "w" | "write" => {
                 let ptr = cmd.next()
                     .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
-                let ptr = ptr.parse::<usize>()
-                    .map_err(|_| IntCodeError::ParseError)?;
+                let ptr = ptr_or_label(ptr, labels)?;
                 let num = cmd.next()
                     .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
                 let num = num.parse::<i64>()
@@ -281,11 +273,10 @@ impl TracerCommand {
                 TracerCommand::Write(ptr, num)
             },
 
-            "a" | "assemble" => {
+            "a" | "assemble" | "asm" => {
                 let ptr = cmd.next()
-                    .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
-                let ptr = ptr.parse::<usize>()
-                    .map_err(|_| IntCodeError::ParseError)?;
+                    .map(|ptr| ptr_or_label(ptr, labels))
+                    .transpose()?;
                 TracerCommand::Asm(ptr)
             },
 
@@ -334,6 +325,7 @@ impl TracerCommand {
             TracerCommand::DisAsm(ptr, len, nums) => {
                 let orig_ip = program.ip;
 
+                let ptr = ptr.unwrap_or(program.ip);
                 program.ip = ptr;
 
                 while program.ip < ptr + len {
@@ -354,6 +346,9 @@ impl TracerCommand {
                         };
                         program.ip += opcode.width();
                     } else {
+                        if let Some(lbl) = tracer.labels.get(&program.ip) {
+                            print!("{}: ", lbl);
+                        }
                         println!("${}", *program.memory.get(program.ip));
                         program.ip += 1;
                     }
@@ -394,7 +389,7 @@ impl TracerCommand {
             },
 
             TracerCommand::Continue(ip) => {
-                tracer.set_continue(ip);
+                tracer.set_continue(ip.unwrap_or(std::usize::MAX));
                 TracerCommandResult::Step
             },
 
@@ -404,6 +399,7 @@ impl TracerCommand {
             },
 
             TracerCommand::Asm(ptr) => {
+                let ptr = ptr.unwrap_or(program.ip);
                 let mut lines = Vec::new();
                 loop {
                     let mut line = String::new();
@@ -427,7 +423,12 @@ impl TracerCommand {
                 let stmts = asm_parser::parse(lines.iter().map(|s| s.as_str()));
                 let words = match stmts {
                     Ok(stmts) => {
-                        match asm::assemble(&stmts[..]) {
+                        let mut labels = map_file::to_output_map(
+                            &tracer.labels);
+                        for (k, v) in asm::extract_labels(&stmts[..]).iter() {
+                            labels.insert(k, *v);
+                        }
+                        match asm::assemble_with_labels(&stmts[..], &labels) {
                             Ok(items) => {
                                 Some(asm::program_values(&items[..]))
                             },
@@ -473,23 +474,24 @@ impl TracerCommand {
 
             TracerCommand::Help => {
                 println!("{}ictrace - tracer commands:", BEGIN_YELLOW);
-                println!("(s)tep");
-                println!("e(x)amine <ptr> <len> [nums]");
-                println!("(xn)/examine-nums <ptr> <len>");
-                println!("(d)isassemble <ptr> <len>");
-                println!("(dn)/disassemble-nums <ptr> <len>");
-                println!("(l)abel <ptr> <lbl>");
-                println!("clea(r) <lbl>|<breakpoint>");
-                println!("(b)reak <ptr>");
-                println!("(j)ump <ptr>");
-                println!("rela(t)ive <ptr>");
-                println!("(c)ontinue <ptr>");
-                println!("(w)rite <ptr> <num>");
-                println!("(a)ssemble <ptr>");
-                println!("sa(v)elabels <file>");
-                println!("(h)elp");
-                println!("restart");
-                println!("(q)uit{}", CLEAR_COLOR);
+                println!("  (s)tep");
+                println!("  e(x)amine <ptr> <len> [nums]");
+                println!("  (xn)/examine-nums <ptr> <len>");
+                println!("  (d)isassemble <ptr> <len>");
+                println!("  (dn)/disassemble-nums <ptr> <len>");
+                println!("  (l)abel <ptr> <lbl>");
+                println!("  (u)nlabel <ptr>");
+                println!("  clea(r) <breakpoint>");
+                println!("  (b)reak <ptr>");
+                println!("  (j)ump <ptr>");
+                println!("  rela(t)ive <ptr>");
+                println!("  (c)ontinue <ptr>");
+                println!("  (w)rite <ptr> <num>");
+                println!("  (a)ssemble <ptr>");
+                println!("  sa(v)elabels <file>");
+                println!("  (h)elp");
+                println!("  restart");
+                println!("  (q)uit{}", CLEAR_COLOR);
                 println!();
                 TracerCommandResult::WaitCommands
             },
