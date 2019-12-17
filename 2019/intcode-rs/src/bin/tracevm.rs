@@ -46,6 +46,7 @@ enum Error {
     IOError(io::Error),
     MapFileError(map_file::MapFileError),
     UnknownCommand(String),
+    UnknownLabel(String),
 }
 
 impl From<IntCodeError> for Error {
@@ -153,7 +154,7 @@ enum TracerCommandResult {
 
 enum TracerCommand {
     Step,
-    Examine(usize, usize, bool),
+    Examine(Option<usize>, usize, bool),
     DisAsm(usize, usize, bool),
     SetLabel(usize, String),
     ClearLabel(String),
@@ -171,7 +172,7 @@ enum TracerCommand {
 }
 
 impl TracerCommand {
-    fn get_command() -> Result<TracerCommand, Error> {
+    fn get_command(labels: &LabelMap) -> Result<TracerCommand, Error> {
         let mut line = String::new();
         print!("ictrace> ");
         io::stdout().flush()?;
@@ -193,14 +194,13 @@ impl TracerCommand {
 
             "x" | "examine" | "xn" | "examine-nums" => {
                 let ptr = cmd.next()
-                    .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
-                let ptr = ptr.parse::<usize>()
-                    .map_err(|_| IntCodeError::ParseError)?;
+                    .map(|ptr| ptr_or_label(ptr, labels))
+                    .transpose()?;
                 let len = cmd.next()
-                    .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
-                let len = len.parse::<usize>()
-                    .map_err(|_| IntCodeError::ParseError)?;
-                TracerCommand::Examine(ptr, len,
+                    .map(|len| len.parse::<usize>()
+                        .map_err(|_| IntCodeError::ParseError))
+                    .transpose()?;
+                TracerCommand::Examine(ptr, len.unwrap_or(1),
                     cmd_word == "xn" || cmd_word == "examine-nums")
             },
 
@@ -314,6 +314,7 @@ impl TracerCommand {
             TracerCommand::Step => TracerCommandResult::Step,
 
             TracerCommand::Examine(ptr, len, nums) => {
+                let ptr = ptr.unwrap_or(program.ip);
                 if nums {
                     for p in ptr..ptr + len {
                         println!("{}{}{}\t{}", BEGIN_YELLOW, p, CLEAR_COLOR,
@@ -505,6 +506,19 @@ impl TracerCommand {
     }
 }
 
+#[inline]
+fn ptr_or_label(input: &str, labels: &LabelMap) -> Result<usize, Error> {
+    if let Ok(ptr) = input.parse::<usize>() {
+        return Ok(ptr);
+    }
+    if let Some(ptr) = labels.iter()
+          .find(|(_, v)| v.as_str() == input).map(|(k, _)| *k) {
+        Ok(ptr)
+    } else {
+        Err(Error::UnknownLabel(input.to_string()))
+    }
+}
+
 struct InputIter { }
 
 impl Iterator for InputIter {
@@ -574,7 +588,7 @@ async fn run_vm(image: Vec<i64>, options: &Options) -> Result<(), Error> {
         if !tracer.should_continue(program.ip) {
             let mut should_jump = false;
             loop {
-                let cmd = match TracerCommand::get_command() {
+                let cmd = match TracerCommand::get_command(&tracer.labels) {
                     Ok(cmd) => cmd,
                     Err(e) => {
                         eprintln!("{}invalid command: {:?}{}",
