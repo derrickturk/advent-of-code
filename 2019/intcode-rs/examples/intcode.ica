@@ -1,0 +1,53 @@
+# intcode in intcode
+in sentinel
+read_program: add ip, $program, read_dst
+in word
+# if word == sentinel, done reading
+eq word, sentinel, seen_sentinel
+jnz seen_sentinel: $0, $done_reading
+# else, write seen word to program + ip and repeat
+add $0, word, read_dst: program
+add $1, ip, ip
+jz $0, $read_program
+# have the program - reset IP and execute
+done_reading: add $0, $0, ip
+interpret_instr: add ip, $program, instr
+add $0, instr: program, word
+eq word, $1, is_add
+jnz is_add: $0, $do_add_000
+eq word, $2, is_mul
+jnz is_mul: $0, $do_mul_000
+eq word, $99, is_hlt
+jnz is_hlt: $0, $exit
+# if we get here, we didn't recognize the instruction
+# status 1 - invalid instruction
+add $0, $1, status
+# program ended - write status and halt
+exit: out status
+hlt
+# add pos, pos, pos
+do_add_000: add instr, $1, add_000_src_1_ptr
+add instr, $2, add_000_src_2_ptr
+add instr, $3, add_000_dst_ptr
+add add_000_src_1_ptr: 0, $program, add_000_src_1
+add add_000_src_2_ptr: 0, $program, add_000_src_2
+add add_000_dst_ptr: 0, $program, add_000_dst
+add add_000_src_1: 0, add_000_src_2: 0, add_000_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# mul pos, pos, pos
+do_mul_000: add instr, $1, mul_000_src_1_ptr
+add instr, $2, mul_000_src_2_ptr
+add instr, $3, mul_000_dst_ptr
+add mul_000_src_1_ptr: 0, $program, mul_000_src_1
+add mul_000_src_2_ptr: 0, $program, mul_000_src_2
+add mul_000_dst_ptr: 0, $program, mul_000_dst
+mul mul_000_src_1: 0, mul_000_src_2: 0, mul_000_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# global variables
+ip: $0
+sentinel: $0
+status: $0
+word: $0
+program: $0
