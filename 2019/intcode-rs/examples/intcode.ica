@@ -17,6 +17,8 @@ eq word, $1, is_add_000
 jnz is_add_000: $0, $do_add_000
 eq word, $101, is_add_100
 jnz is_add_100: $0, $do_add_100
+eq word, $201, is_add_200
+jnz is_add_200: $0, $do_add_200
 eq word, $1001, is_add_010
 jnz is_add_010: $0, $do_add_010
 eq word, $1101, is_add_110
@@ -67,6 +69,8 @@ eq word, $1008, is_eq_010
 jnz is_eq_010: $0, $do_eq_010
 eq word, $1108, is_eq_110
 jnz is_eq_110: $0, $do_eq_110
+eq word, $9, is_rel_0
+jnz is_rel_0: $0, $do_rel_0
 eq word, $99, is_hlt
 jnz is_hlt: $0, $exit
 # if we get here, we didn't recognize the instruction
@@ -93,6 +97,17 @@ add add_100_src_1_ptr: 0, $0, add_100_src_1
 add add_100_src_2_ptr: 0, $program, add_100_src_2
 add add_100_dst_ptr: 0, $program, add_100_dst
 add add_100_src_1: $0, add_100_src_2: 0, add_100_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# add rel, pos, pos
+do_add_200: add instr, $1, add_200_src_1_ptr
+add instr, $2, add_200_src_2_ptr
+add instr, $3, add_200_dst_ptr
+add add_200_src_1_ptr: 0, $program, add_200_src_1
+add add_200_src_1, rel_base, add_200_src_1
+add add_200_src_2_ptr: 0, $program, add_200_src_2
+add add_200_dst_ptr: 0, $program, add_200_dst
+add add_200_src_1: 0, add_200_src_2: 0, add_200_dst: 0
 add ip, $4, ip
 jz $0, $interpret_instr
 # add pos, imm, pos
@@ -333,8 +348,15 @@ add eq_110_dst_ptr: 0, $program, eq_110_dst
 eq eq_110_src_1: $0, eq_110_src_2: $0, eq_110_dst: 0
 add ip, $4, ip
 jz $0, $interpret_instr
+# rel pos
+do_rel_0: add instr, $1, rel_0_off_ptr
+add rel_0_off_ptr: 0, $program, rel_0_off
+add rel_base, rel_0_off: 0, rel_base
+add ip, $2, ip
+jz $0, $interpret_instr
 # global variables
 ip: $0
+rel_base: $0
 sentinel: $0
 status: $0
 word: $0
