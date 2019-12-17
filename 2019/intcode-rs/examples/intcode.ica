@@ -13,10 +13,15 @@ jz $0, $read_program
 done_reading: add $0, $0, ip
 interpret_instr: add ip, $program, instr
 add $0, instr: program, word
-eq word, $1, is_add
-jnz is_add: $0, $do_add_000
-eq word, $2, is_mul
-jnz is_mul: $0, $do_mul_000
+eq word, $1, is_add_000
+jnz is_add_000: $0, $do_add_000
+eq word, $2, is_mul_000
+jnz is_mul_000: $0, $do_mul_000
+eq word, $3, is_in_0
+jnz is_in_0: $0, $do_in_0
+eq word, $4, is_out_0
+jnz is_out_0: $0, $do_out_0
+eq word, $99, is_hlt
 eq word, $99, is_hlt
 jnz is_hlt: $0, $exit
 # if we get here, we didn't recognize the instruction
@@ -44,6 +49,18 @@ add mul_000_src_2_ptr: 0, $program, mul_000_src_2
 add mul_000_dst_ptr: 0, $program, mul_000_dst
 mul mul_000_src_1: 0, mul_000_src_2: 0, mul_000_dst: 0
 add ip, $4, ip
+jz $0, $interpret_instr
+# in pos
+do_in_0: add instr, $1, in_0_dst_ptr
+add in_0_dst_ptr: 0, $program, in_0_dst
+in in_0_dst: 0
+add ip, $2, ip
+jz $0, $interpret_instr
+# out pos
+do_out_0: add instr, $1, out_0_src_ptr
+add out_0_src_ptr: 0, $program, out_0_src
+out out_0_src: 0
+add ip, $2, ip
 jz $0, $interpret_instr
 # global variables
 ip: $0
