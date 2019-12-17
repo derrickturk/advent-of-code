@@ -212,8 +212,12 @@ jnz is_eq_122: $0, $do_eq_122
 eq word, $22208, is_eq_222
 jnz is_eq_222: $0, $do_eq_222
 # rel handlers
-eq word, $9, is_rel_0
+eq word, $009, is_rel_0
 jnz is_rel_0: $0, $do_rel_0
+eq word, $109, is_rel_1
+jnz is_rel_1: $0, $do_rel_1
+eq word, $209, is_rel_2
+jnz is_rel_2: $0, $do_rel_2
 # halt handler
 eq word, $99, is_hlt
 jnz is_hlt: $0, $exit
@@ -1255,6 +1259,19 @@ jz $0, $interpret_instr
 do_rel_0: add instr, $1, rel_0_off_ptr
 add rel_0_off_ptr: 0, $program, rel_0_off
 add rel_base, rel_0_off: 0, rel_base
+add ip, $2, ip
+jz $0, $interpret_instr
+# rel imm
+do_rel_1: add instr, $1, rel_1_off_ptr
+add rel_1_off_ptr: 0, $0, rel_1_off
+add rel_base, rel_1_off: $0, rel_base
+add ip, $2, ip
+jz $0, $interpret_instr
+# rel rel
+do_rel_2: add instr, $1, rel_2_off_ptr
+add rel_2_off_ptr: 0, $program, rel_2_off
+add rel_2_off, rel_base, rel_2_off
+add rel_base, rel_2_off: 0, rel_base
 add ip, $2, ip
 jz $0, $interpret_instr
 # global variables
