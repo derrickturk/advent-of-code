@@ -149,7 +149,6 @@ enum TracerCommandResult {
 /* "nice to have" / TODO list
  * interpret label as address for x, d, w, b
  * implicit arguments: ptr = ip, len = 1
- * (a)ssemble ptr instr
  */
 
 enum TracerCommand {
@@ -164,6 +163,7 @@ enum TracerCommand {
     SetRelBase(i64),
     Continue(usize),
     Write(usize, i64),
+    Asm(usize),
     SaveLabels(String),
     Help,
     Restart,
@@ -281,6 +281,14 @@ impl TracerCommand {
                 TracerCommand::Write(ptr, num)
             },
 
+            "a" | "assemble" => {
+                let ptr = cmd.next()
+                    .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
+                let ptr = ptr.parse::<usize>()
+                    .map_err(|_| IntCodeError::ParseError)?;
+                TracerCommand::Asm(ptr)
+            },
+
             "v" | "savelabels" => {
                 let path = cmd.next()
                     .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
@@ -345,7 +353,7 @@ impl TracerCommand {
                         };
                         program.ip += opcode.width();
                     } else {
-                        println!("${}", *program.memory.get(ptr));
+                        println!("${}", *program.memory.get(program.ip));
                         program.ip += 1;
                     }
                 }
@@ -394,6 +402,57 @@ impl TracerCommand {
                 TracerCommandResult::WaitCommands
             },
 
+            TracerCommand::Asm(ptr) => {
+                let mut lines = Vec::new();
+                loop {
+                    let mut line = String::new();
+                    print!("{}asm>{} ", BEGIN_YELLOW, CLEAR_COLOR);
+                    if let Err(e) = io::stdout().flush() {
+                        eprintln!("{}IO error: {:?}{}", BEGIN_RED, e,
+                            CLEAR_COLOR);
+                    }
+                    if let Err(e) = io::stdin().read_line(&mut line) {
+                        eprintln!("{}IO error: {:?}{}", BEGIN_RED, e,
+                            CLEAR_COLOR);
+                    }
+
+                    if line.trim().is_empty() {
+                        break;
+                    }
+
+                    lines.push(line);
+                }
+
+                let stmts = asm_parser::parse(lines.iter().map(|s| s.as_str()));
+                let words = match stmts {
+                    Ok(stmts) => {
+                        match asm::assemble(&stmts[..]) {
+                            Ok(items) => {
+                                Some(asm::program_values(&items[..]))
+                            },
+                            Err(e) => {
+                                eprintln!("{}assembler error: {:?}{}",
+                                    BEGIN_RED, e, CLEAR_COLOR);
+                                None
+                            },
+                        }
+                    },
+                    Err(e) => {
+                        eprintln!("{}parse error: {:?}{}", BEGIN_RED, e,
+                            CLEAR_COLOR);
+                        None
+                    },
+                };
+
+                if let Some(words) = words {
+                    for (i, val) in words.iter().enumerate() {
+                        *program.memory.get_mut(ptr + i) = *val;
+                    }
+                }
+
+                TracerCommandResult::WaitCommands
+            },
+
             TracerCommand::SaveLabels(path) => {
                 let out_labels = map_file::to_output_map(&tracer.labels);
                 if let Ok(mut file) = File::create(path) {
@@ -425,6 +484,7 @@ impl TracerCommand {
                 println!("rela(t)ive <ptr>");
                 println!("(c)ontinue <ptr>");
                 println!("(w)rite <ptr> <num>");
+                println!("(a)ssemble <ptr>");
                 println!("sa(v)elabels <file>");
                 println!("(h)elp");
                 println!("restart");
