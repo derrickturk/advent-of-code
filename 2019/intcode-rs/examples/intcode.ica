@@ -13,16 +13,44 @@ jz $0, $read_program
 done_reading: add $0, $0, ip
 interpret_instr: add ip, $program, instr
 add $0, instr: program, word
+# add handlers
 eq word, $1, is_add_000
 jnz is_add_000: $0, $do_add_000
-eq word, $101, is_add_100
+eq word, $1, is_add_100
 jnz is_add_100: $0, $do_add_100
-eq word, $201, is_add_200
+eq word, $1, is_add_200
 jnz is_add_200: $0, $do_add_200
-eq word, $1001, is_add_010
+eq word, $1, is_add_010
 jnz is_add_010: $0, $do_add_010
-eq word, $1101, is_add_110
+eq word, $1, is_add_020
+jnz is_add_020: $0, $do_add_020
+eq word, $1, is_add_110
 jnz is_add_110: $0, $do_add_110
+eq word, $1, is_add_210
+jnz is_add_210: $0, $do_add_210
+eq word, $1, is_add_120
+jnz is_add_120: $0, $do_add_120
+eq word, $1, is_add_220
+jnz is_add_220: $0, $do_add_220
+eq word, $1, is_add_002
+jnz is_add_002: $0, $do_add_002
+eq word, $1, is_add_102
+jnz is_add_102: $0, $do_add_102
+eq word, $1, is_add_202
+jnz is_add_202: $0, $do_add_202
+eq word, $1, is_add_012
+jnz is_add_012: $0, $do_add_012
+eq word, $1, is_add_022
+jnz is_add_022: $0, $do_add_022
+eq word, $1, is_add_112
+jnz is_add_112: $0, $do_add_112
+eq word, $1, is_add_212
+jnz is_add_212: $0, $do_add_212
+eq word, $1, is_add_122
+jnz is_add_122: $0, $do_add_122
+eq word, $1, is_add_222
+jnz is_add_222: $0, $do_add_222
+# mul handlers
 eq word, $2, is_mul_000
 jnz is_mul_000: $0, $do_mul_000
 eq word, $102, is_mul_100
@@ -120,6 +148,17 @@ add add_010_dst_ptr: 0, $program, add_010_dst
 add add_010_src_1: 0, add_010_src_2: $0, add_010_dst: 0
 add ip, $4, ip
 jz $0, $interpret_instr
+# add pos, rel, pos
+do_add_020: add instr, $1, add_020_src_1_ptr
+add instr, $2, add_020_src_2_ptr
+add instr, $3, add_020_dst_ptr
+add add_020_src_1_ptr: 0, $program, add_020_src_1
+add add_020_src_2_ptr: 0, $program, add_020_src_2
+add add_200_src_2, rel_base, add_200_src_2
+add add_020_dst_ptr: 0, $program, add_020_dst
+add add_020_src_1: 0, add_020_src_2: 0, add_020_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
 # add imm, imm, pos
 do_add_110: add instr, $1, add_110_src_1_ptr
 add instr, $2, add_110_src_2_ptr
@@ -128,6 +167,145 @@ add add_110_src_1_ptr: 0, $0, add_110_src_1
 add add_110_src_2_ptr: 0, $0, add_110_src_2
 add add_110_dst_ptr: 0, $program, add_110_dst
 add add_110_src_1: $0, add_110_src_2: $0, add_110_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# add rel, imm, pos
+do_add_210: add instr, $1, add_210_src_1_ptr
+add instr, $2, add_210_src_2_ptr
+add instr, $3, add_210_dst_ptr
+add add_210_src_1_ptr: 0, $program, add_210_src_1
+add add_210_src_1, rel_base, add_210_src_1
+add add_210_src_2_ptr: 0, $0, add_210_src_2
+add add_210_dst_ptr: 0, $program, add_210_dst
+add add_210_src_1: 0, add_210_src_2: $0, add_210_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# add imm, rel, pos
+do_add_120: add instr, $1, add_120_src_1_ptr
+add instr, $2, add_120_src_2_ptr
+add instr, $3, add_120_dst_ptr
+add add_120_src_1_ptr: 0, $0, add_120_src_1
+add add_120_src_2_ptr: 0, $program, add_120_src_2
+add add_120_src_2, rel_base, add_120_src_2
+add add_120_dst_ptr: 0, $program, add_120_dst
+add add_120_src_1: $0, add_120_src_2: 0, add_120_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# add rel, rel, pos
+do_add_220: add instr, $1, add_220_src_1_ptr
+add instr, $2, add_220_src_2_ptr
+add instr, $3, add_220_dst_ptr
+add add_220_src_1_ptr: 0, $program, add_220_src_1
+add add_220_src_1, rel_base, add_220_src_1
+add add_220_src_2_ptr: 0, $program, add_220_src_2
+add add_220_src_2, rel_base, add_220_src_2
+add add_220_dst_ptr: 0, $program, add_220_dst
+add add_220_src_1: 0, add_220_src_2: 0, add_220_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# add pos, pos, rel
+do_add_002: add instr, $1, add_002_src_1_ptr
+add instr, $2, add_002_src_2_ptr
+add instr, $3, add_002_dst_ptr
+add add_002_src_1_ptr: 0, $program, add_002_src_1
+add add_002_src_2_ptr: 0, $program, add_002_src_2
+add add_002_dst_ptr: 0, $program, add_002_dst
+add add_002_dst, rel_base, add_002_dst
+add add_002_src_1: 0, add_002_src_2: 0, add_002_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# add imm, pos, rel
+do_add_102: add instr, $1, add_102_src_1_ptr
+add instr, $2, add_102_src_2_ptr
+add instr, $3, add_102_dst_ptr
+add add_102_src_1_ptr: 0, $0, add_102_src_1
+add add_102_src_2_ptr: 0, $program, add_102_src_2
+add add_102_dst_ptr: 0, $program, add_102_dst
+add add_102_dst, rel_base, add_102_dst
+add add_102_src_1: $0, add_102_src_2: 0, add_102_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# add rel, pos, rel
+do_add_202: add instr, $1, add_202_src_1_ptr
+add instr, $2, add_202_src_2_ptr
+add instr, $3, add_202_dst_ptr
+add add_202_src_1_ptr: 0, $program, add_202_src_1
+add add_202_src_1, rel_base, add_202_src_1
+add add_202_src_2_ptr: 0, $program, add_202_src_2
+add add_202_dst_ptr: 0, $program, add_202_dst
+add add_202_dst, rel_base, add_202_dst
+add add_202_src_1: 0, add_202_src_2: 0, add_202_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# add pos, imm, rel
+do_add_012: add instr, $1, add_012_src_1_ptr
+add instr, $2, add_012_src_2_ptr
+add instr, $3, add_012_dst_ptr
+add add_012_src_1_ptr: 0, $program, add_012_src_1
+add add_012_src_2_ptr: 0, $0, add_012_src_2
+add add_012_dst_ptr: 0, $program, add_012_dst
+add add_012_dst, rel_base, add_012_dst
+add add_012_src_1: 0, add_012_src_2: $0, add_012_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# add pos, rel, rel
+do_add_022: add instr, $1, add_022_src_1_ptr
+add instr, $2, add_022_src_2_ptr
+add instr, $3, add_022_dst_ptr
+add add_022_src_1_ptr: 0, $program, add_022_src_1
+add add_022_src_2_ptr: 0, $program, add_022_src_2
+add add_202_src_2, rel_base, add_202_src_2
+add add_022_dst_ptr: 0, $program, add_022_dst
+add add_022_dst, rel_base, add_022_dst
+add add_022_src_1: 0, add_022_src_2: 0, add_022_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# add imm, imm, rel
+do_add_112: add instr, $1, add_112_src_1_ptr
+add instr, $2, add_112_src_2_ptr
+add instr, $3, add_112_dst_ptr
+add add_112_src_1_ptr: 0, $0, add_112_src_1
+add add_112_src_2_ptr: 0, $0, add_112_src_2
+add add_112_dst_ptr: 0, $program, add_112_dst
+add add_112_dst, rel_base, add_112_dst
+add add_112_src_1: $0, add_112_src_2: $0, add_112_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# add rel, imm, rel
+do_add_212: add instr, $1, add_212_src_1_ptr
+add instr, $2, add_212_src_2_ptr
+add instr, $3, add_212_dst_ptr
+add add_212_src_1_ptr: 0, $program, add_212_src_1
+add add_212_src_1, rel_base, add_212_src_1
+add add_212_src_2_ptr: 0, $0, add_212_src_2
+add add_212_dst_ptr: 0, $program, add_212_dst
+add add_212_dst, rel_base, add_212_dst
+add add_212_src_1: 0, add_212_src_2: $0, add_212_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# add imm, rel, rel
+do_add_122: add instr, $1, add_122_src_1_ptr
+add instr, $2, add_122_src_2_ptr
+add instr, $3, add_122_dst_ptr
+add add_122_src_1_ptr: 0, $0, add_122_src_1
+add add_122_src_2_ptr: 0, $program, add_122_src_2
+add add_122_src_2, rel_base, add_122_src_2
+add add_122_dst_ptr: 0, $program, add_122_dst
+add add_122_dst, rel_base, add_122_dst
+add add_122_src_1: $0, add_122_src_2: 0, add_122_dst: 0
+add ip, $4, ip
+jz $0, $interpret_instr
+# add rel, rel, rel
+do_add_222: add instr, $1, add_222_src_1_ptr
+add instr, $2, add_222_src_2_ptr
+add instr, $3, add_222_dst_ptr
+add add_222_src_1_ptr: 0, $program, add_222_src_1
+add add_222_src_1, rel_base, add_222_src_1
+add add_222_src_2_ptr: 0, $program, add_222_src_2
+add add_222_src_2, rel_base, add_222_src_2
+add add_222_dst_ptr: 0, $program, add_222_dst
+add add_222_dst, rel_base, add_222_dst
+add add_222_src_1: 0, add_222_src_2: 0, add_222_dst: 0
 add ip, $4, ip
 jz $0, $interpret_instr
 # mul pos, pos, pos
