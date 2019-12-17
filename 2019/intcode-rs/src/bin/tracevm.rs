@@ -156,8 +156,8 @@ enum TracerCommandResult {
 
 enum TracerCommand {
     Step,
-    Examine(usize, usize),
-    DisAsm(usize),
+    Examine(usize, usize, bool),
+    DisAsm(usize, usize, bool),
     SetLabel(usize, String),
     ClearLabel(String),
     SetBreakpoint(usize),
@@ -191,7 +191,7 @@ impl TracerCommand {
                 TracerCommand::Step
             },
 
-            "x" | "examine" => {
+            "x" | "examine" | "xn" | "examine-nums" => {
                 let ptr = cmd.next()
                     .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
                 let ptr = ptr.parse::<usize>()
@@ -200,15 +200,21 @@ impl TracerCommand {
                     .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
                 let len = len.parse::<usize>()
                     .map_err(|_| IntCodeError::ParseError)?;
-                TracerCommand::Examine(ptr, len)
+                TracerCommand::Examine(ptr, len,
+                    cmd_word == "xn" || cmd_word == "examine-nums")
             },
 
-            "d" | "disassemble" => {
+            "d" | "disassemble" | "dn" | "disassemble-nums" => {
                 let ptr = cmd.next()
                     .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
                 let ptr = ptr.parse::<usize>()
                     .map_err(|_| IntCodeError::ParseError)?;
-                TracerCommand::DisAsm(ptr)
+                let len = cmd.next()
+                    .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
+                let len = len.parse::<usize>()
+                    .map_err(|_| IntCodeError::ParseError)?;
+                TracerCommand::DisAsm(ptr, len,
+                    cmd_word == "dn" || cmd_word == "disassemble-nums")
             },
 
             "l" | "label" => {
@@ -289,33 +295,50 @@ impl TracerCommand {
         match self {
             TracerCommand::Step => TracerCommandResult::Step,
 
-            TracerCommand::Examine(ptr, len) => {
-                let mut sep = "";
-                for p in ptr..ptr + len {
-                    print!("{}{}", sep, *program.memory.get(p));
-                    sep = ",";
+            TracerCommand::Examine(ptr, len, nums) => {
+                if nums {
+                    for p in ptr..ptr + len {
+                        println!("{}{}{}\t{}", BEGIN_YELLOW, p, CLEAR_COLOR,
+                            *program.memory.get(p));
+                    }
+                } else {
+                    let mut sep = "";
+                    for p in ptr..ptr + len {
+                        print!("{}{}", sep, *program.memory.get(p));
+                        sep = ",";
+                    }
+                    println!();
                 }
-                println!();
                 TracerCommandResult::WaitCommands
             },
 
             // TODO: disassemble range?
-            TracerCommand::DisAsm(ptr) => {
+            TracerCommand::DisAsm(ptr, len, nums) => {
                 let orig_ip = program.ip;
 
                 program.ip = ptr;
 
-                if let Ok(opcode) = OpCode::parse_next(program) {
-                    match opcode.disassemble_at(&mut io::stderr(),
-                          &tracer.labels, program.ip) {
-                        Ok(_) => { println!() },
-                        Err(e) => {
-                            eprintln!("{}disassembly failed: {:?}{}",
-                                BEGIN_RED, e, CLEAR_COLOR);
-                        },
-                    };
-                } else {
-                    println!("${}", *program.memory.get(ptr));
+                while program.ip < ptr + len {
+                    if nums {
+                        print!("{}{}{}\t", BEGIN_YELLOW, program.ip,
+                            CLEAR_COLOR);
+                    }
+                    if let Ok(opcode) = OpCode::parse_next(program) {
+                        match opcode.disassemble_at(&mut io::stdout(),
+                              &tracer.labels, program.ip) {
+                            Ok(_) => { println!() },
+                            Err(e) => {
+                                if nums { println!() };
+                                eprintln!("{}disassembly failed: {:?}{}",
+                                    BEGIN_RED, e, CLEAR_COLOR);
+                                break;
+                            },
+                        };
+                        program.ip += opcode.width();
+                    } else {
+                        println!("${}", *program.memory.get(ptr));
+                        program.ip += 1;
+                    }
                 }
 
                 program.ip = orig_ip;
@@ -377,8 +400,10 @@ impl TracerCommand {
             TracerCommand::Help => {
                 println!("{}ictrace - tracer commands:", BEGIN_YELLOW);
                 println!("(s)tep");
-                println!("e(x)amine <ptr> <len>");
-                println!("(d)isassemble <ptr>");
+                println!("e(x)amine <ptr> <len> [nums]");
+                println!("(xn)/examine-nums <ptr> <len>");
+                println!("(d)isassemble <ptr> <len>");
+                println!("(dn)/disassemble-nums <ptr> <len>");
                 println!("(l)abel <ptr> <lbl>");
                 println!("clea(r) <lbl>|<breakpoint>");
                 println!("(b)reak <ptr>");
