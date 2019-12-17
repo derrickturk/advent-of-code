@@ -27,3 +27,6 @@ futures = { version = "0.3", features = ["thread-pool"] }
 structopt = "0.3"
 regex = "1"
 lazy_static = "1.4.0"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3.8", features = ["handleapi", "processenv", "consoleapi"] }

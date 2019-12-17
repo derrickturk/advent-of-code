@@ -16,6 +16,15 @@ use structopt::StructOpt;
 use intcode::*;
 use intcode::disasm::{LabelMap, DisAsm};
 
+#[cfg(windows)]
+use winapi::um::{
+    handleapi::INVALID_HANDLE_VALUE,
+    winbase::{STD_OUTPUT_HANDLE},
+    wincon::{ENABLE_VIRTUAL_TERMINAL_PROCESSING},
+    processenv::GetStdHandle,
+    consoleapi::{GetConsoleMode, SetConsoleMode},
+};
+
 const BEGIN_RED: &'static str = "\u{1b}[1;31m";
 const BEGIN_GREEN: &'static str = "\u{1b}[1;32m";
 const BEGIN_BLUE: &'static str = "\u{1b}[1;34m";
@@ -633,7 +642,28 @@ async fn run_vm(image: Vec<i64>, options: &Options) -> Result<(), Error> {
     Ok(())
 }
 
+#[cfg(windows)]
+fn set_ansi_console() {
+    unsafe {
+        let out = GetStdHandle(STD_OUTPUT_HANDLE);
+        if out == INVALID_HANDLE_VALUE {
+            return;
+        }
+
+        let mut mode = 0;
+        if GetConsoleMode(out, &mut mode) == 0 {
+            return;
+        }
+
+        SetConsoleMode(out, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+    }
+}
+
 fn main() -> Result<(), Error> {
+    if cfg!(windows) {
+        set_ansi_console();
+    }
+
     let options = Options::from_args();
 
     let mut program = String::new();
