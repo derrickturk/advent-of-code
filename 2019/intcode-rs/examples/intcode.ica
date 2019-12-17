@@ -35,6 +35,14 @@ eq word, $4, is_out_0
 jnz is_out_0: $0, $do_out_0
 eq word, $104, is_out_1
 jnz is_out_1: $0, $do_out_1
+eq word, $5, is_jnz_00
+jnz is_jnz_00: $0, $do_jnz_00
+eq word, $105, is_jnz_10
+jnz is_jnz_10: $0, $do_jnz_10
+eq word, $1005, is_jnz_01
+jnz is_jnz_01: $0, $do_jnz_01
+eq word, $1105, is_jnz_11
+jnz is_jnz_11: $0, $do_jnz_11
 eq word, $7, is_lt_000
 jnz is_lt_000: $0, $do_lt_000
 eq word, $107, is_lt_100
@@ -156,6 +164,46 @@ do_out_1: add instr, $1, out_1_src_ptr
 add out_1_src_ptr: 0, $0, out_1_src
 out out_1_src: $0
 add ip, $2, ip
+jz $0, $interpret_instr
+# jnz pos, pos
+do_jnz_00: add instr, $1, jnz_00_cnd_ptr
+add instr, $2, jnz_00_dst_ptr
+add jnz_00_cnd_ptr: 0, $program, jnz_00_cnd
+add jnz_00_dst_ptr: 0, $program, jnz_00_dst
+jnz jnz_00_cnd: 0, $jnz_00_take_jump
+add ip, $3, ip
+jz $0, $interpret_instr
+jnz_00_take_jump: add jnz_00_dst: 0, $0, ip
+jz $0, $interpret_instr
+# jnz imm, pos
+do_jnz_10: add instr, $1, jnz_10_cnd_ptr
+add instr, $2, jnz_10_dst_ptr
+add jnz_10_cnd_ptr: 0, $0, jnz_10_cnd
+add jnz_10_dst_ptr: 0, $program, jnz_10_dst
+jnz jnz_10_cnd: $0, $jnz_10_take_jump
+add ip, $3, ip
+jz $0, $interpret_instr
+jnz_10_take_jump: add jnz_10_dst: 0, $0, ip
+jz $0, $interpret_instr
+# jnz pos, imm
+do_jnz_01: add instr, $1, jnz_01_cnd_ptr
+add instr, $2, jnz_01_dst_ptr
+add jnz_01_cnd_ptr: 0, $program, jnz_01_cnd
+add jnz_01_dst_ptr: 0, $0, jnz_01_dst
+jnz jnz_01_cnd: 0, $jnz_01_take_jump
+add ip, $3, ip
+jz $0, $interpret_instr
+jnz_01_take_jump: add jnz_01_dst: $0, $0, ip
+jz $0, $interpret_instr
+# jnz imm, imm
+do_jnz_11: add instr, $1, jnz_11_cnd_ptr
+add instr, $2, jnz_11_dst_ptr
+add jnz_11_cnd_ptr: 0, $0, jnz_11_cnd
+add jnz_11_dst_ptr: 0, $0, jnz_11_dst
+jnz jnz_11_cnd: $0, $jnz_11_take_jump
+add ip, $3, ip
+jz $0, $interpret_instr
+jnz_11_take_jump: add jnz_11_dst: $0, $0, ip
 jz $0, $interpret_instr
 # lt pos, pos, pos
 do_lt_000: add instr, $1, lt_000_src_1_ptr
