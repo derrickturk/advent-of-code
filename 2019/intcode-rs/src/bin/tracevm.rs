@@ -16,6 +16,12 @@ use structopt::StructOpt;
 use intcode::*;
 use intcode::disasm::{LabelMap, DisAsm};
 
+const BEGIN_RED: &'static str = "\u{1b}[1;31m";
+const BEGIN_GREEN: &'static str = "\u{1b}[1;32m";
+const BEGIN_BLUE: &'static str = "\u{1b}[1;34m";
+const BEGIN_YELLOW: &'static str = "\u{1b}[1;33m";
+const CLEAR_COLOR: &'static str = "\u{1b}[0m";
+
 #[derive(StructOpt, Debug)]
 struct Options {
     #[structopt(short, long, default_value="512")]
@@ -136,6 +142,7 @@ enum TracerCommandResult {
     Step,
     Jump,
     WaitCommands,
+    Quit,
 }
 
 /* "nice to have" / TODO list
@@ -160,11 +167,14 @@ enum TracerCommand {
     Write(usize, i64),
     SaveLabels(String),
     Help,
+    Quit,
 }
 
 impl TracerCommand {
     fn get_command() -> Result<TracerCommand, Error> {
         let mut line = String::new();
+        print!("ictrace> ");
+        io::stdout().flush()?;
         io::stdin().read_line(&mut line)?;
 
         let cmd = line.trim();
@@ -265,6 +275,8 @@ impl TracerCommand {
 
             "h" | "help" => TracerCommand::Help,
 
+            "q" | "quit" => TracerCommand::Quit,
+
             _ => return Err(Error::UnknownCommand(line.clone())),
         };
 
@@ -280,10 +292,10 @@ impl TracerCommand {
             TracerCommand::Examine(ptr, len) => {
                 let mut sep = "";
                 for p in ptr..ptr + len {
-                    eprint!("{}{}", sep, *program.memory.get(p));
+                    print!("{}{}", sep, *program.memory.get(p));
                     sep = ",";
                 }
-                eprintln!();
+                println!();
                 TracerCommandResult::WaitCommands
             },
 
@@ -296,11 +308,14 @@ impl TracerCommand {
                 if let Ok(opcode) = OpCode::parse_next(program) {
                     match opcode.disassemble_at(&mut io::stderr(),
                           &tracer.labels, program.ip) {
-                        Ok(_) => { eprintln!() },
-                        Err(e) => { eprintln!("disassembly failed: {:?}", e) },
+                        Ok(_) => { println!() },
+                        Err(e) => {
+                            eprintln!("{}disassembly failed: {:?}{}",
+                                BEGIN_RED, e, CLEAR_COLOR);
+                        },
                     };
                 } else {
-                    eprintln!("${}", *program.memory.get(ptr));
+                    println!("${}", *program.memory.get(ptr));
                 }
 
                 program.ip = orig_ip;
@@ -347,29 +362,38 @@ impl TracerCommand {
                 if let Ok(mut file) = File::create(path) {
                     match map_file::write_map(&mut file, &out_labels) {
                         Ok(_) => { },
-                        Err(e) => { eprintln!("unable to write: {:?}", e); }
+                        Err(e) => {
+                            eprintln!("{}unable to write: {:?}{}",
+                                BEGIN_RED, e, CLEAR_COLOR);
+                        },
                     }
                 } else {
-                    eprintln!("unable to open file");
+                    eprintln!("{}unable to open file{}",
+                        BEGIN_RED, CLEAR_COLOR);
                 }
                 TracerCommandResult::WaitCommands
             },
 
             TracerCommand::Help => {
-                eprintln!("ictrace - tracer commands:");
-                eprintln!("(s)tep");
-                eprintln!("e(x)amine <ptr> <len>");
-                eprintln!("(d)isassemble <ptr>");
-                eprintln!("(l)abel <ptr> <lbl>");
-                eprintln!("clea(r) <lbl>|<breakpoint>");
-                eprintln!("(b)reak <ptr>");
-                eprintln!("(j)ump <ptr>");
-                eprintln!("(c)ontinue <ptr>");
-                eprintln!("(w)rite <ptr> <num>");
-                eprintln!("sa(v)elabels <file>");
-                eprintln!("(h)elp");
-                eprintln!();
+                println!("{}ictrace - tracer commands:", BEGIN_YELLOW);
+                println!("(s)tep");
+                println!("e(x)amine <ptr> <len>");
+                println!("(d)isassemble <ptr>");
+                println!("(l)abel <ptr> <lbl>");
+                println!("clea(r) <lbl>|<breakpoint>");
+                println!("(b)reak <ptr>");
+                println!("(j)ump <ptr>");
+                println!("(c)ontinue <ptr>");
+                println!("(w)rite <ptr> <num>");
+                println!("sa(v)elabels <file>");
+                println!("(h)elp{}", CLEAR_COLOR);
+                println!();
                 TracerCommandResult::WaitCommands
+            },
+
+            TracerCommand::Quit => {
+                println!("{}bye!{}", BEGIN_YELLOW, CLEAR_COLOR);
+                TracerCommandResult::Quit
             },
         }
     }
@@ -382,11 +406,11 @@ impl Iterator for InputIter {
 
     fn next(&mut self) -> Option<i64> {
         loop {
-            let mut buf = String::new();
-            print!("input> ");
+            let mut line = String::new();
+            print!("{}input>{} ", BEGIN_GREEN, CLEAR_COLOR);
             io::stdout().flush().ok()?;
-            io::stdin().read_line(&mut buf).ok()?;
-            if let Ok(num) = buf.trim().parse::<i64>() {
+            io::stdin().read_line(&mut line).ok()?;
+            if let Ok(num) = line.trim().parse::<i64>() {
                 return Some(num);
             }
         }
@@ -425,12 +449,20 @@ async fn run_vm(program: Vec<i64>, options: &Options) -> Result<(), Error> {
 
     loop {
         let opcode = OpCode::parse_next(&mut program)?;
-        eprintln!("ip: {}, rb: {}", program.ip, program.relative_base);
+        println!("{}ip: {}, rb: {}{}", BEGIN_BLUE, program.ip,
+            program.relative_base, CLEAR_COLOR);
 
-        match opcode.disassemble_at(&mut io::stderr(),
+        print!("{}", BEGIN_BLUE);
+        match opcode.disassemble_at(&mut io::stdout(),
               &tracer.labels, program.ip) {
-            Ok(_) => { eprintln!() },
-            Err(e) => { eprintln!("disassembly failed: {:?}", e) },
+            Ok(_) => {
+                println!("{}", CLEAR_COLOR);
+            },
+            Err(e) => {
+                println!("{}", CLEAR_COLOR);
+                eprintln!("{}disassembly failed: {:?}{}",
+                    BEGIN_RED, e, CLEAR_COLOR);
+            },
         };
 
         if !tracer.should_continue(program.ip) {
@@ -439,7 +471,8 @@ async fn run_vm(program: Vec<i64>, options: &Options) -> Result<(), Error> {
                 let cmd = match TracerCommand::get_command() {
                     Ok(cmd) => cmd,
                     Err(e) => {
-                        eprintln!("invalid command: {:?}", e);
+                        eprintln!("{}invalid command: {:?}{}",
+                            BEGIN_RED, e, CLEAR_COLOR);
                         continue;
                     },
                 };
@@ -448,6 +481,7 @@ async fn run_vm(program: Vec<i64>, options: &Options) -> Result<(), Error> {
                     TracerCommandResult::Step => break,
                     TracerCommandResult::Jump => { should_jump = true; break; },
                     TracerCommandResult::WaitCommands => continue,
+                    TracerCommandResult::Quit => return Ok(()),
                 };
             }
             if should_jump { continue; }
@@ -460,7 +494,9 @@ async fn run_vm(program: Vec<i64>, options: &Options) -> Result<(), Error> {
 
         if let Ok(msg) = output_recv.try_next() {
             match msg {
-                Some(msg) => println!("output: {}", msg),
+                Some(msg) => {
+                    println!("{}output> {}{}", BEGIN_GREEN, msg, CLEAR_COLOR);
+                },
                 None => break,
             };
         }
