@@ -1,10 +1,11 @@
 import sys
 
 class Mem:
-    __slots__ = ('_mem',)
+    __slots__ = ('_mem', '_bp')
 
     def __init__(self, mem):
         self._mem = mem
+        self._bp = 0
 
     def __getitem__(self, idx):
         if idx >= len(self._mem):
@@ -16,24 +17,31 @@ class Mem:
             self._mem.extend([0] * (idx - len(self._mem) + 1))
         self._mem[idx] = val
 
+    def r(self, ptr, mode):
+        if mode == 0:
+            return self[self[ptr]]
+        elif mode == 1:
+            return self[ptr]
+        elif mode == 2:
+            return self[self._bp + self[ptr]]
+        else:
+            raise ValueError(f'unknown read mode {mode}')
+
+    def w(self, ptr, mode, val):
+        if mode == 0:
+            self[self[ptr]] = val
+        elif mode == 2:
+            self[self._bp + self[ptr]] = val
+        else:
+            raise ValueError(f'unknown write mode {mode}')
+
+    def adjust_bp(self, offset):
+        self._bp += offset
+
 def load(opcode):
     instr = opcode % 100
     modes = opcode // 100
     return instr, modes % 10, modes // 10 % 10, modes // 100
-
-def _r(mem, ptr, mode):
-    if mode == 0:
-        return mem[mem[ptr]]
-    elif mode == 1:
-        return mem[ptr]
-    else:
-        raise ValueError(f'unknown read mode {mode}')
-
-def _w(mem, ptr, mode, val):
-    if mode == 0:
-        mem[mem[ptr]] = val
-    else:
-        raise ValueError(f'unknown write mode {mode}')
 
 def exec(mem):
     ip = 0
@@ -41,33 +49,36 @@ def exec(mem):
     while True:
         instr, m1, m2, m3 = load(mem[ip])
         if instr == 1:
-            _w(mem, ip + 3, m3, _r(mem, ip + 1, m1) + _r(mem, ip + 2, m2))
+            mem.w(ip + 3, m3, mem.r(ip + 1, m1) + mem.r(ip + 2, m2))
             ip += 4
         elif instr == 2:
-            _w(mem, ip + 3, m3, _r(mem, ip + 1, m1) * _r(mem, ip + 2, m2))
+            mem.w(ip + 3, m3, mem.r(ip + 1, m1) * mem.r(ip + 2, m2))
             ip += 4
         elif instr == 3:
-            _w(mem, ip + 1, m1, int(sys.stdin.readline().rstrip()))
+            mem.w(ip + 1, m1, int(sys.stdin.readline().rstrip()))
             ip += 2
         elif instr == 4:
-            print(_r(mem, ip + 1, m1))
+            print(mem.r(ip + 1, m1))
             ip += 2
         elif instr == 5:
-            if _r(mem, ip + 1, m1) != 0:
-                ip = _r(mem, ip + 2, m2)
+            if mem.r(ip + 1, m1) != 0:
+                ip = mem.r(ip + 2, m2)
             else:
                 ip += 3
         elif instr == 6:
-            if _r(mem, ip + 1, m1) == 0:
-                ip = _r(mem, ip + 2, m2)
+            if mem.r(ip + 1, m1) == 0:
+                ip = mem.r(ip + 2, m2)
             else:
                 ip += 3
         elif instr == 7:
-            _w(mem, ip + 3, m3, int(_r(mem, ip + 1, m1) < _r(mem, ip + 2, m2)))
+            mem.w(ip + 3, m3, int(mem.r(ip + 1, m1) < mem.r(ip + 2, m2)))
             ip += 4
         elif instr == 8:
-            _w(mem, ip + 3, m3, int(_r(mem, ip + 1, m1) == _r(mem, ip + 2, m2)))
+            mem.w(ip + 3, m3, int(mem.r(ip + 1, m1) == mem.r(ip + 2, m2)))
             ip += 4
+        elif instr == 9:
+            mem.adjust_bp(mem.r(ip + 1, m1))
+            ip += 2
         elif instr == 99:
             break
         else:
