@@ -1,4 +1,5 @@
 use std::{
+    borrow::Borrow,
     collections::{HashSet, hash_map::Entry},
     io::{self, Read, BufRead, BufReader, Write},
     fs::File,
@@ -170,6 +171,7 @@ enum TracerCommand {
     Write(usize, i64),
     Asm(Option<usize>),
     SaveLabels(String),
+    SaveImage(String),
     Help,
     Restart,
     Quit,
@@ -293,6 +295,12 @@ impl TracerCommand {
                 let path = cmd.next()
                     .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
                 TracerCommand::SaveLabels(path.to_string())
+            },
+
+            "i" | "saveimage" => {
+                let path = cmd.next()
+                    .ok_or_else(|| Error::UnknownCommand(line.clone()))?;
+                TracerCommand::SaveImage(path.to_string())
             },
 
             "h" | "help" => TracerCommand::Help,
@@ -518,6 +526,23 @@ impl TracerCommand {
                 TracerCommandResult::WaitCommands
             },
 
+            TracerCommand::SaveImage(path) => {
+                let image = program.memory.image();
+                if let Ok(mut file) = File::create(path) {
+                    match write_image(&mut file, &image) {
+                        Ok(_) => { },
+                        Err(e) => {
+                            eprintln!("{}unable to write: {:?}{}",
+                                BEGIN_RED, e, CLEAR_COLOR);
+                        },
+                    }
+                } else {
+                    eprintln!("{}unable to open file{}",
+                        BEGIN_RED, CLEAR_COLOR);
+                }
+                TracerCommandResult::WaitCommands
+            },
+
             TracerCommand::Help => {
                 println!("{}ictrace - tracer commands:", BEGIN_YELLOW);
                 println!("  (s)tep");
@@ -565,6 +590,17 @@ fn ptr_or_label(input: &str, labels: &LabelMap) -> Result<usize, Error> {
     } else {
         Err(Error::UnknownLabel(input.to_string()))
     }
+}
+
+#[inline]
+fn write_image(writer: &mut impl Write, image: &impl Borrow<[i64]>)
+      -> Result<(), Error> {
+    let mut sep = "";
+    for val in image.borrow().iter() {
+        write!(writer, "{}{}", sep, val)?;
+        sep = ",";
+    }
+    Ok(())
 }
 
 struct InputIter { }
