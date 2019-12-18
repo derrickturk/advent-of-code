@@ -560,6 +560,7 @@ impl TracerCommand {
                 println!("  (w)rite <ptr> <num>");
                 println!("  (a)ssemble <ptr>");
                 println!("  sa(v)elabels <file>");
+                println!("  save(i)mage <file>");
                 println!("  (h)elp");
                 println!("  restart");
                 println!("  (q)uit{}", CLEAR_COLOR);
