@@ -2,7 +2,7 @@
 
 module Main where
 
-import IntCodeC.Asm
+import Prufrock.Asm
 import System.IO (stdout)
 import qualified Data.Text.IO as TIO
 

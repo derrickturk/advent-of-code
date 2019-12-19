@@ -6,3 +6,4 @@
 .stack-work
 *.pbm
 .mypy_cache
+*.swo

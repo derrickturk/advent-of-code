@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, DeriveFunctor #-}
 
-module IntCodeC.Asm (
+module Prufrock.Asm (
     W(..)
   , ReadOperand(..)
   , WriteOperand(..)
