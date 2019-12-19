@@ -34,5 +34,5 @@ fn main() -> Result<(), IntCodeError> {
     let program: Vec<i64> = program.trim_end().split(',')
         .map(|word| word.parse().map_err(|_| IntCodeError::ParseError))
         .collect::<Result<_, _>>()?;
-    block_on(viz(program, 50))
+    block_on(viz(program, 250))
 }

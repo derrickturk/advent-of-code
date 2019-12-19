@@ -1,11 +1,9 @@
 use std::{
-    collections::HashSet,
+    collections::{HashSet, VecDeque},
     io,
-    thread,
 };
 
 use futures::{
-    future::{BoxFuture, FutureExt},
     executor::block_on,
     stream,
 };
@@ -33,42 +31,45 @@ async fn query(program: &[i64], x: i64, y: i64) -> Result<bool, IntCodeError> {
  *                                  v  \
  *                                  .    .
  */
-fn ff_square<'a>(program: &'a [i64], seen: &'a mut HashSet<(i64, i64)>,
-      x: i64, y: i64, n: i64
-      ) -> BoxFuture<'a, Result<Option<(i64, i64)>, IntCodeError>> {
-    async move {
-        if seen.contains(&(x, n)) {
-            return Ok(None);
-        }
+async fn ff_square<'a>(program: &'a [i64], x: i64, y: i64, n: i64
+      ) -> Result<Option<(i64, i64)>, IntCodeError> {
+    if !query(program, x, y).await? {
+        return Ok(None);
+    }
 
+    let mut seen = HashSet::new();
+    let mut todo = VecDeque::new();
+
+    seen.insert((x, y));
+    todo.push_back((x, y));
+
+    while let Some((x, y)) = todo.pop_front() {
         if seen.contains(&(x - n, y - n)) && seen.contains(&(x - n, y))
               && seen.contains(&(x, y - n)) {
             return Ok(Some((x, y)));
         }
 
-        if query(program, x, y).await? {
-            seen.insert((x, y));
-            if let Some(res) = ff_square(program, seen, x + 1, y, n).await? {
-                Ok(Some(res))
-            } else if let Some(res) = ff_square(program, seen, x, y + 1, n).await? {
-                Ok(Some(res))
-            } else if let Some(res) = ff_square(program, seen, x + 1, y + 1, n).await? {
-                Ok(Some(res))
-            } else {
-                Ok(None)
-            }
-        } else {
-            Ok(None)
+        if query(program, x + 1, y).await? {
+            seen.insert((x + 1, y));
+            todo.push_back((x + 1, y));
         }
-    }.boxed()
+
+        if query(program, x, y + 1).await? {
+            seen.insert((x, y + 1));
+            todo.push_back((x, y + 1));
+        }
+
+        if query(program, x + 1, y + 1).await? {
+            seen.insert((x + 1, y + 1));
+            todo.push_back((x + 1, y + 1));
+        }
+    }
+
+    Ok(None)
 }
 
 async fn problem2(program: &[i64]) -> Result<(), IntCodeError> {
-    let mut seen = HashSet::new();
-    let pos = ff_square(program, &mut seen, 6, 5, 100).await?;
-    for (x, y) in seen {
-        println!("saw ({}, {})", x, y);
-    };
+    let pos = ff_square(program, 6, 5, 100).await?;
     if let Some((x, y)) = pos {
         println!("bottom right at ({}, {})", x, y);
         println!("top left at ({}, {})", x - 99, y - 99);
@@ -86,9 +87,5 @@ fn main() -> Result<(), IntCodeError> {
     let program: Vec<i64> = program.trim_end().split(',')
         .map(|word| word.parse().map_err(|_| IntCodeError::ParseError))
         .collect::<Result<_, _>>()?;
-    let bigboy = thread::Builder::new()
-        .stack_size(1000 * 1024 * 1024)
-        .spawn(move || block_on(problem2(&program[..])))
-        .expect("failed to launch bigboy thread");
-    bigboy.join().expect("failed to join bigboy thread")
+    block_on(problem2(&program[..]))
 }
