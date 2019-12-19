@@ -12,7 +12,6 @@ module Prufrock.Asm (
 
 import qualified Data.Text as T
 import Data.Int (Int64)
-import Data.Word (Word64)
 import System.IO (Handle)
 import qualified Data.Text.IO as TIO
 
@@ -58,7 +57,7 @@ class Emit a where
   emit :: a -> T.Text
 
   hEmit :: Handle -> a -> IO ()
-  hEmit h = TIO.putStr . emit
+  hEmit _ = TIO.putStr . emit
 
 instance Emit W where
   emit (Num n) = T.pack $ show n

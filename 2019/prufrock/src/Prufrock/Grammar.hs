@@ -68,12 +68,12 @@ data Item
 type Program = [Item]
 
 ident :: T.Text -> Maybe Ident
-ident x = if valid x then Just (Ident x) else Nothing where
-  valid x = not (T.null x) && validBegin (T.head x)
-    && T.all validRest (T.tail x) && not (reserved x)
+ident x = if valid then Just (Ident x) else Nothing where
+  valid = not (T.null x) && validBegin (T.head x)
+    && T.all validRest (T.tail x) && not reserved
   validBegin c = isAlpha c || c == '_'
   validRest c = isAlphaNum c || c == '_'
-  reserved x = T.head x == '_' && not (T.null $ T.tail x)
+  reserved = T.head x == '_' && not (T.null $ T.tail x)
     && isUpper (T.head $ T.tail x)
 
 unsafeIdent :: T.Text -> Ident
