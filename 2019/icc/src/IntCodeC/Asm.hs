@@ -71,3 +71,31 @@ instance Emit ReadOperand where
 instance Emit WriteOperand where
   emit (Abs ptr) = emit ptr
   emit (Rel n) = T.cons '(' $ T.snoc (T.pack $ show n) ')' 
+
+instance Emit a => Emit (L a) where
+  emit (Labeled lbl a) = lbl <> ": " <> emit a
+  emit (Anon a) = emit a
+
+instance Emit Instruction where
+  emit (Add src1 src2 dst) = "add " <> emit src1 <> ", "
+    <> emit src2 <> ", " <> emit dst
+  emit (Mul src1 src2 dst) = "mul " <> emit src1 <> ", "
+    <> emit src2 <> ", " <> emit dst
+  emit (Input dst) = "in " <> emit dst
+  emit (Output src) = "out " <> emit src
+  emit (JmpTrue cnd dst) = "jnz " <> emit cnd <> ", " <> emit dst
+  emit (JmpFalse cnd dst) = "jz " <> emit cnd <> ", " <> emit dst
+  emit (Less src1 src2 dst) = "lt " <> emit src1 <> ", "
+    <> emit src2 <> ", " <> emit dst
+  emit (Eql src1 src2 dst) = "eq " <> emit src1 <> ", "
+    <> emit src2 <> ", " <> emit dst
+  emit (AdjustRelBase offset) = "rel " <> emit offset
+  emit Halt = "hlt"
+
+instance Emit Stmt where
+  emit (Instr i) = emit i
+  emit (Value v) = T.cons '$' $ T.pack $ show v
+
+instance Emit a => Emit [a] where
+  emit = mconcat . fmap (flip T.snoc '\n' . emit)
+  hEmit h = mapM_ (TIO.hPutStrLn h . emit)
