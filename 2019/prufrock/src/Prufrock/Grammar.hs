@@ -1,10 +1,16 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Prufrock.Grammar (
     Ident
   , getIdent
   , ident
   , unsafeIdent
+  , Type(..)
+  , Expr(..)
+  , UnaryOp(..)
+  , BinaryOp(..)
+  , Stmt(..)
+  , FnDef(..)
+  , Item(..)
+  , Program
 ) where
 
 import Data.Int (Int64)
@@ -12,14 +18,54 @@ import Data.Char (isAlpha, isAlphaNum, isUpper)
 import qualified Data.Text as T
 
 newtype Ident = Ident { getIdent :: T.Text }
+  deriving (Eq, Show, Ord)
 
-{-
+data Type
+  = IntType
+  | PtrType Type
+  | FnPtrType [Type] (Maybe Type)
+  deriving (Eq, Show)
+
 -- x | 73 | ...
 data Expr
   = Var Ident
   | Lit Int64
+  | FnCall Expr [Expr]
+  | UnOpApp UnaryOp Expr
+  | BinOpApp BinaryOp Expr Expr
   deriving (Eq, Show)
--}
+
+data UnaryOp
+  = AddressOf
+  | DeRef
+  | Negate
+  deriving (Eq, Show)
+
+data BinaryOp
+  = Add
+  | Mul
+  | LogAnd
+  | LogOr
+  deriving (Eq, Show)
+
+data Stmt
+  = Decl Ident Type (Maybe Expr)
+  | Assign Expr Expr
+  | AssignOp BinaryOp Expr Expr
+  | Input Expr
+  | Output Expr
+  | Return Expr
+  deriving (Eq, Show)
+
+data FnDef = FnDef Ident [(Ident, Type)] (Maybe Type) [Stmt]
+  deriving (Eq, Show)
+
+data Item
+  = StmtItem Stmt
+  | FnDefItem FnDef
+  deriving (Eq, Show)
+
+type Program = [Item]
 
 ident :: T.Text -> Maybe Ident
 ident x = if valid x then Just (Ident x) else Nothing where
