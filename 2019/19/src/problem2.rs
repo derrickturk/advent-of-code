@@ -10,7 +10,8 @@ use futures::{
 
 use intcode::*;
 
-async fn query(program: &[i64], x: i64, y: i64) -> Result<bool, IntCodeError> {
+async fn query(program: &[i64], (x, y): (i64, i64)
+      ) -> Result<bool, IntCodeError> {
     if x < 0 || y < 0 {
         return Ok(false);
     }
@@ -31,9 +32,9 @@ async fn query(program: &[i64], x: i64, y: i64) -> Result<bool, IntCodeError> {
  *                                  v  \
  *                                  .    .
  */
-async fn ff_square<'a>(program: &'a [i64], x: i64, y: i64, n: i64
+async fn ff_square(program: &[i64], x: i64, y: i64, n: i64
       ) -> Result<Option<(i64, i64)>, IntCodeError> {
-    if !query(program, x, y).await? {
+    if !query(program, (x, y)).await? {
         return Ok(None);
     }
 
@@ -44,24 +45,22 @@ async fn ff_square<'a>(program: &'a [i64], x: i64, y: i64, n: i64
     todo.push_back((x, y));
 
     while let Some((x, y)) = todo.pop_front() {
-        if seen.contains(&(x - n, y - n)) && seen.contains(&(x - n, y))
-              && seen.contains(&(x, y - n)) {
+        if seen.contains(&(x - n + 1, y - n + 1))
+              && seen.contains(&(x - n + 1, y))
+              && seen.contains(&(x, y - n + 1)) {
             return Ok(Some((x, y)));
         }
 
-        if query(program, x + 1, y).await? {
-            seen.insert((x + 1, y));
-            todo.push_back((x + 1, y));
+        let south = (x, y + 1);
+        if !seen.contains(&south) && query(program, south).await? {
+            seen.insert(south);
+            todo.push_back(south);
         }
 
-        if query(program, x, y + 1).await? {
-            seen.insert((x, y + 1));
-            todo.push_back((x, y + 1));
-        }
-
-        if query(program, x + 1, y + 1).await? {
-            seen.insert((x + 1, y + 1));
-            todo.push_back((x + 1, y + 1));
+        let east = (x + 1, y);
+        if !seen.contains(&east) && query(program, east).await? {
+            seen.insert(east);
+            todo.push_back(east);
         }
     }
 
@@ -69,7 +68,7 @@ async fn ff_square<'a>(program: &'a [i64], x: i64, y: i64, n: i64
 }
 
 async fn problem2(program: &[i64]) -> Result<(), IntCodeError> {
-    let pos = ff_square(program, 6, 5, 100).await?;
+    let pos = ff_square(program, 10, 9, 100).await?;
     if let Some((x, y)) = pos {
         println!("bottom right at ({}, {})", x, y);
         println!("top left at ({}, {})", x - 99, y - 99);
