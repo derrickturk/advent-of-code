@@ -1,7 +1,10 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Prufrock.Grammar (
-    Ident
+    keywords
+  , Ident
   , getIdent
-  , ident
+  , mkIdent
   , unsafeIdent
   , Type(..)
   , Expr(..)
@@ -16,6 +19,20 @@ module Prufrock.Grammar (
 import Data.Int (Int64)
 import Data.Char (isAlpha, isAlphaNum, isUpper)
 import qualified Data.Text as T
+
+keywords :: [T.Text]
+keywords = [ "int"
+           , "if"
+           , "else"
+           , "for"
+           , "while"
+           , "break"
+           , "continue"
+           , "fn"
+           , "return"
+           , "input"
+           , "output"
+           ]
 
 newtype Ident = Ident { getIdent :: T.Text }
   deriving (Eq, Show, Ord)
@@ -67,10 +84,10 @@ data Item
 
 type Program = [Item]
 
-ident :: T.Text -> Maybe Ident
-ident x = if valid then Just (Ident x) else Nothing where
+mkIdent :: T.Text -> Maybe Ident
+mkIdent x = if valid then Just (Ident x) else Nothing where
   valid = not (T.null x) && validBegin (T.head x)
-    && T.all validRest (T.tail x) && not reserved
+    && T.all validRest (T.tail x) && not reserved && not (elem x keywords)
   validBegin c = isAlpha c || c == '_'
   validRest c = isAlphaNum c || c == '_'
   reserved = T.head x == '_' && not (T.null $ T.tail x)
