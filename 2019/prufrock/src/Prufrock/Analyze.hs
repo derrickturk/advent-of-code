@@ -13,6 +13,7 @@ module Prufrock.Analyze (
   , typecheck
 ) where
 
+import Data.List (find)
 import qualified Data.Map.Strict as M
 
 import Control.Applicative
@@ -27,6 +28,7 @@ data AnalysisError
   | TypeError Type Type
   | ExpectedFnType Type
   | ExpectedPtrType Type
+  | NoReturn Ident Type
   | NonConcreteType Type
   | NonPointableType Type -- are we going to have void*?
   | NonLValue Expr
@@ -80,13 +82,17 @@ symbolTable prog = do
   execStateT (mapM_ visitItem prog) initTab
   where
     visitItem (StmtItem stmt) = visitStmt Nothing stmt
-    visitItem (FnDefItem (FnDef fn _ _ body)) = mapM_ (visitStmt $ Just fn) body
-    visitStmt s (Decl name ty _) = insertScope s name ty
+    visitItem (FnDefItem (FnDef fn args _ body)) = do
+      mapM_ (\(name, ty) -> insertScope (Just fn) name ty) args
+      mapM_ (visitStmt $ Just fn) body
+    visitStmt s (Decl name ty Nothing) = insertScope s name ty
+    visitStmt s (Decl name ty (Just e)) = visitExpr s e >> insertScope s name ty
     visitStmt s (Assign e1 e2) = visitExpr s e1 >> visitExpr s e2
     visitStmt s (AssignOp _ e1 e2) = visitExpr s e1 >> visitExpr s e2
     visitStmt s (Input e) = visitExpr s e
     visitStmt s (Output e) = visitExpr s e
     visitStmt s (Return (Just e)) = visitExpr s e
+    visitStmt _ (Return Nothing) = pure ()
     visitStmt s (ExprStmt e) = visitExpr s e
     visitExpr s (Var name) = do
       tab <- get
@@ -119,10 +125,64 @@ checkStmt :: MonadError AnalysisError m
           -> Maybe Ident
           -> Stmt
           -> m ()
+checkStmt _ _ (Decl _ ty Nothing) =
+  when (not $ concrete ty) (throwError $ NonConcreteType ty)
+checkStmt tab s (Decl _ ty (Just e)) = do
+  when (not $ concrete ty) (throwError $ NonConcreteType ty) 
+  eTy <- checkExpr tab s e
+  when (not $ coerce eTy ty) (throwError $ TypeError ty eTy)
+checkStmt tab s (Assign e1 e2) = do
+  when (not $ lvalue e1) (throwError $ NonLValue e1) 
+  e1Ty <- concreteExpr tab s e1
+  e2Ty <- checkExpr tab s e2
+  when (not $ coerce e2Ty e1Ty) (throwError $ TypeError e1Ty e2Ty)
+checkStmt tab s (AssignOp op e1 e2) = do
+  e1Ty <- concreteExpr tab s e1
+  e2Ty <- concreteExpr tab s e2
+  prTy <- promote op e1Ty e2Ty
+  when (not $ prTy == e1Ty) (throwError $ TypeError e1Ty prTy)
+checkStmt tab s (Input e) = do
+  when (not $ lvalue e) (throwError $ NonLValue e)
+  _ <- concreteExpr tab s e
+  pure ()
+checkStmt tab s (Output e) = do
+  _ <- concreteExpr tab s e
+  pure ()
+checkStmt _ _ (Return Nothing) = pure ()
+checkStmt tab s (Return (Just e)) = do 
+  _ <- concreteExpr tab s e
+  pure ()
 checkStmt tab s (ExprStmt e) = checkExpr tab s e >> pure ()
 
 checkFnDef :: MonadError AnalysisError m => SymbolTable -> FnDef -> m ()
-checkFnDef = undefined
+checkFnDef tab (FnDef fn args ret body) = do
+  mapM_ checkArg args
+  mapM_ (checkStmt tab (Just fn)) body
+  case ret of
+    UnitType -> checkUnitReturns
+    ty -> if (not $ concrete ty)
+      then throwError $ NonConcreteType ty
+      else checkReturns ty
+  where
+    checkArg (_, declTy) = do
+      when (not $ concrete declTy) (throwError $ NonConcreteType declTy)
+    allReturns [] = pure []
+    allReturns ((Return Nothing):rest) = (:) <$> pure UnitType
+                                             <*> allReturns rest
+    allReturns ((Return (Just e)):rest) = (:) <$> checkExpr tab (Just fn) e
+                                              <*> allReturns rest
+    allReturns (_:rest) = allReturns rest
+    checkUnitReturns = do
+      rets <- allReturns body
+      case find (/= UnitType) rets of
+        Nothing -> pure ()
+        Just ty -> throwError $ TypeError UnitType ty
+    checkReturns ty = do
+      rets <- allReturns body
+      when (null rets) (throwError $ NoReturn fn ty)
+      case find (/= ty) rets of
+        Nothing -> pure ()
+        Just otherTy -> throwError $ TypeError ty otherTy
 
 checkExpr :: MonadError AnalysisError m
           => SymbolTable
@@ -136,7 +196,7 @@ checkExpr tab s (Var x) = case getSymbolInfo tab s x of
 checkExpr _ _ (Lit _) = pure IntType
 checkExpr tab s (FnCall f args) = do
   fnTy <- checkExpr tab s f
-  argTys <- traverse (checkExpr tab s) args
+  argTys <- traverse (concreteExpr tab s) args
   case fnTy of
     FnType prmTys ret -> do
       mapM_ checkArg (zip prmTys argTys)
@@ -146,9 +206,9 @@ checkExpr tab s (FnCall f args) = do
       pure ret
     ty -> throwError $ ExpectedFnType ty
   where
-    checkArg (declTy, argTy) = if declTy == argTy
-      then pure ()
-      else throwError $ TypeError declTy argTy
+    checkArg (declTy, argTy) = do
+      when (not $ concrete declTy) (throwError $ NonConcreteType declTy)
+      when (declTy /= argTy) (throwError $ TypeError declTy argTy)
 checkExpr tab s (UnOpApp AddressOf e) = do
   when (not $ lvalue e) (throwError $ NonLValue e)
   ty <- checkExpr tab s e
@@ -165,9 +225,20 @@ checkExpr tab s (UnOpApp Negate e) = do
     IntType -> pure IntType
     _ -> throwError $ TypeError IntType ty
 checkExpr tab s (BinOpApp op e1 e2) = do
-  ty1 <- checkExpr tab s e1
-  ty2 <- checkExpr tab s e2
+  ty1 <- concreteExpr tab s e1
+  ty2 <- concreteExpr tab s e2
   promote op ty1 ty2
+
+concreteExpr :: MonadError AnalysisError m
+             => SymbolTable
+             -> Maybe Ident
+             -> Expr
+             -> m Type
+concreteExpr tab s e = do
+  eTy <- checkExpr tab s e
+  when (not $ concrete eTy) (throwError $ NonConcreteType eTy)
+  pure eTy
+{-# INLINE concreteExpr #-}
 
 concrete :: Type -> Bool
 concrete (FnType _ _) = False
@@ -200,3 +271,12 @@ promote LessEql _ _ = pure IntType
 promote LogAnd _ _ = pure IntType
 promote LogOr _ _ = pure IntType
 {-# INLINE promote #-}
+
+-- coerce from to
+coerce :: Type -> Type -> Bool
+coerce IntType (PtrType _) = True
+coerce (FnType fnArgs fnRet) (PtrType (FnType pArgs pRet))
+  | fnArgs == pArgs && fnRet == pRet = True
+  | otherwise = False
+coerce ty1 ty2 = ty1 == ty2
+{-# INLINE coerce #-}
