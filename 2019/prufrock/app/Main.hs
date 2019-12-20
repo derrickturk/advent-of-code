@@ -2,12 +2,37 @@
 
 module Main where
 
-import Prufrock.Asm
 import System.IO (stdout)
 import qualified Data.Text.IO as TIO
 
-main :: IO ()
-main = do
+import qualified Text.Megaparsec as MP
+
+import Prufrock.Asm
+import Prufrock.Parser
+
+emitTest :: IO ()
+emitTest = do
   hEmit stdout
     (Instr (Add (Anon (Imm (Num 3))) (Anon (Imm (Num 3))) (Anon (Abs (Num 0)))))
   TIO.hPutStrLn stdout ""
+
+parseTest :: IO ()
+parseTest = do
+  MP.parseTest ty "int"
+  MP.parseTest ty "***int"
+  MP.parseTest ty "fn( int, *int ) -> ***int"
+  MP.parseTest ty "fn( fn(int) -> int, *int )"
+  MP.parseTest ident "xyz"
+  MP.parseTest ident "_Azrael"
+  MP.parseTest expr "23"
+  MP.parseTest expr "-23"
+  MP.parseTest stmt "x: int = 23;"
+  MP.parseTest stmt "p: *int;"
+  MP.parseTest stmt "return p;"
+  MP.parseTest stmt "output f(521);"
+  MP.parseTest stmt "output f(521, *p);"
+
+main :: IO ()
+main = do
+  emitTest
+  parseTest

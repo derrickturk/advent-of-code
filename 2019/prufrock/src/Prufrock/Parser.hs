@@ -1,6 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Prufrock.Parser (
+    ident
+  , ty
+  , expr
+  , stmt
 ) where
 
 import Data.Void (Void)
@@ -27,6 +31,9 @@ symbol = L.symbol space
 comma :: Parser Char
 comma = lexeme $ char ','
 
+term :: Parser Char
+term = lexeme $ char ';'
+
 enclosed :: T.Text -> T.Text -> Parser a -> Parser a
 enclosed left right = between (symbol left) (symbol right)
 
@@ -52,3 +59,23 @@ ty =  IntType <$ "int"
   <|> PtrType <$> (char '*' *> lexeme ty)
   <|> FnPtrType <$> ("fn" *> enclosed "(" ")" (sepBy ty comma))
                 <*> (optional $ lexeme "->" *> ty)
+
+-- TODO: operators (uggggggh)
+expr :: Parser Expr
+expr =  try (Lit <$> integer)
+    <|> Var <$> ident 
+-- vvv EVIL LEFT RECURSION vvv
+-- expr =  try (FnCall <$> expr <*> enclosed "(" ")" (sepBy expr comma))
+
+stmt :: Parser Stmt
+stmt = stmt' <* term
+{-# INLINE stmt #-}
+
+stmt' :: Parser Stmt
+stmt' =  try (Decl <$> ident
+                   <*> (symbol ":" *> lexeme ty)
+                   <*> (optional $ symbol "=" *> expr))
+     <|> try (Assign <$> expr <*> (symbol "=" *> expr))
+     <|> try (Input <$> ("input" *> space1 *> expr))
+     <|> try (Output <$> ("output" *> space1 *> expr))
+     <|> (Return <$> ("return" *> space1 *> expr))
