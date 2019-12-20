@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Prufrock.IR (
-    -- MonadIR(..)
     Src(..)
   , Dst(..)
   , FnCall(..)
@@ -10,13 +9,6 @@ module Prufrock.IR (
 
 import Data.Int (Int64)
 import qualified Data.Text as T
-
-{- TODO: where does AST -> IR code live?
-import Control.Monad.State.Strict
-
-class Monad m => MonadIR m where
-  gensym :: m T.Text
--}
 
 data Src
   = Const Int64 
@@ -41,4 +33,5 @@ data IRInstruction
   | OutputFrom Src
   | Call FnCall [Src]
   | Ret
+  | End
   deriving (Eq, Show)
