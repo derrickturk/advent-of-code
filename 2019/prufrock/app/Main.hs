@@ -2,20 +2,19 @@
 
 module Main where
 
-import System.IO (stdout)
+import System.Environment
+import System.IO
 import qualified Data.Text.IO as TIO
+-- import System.FilePath
 
 import qualified Text.Megaparsec as MP
 
-import Prufrock.Asm
+-- import Prufrock.Asm
+import Prufrock.Analyze
+-- import Prufrock.Grammar
 import Prufrock.Parser
 
-emitTest :: IO ()
-emitTest = do
-  hEmit stdout
-    (Instr (Add (Anon (Imm (Num 3))) (Anon (Imm (Num 3))) (Anon (Abs (Num 0)))))
-  TIO.hPutStrLn stdout ""
-
+{-
 parseTest :: IO ()
 parseTest = do
   MP.parseTest ty "int"
@@ -37,8 +36,25 @@ parseTest = do
   MP.parseTest item "x: int = 3;"
   MP.parseTest item "f(23);"
   MP.parseTest program " x: int; y: *int = &x; *y = 3; output x; "
+-}
+
+compileFile :: FilePath -> IO ()
+compileFile path = do
+  -- let outPath = dropExtension path <.> "ica"
+  src <- TIO.readFile path
+  case MP.parse program path src of
+    Left e -> hPutStrLn stderr $ MP.errorBundlePretty e
+    Right prog -> do
+      let checked = do
+            tab <- symbolTable prog
+            typecheck tab prog
+      case checked of
+        Left e -> hPutStrLn stderr $ show e
+        Right _ -> pure ()
 
 main :: IO ()
 main = do
-  emitTest
-  parseTest
+  args <- getArgs
+  case args of
+    [] -> hPutStrLn stderr "Usage: prc files..."
+    _ -> mapM_ compileFile args

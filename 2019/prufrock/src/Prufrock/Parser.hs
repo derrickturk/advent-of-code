@@ -17,7 +17,7 @@ import qualified Data.Set as S
 import qualified Data.List.NonEmpty as NE
 
 import Text.Megaparsec
-import Text.Megaparsec.Char
+import Text.Megaparsec.Char hiding (space)
 import qualified Text.Megaparsec.Char.Lexer as L
 import Control.Monad.Combinators.Expr
 
@@ -25,23 +25,33 @@ import Prufrock.Grammar
 
 type Parser = Parsec Void T.Text
 
+space :: Parser ()
+space = L.space space1 (L.skipLineComment "//") (L.skipBlockComment "/*" "*/")
+{-# INLINE space #-}
+
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme space
+{-# INLINE lexeme #-}
 
 symbol :: T.Text -> Parser T.Text
 symbol = L.symbol space
+{-# INLINE symbol #-}
 
 comma :: Parser Char
 comma = lexeme $ char ','
+{-# INLINE comma #-}
 
 term :: Parser Char
 term = lexeme $ char ';'
+{-# INLINE term #-}
 
 enclosed :: T.Text -> T.Text -> Parser a -> Parser a
 enclosed left right = between (symbol left) (symbol right)
+{-# INLINE enclosed #-}
 
 integer :: Parser Int64
 integer = lexeme $ L.signed space L.decimal
+{-# INLINE integer #-}
 
 ident :: Parser Ident
 ident = lexeme $ do
