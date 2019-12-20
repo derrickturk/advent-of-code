@@ -11,6 +11,7 @@ module Prufrock.Parser (
 
 import Data.Void (Void)
 import Data.Int (Int64)
+import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import qualified Data.Set as S
 import qualified Data.List.NonEmpty as NE
@@ -56,11 +57,13 @@ ident = lexeme $ do
     identRest :: Parser [Char]
     identRest = many (char '_' <|> alphaNumChar)
 
+-- only "constructible" types! no functions or voids
 ty :: Parser Type
 ty =  IntType <$ "int"
   <|> PtrType <$> (char '*' *> lexeme ty)
-  <|> FnPtrType <$> ("fn" *> enclosed "(" ")" (sepBy ty comma))
-                <*> (optional $ lexeme "->" *> ty)
+  <|> PtrType <$> (FnType <$> ("fn" *> enclosed "(" ")" (sepBy ty comma))
+                          <*> (fromMaybe UnitType
+                                <$> (optional $ lexeme "->" *> ty)))
 
 expr :: Parser Expr
 expr = makeExprParser nonRecExpr opTable where
@@ -111,13 +114,13 @@ stmt' =  try (Decl <$> ident
      <|> try (Assign <$> expr <*> (symbol "=" *> expr))
      <|> try (Input <$> ("input" *> space1 *> expr))
      <|> try (Output <$> ("output" *> space1 *> expr))
-     <|> try (Return <$> ("return" *> space1 *> expr))
+     <|> try (Return <$> ("return" *> (optional $ space1 *> expr)))
      <|> (ExprStmt <$> expr)
 
 fndef :: Parser FnDef
 fndef = FnDef <$> (symbol "fn" *> ident)
               <*> (enclosed "(" ")" $ sepBy fnarg comma)
-              <*> (optional $ symbol "->" *> lexeme ty)
+              <*> (fromMaybe UnitType <$> (optional $ symbol "->" *> lexeme ty))
               <*> (enclosed "{" "}" $ many stmt)
   where fnarg = (,) <$> ident <*> (symbol ":" *> lexeme ty)
 

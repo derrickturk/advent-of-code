@@ -24,12 +24,12 @@ import Prufrock.Grammar
 data AnalysisError
   = AlreadyDefined Ident
   | Undefined Ident
-  | TypeError InternalType InternalType
-  | ExpectedFnType InternalType
-  | ExpectedRealType InternalType
+  | TypeError Type Type
+  | ExpectedFnType Type
+  | NonConstructibleType Type
   deriving (Eq, Show)
 
-type FnTable = M.Map Ident ([(Ident, Type)], (Maybe Type))
+type FnTable = M.Map Ident ([(Ident, Type)], Type)
 type VarTable = M.Map Ident Type
 
 data SymbolTable
@@ -39,16 +39,8 @@ data SymbolTable
                 } deriving (Eq, Show)
 
 data SymbolInfo
-  = SymbolFn [(Ident, Type)] (Maybe Type)
+  = SymbolFn [(Ident, Type)] Type
   | SymbolVar Type
-  deriving (Eq, Show)
-
--- "internal types" are the "real" types available to programs,
---   plus the special "void" and "fn" types, which can't be constructed
-data InternalType
-  = RealType Type
-  | Void
-  | Fn [Type] InternalType
   deriving (Eq, Show)
 
 getSymbolInfo :: SymbolTable -> Maybe Ident -> Ident -> Maybe SymbolInfo
@@ -91,7 +83,7 @@ symbolTable prog = do
     visitStmt s (AssignOp _ e1 e2) = visitExpr s e1 >> visitExpr s e2
     visitStmt s (Input e) = visitExpr s e
     visitStmt s (Output e) = visitExpr s e
-    visitStmt s (Return e) = visitExpr s e
+    visitStmt s (Return (Just e)) = visitExpr s e
     visitStmt s (ExprStmt e) = visitExpr s e
     visitExpr s (Var name) = do
       tab <- get
@@ -133,28 +125,23 @@ checkExpr :: MonadError AnalysisError m
           => SymbolTable
           -> Maybe Ident
           -> Expr
-          -> m InternalType
+          -> m Type
 checkExpr tab s (Var x) = case getSymbolInfo tab s x of
-  Just (SymbolFn args Nothing) -> pure $ Fn (snd <$> args) Void
-  Just (SymbolFn args (Just ret)) -> pure $ Fn (snd <$> args) (RealType ret)
-  Just (SymbolVar ty) -> pure $ RealType ty
+  Just (SymbolFn args ret) -> pure $ FnType (snd <$> args) ret
+  Just (SymbolVar ty) -> pure ty
   Nothing -> throwError $ Undefined x
-checkExpr _ _ (Lit _) = pure $ RealType IntType
+checkExpr _ _ (Lit _) = pure IntType
 checkExpr tab s (FnCall f args) = do
   fnTy <- checkExpr tab s f
   argTys <- traverse (checkExpr tab s) args
   case fnTy of
-    Fn args ret -> traverse checkArg (zip args argTys) >> pure ret
-    RealType (FnPtrType args ret) -> do
-      traverse checkArg (zip args argTys)
-      case ret of
-        Nothing -> pure Void
-        Just ty -> pure $ RealType ty
+    FnType args ret -> traverse checkArg (zip args argTys) >> pure ret
+    PtrType (FnType args ret) -> traverse checkArg (zip args argTys) >> pure ret
     ty -> throwError $ ExpectedFnType ty
   where
-    checkArg (declTy, argTy) = if (RealType declTy) == argTy
+    checkArg (declTy, argTy) = if declTy == argTy
       then pure ()
-      else throwError $ TypeError (RealType declTy) argTy
+      else throwError $ TypeError declTy argTy
 -- checkExpr (UnOpApp AddressOf e) = RealType . PtrType <$>
 
 lvalue :: Expr -> Bool
@@ -167,6 +154,4 @@ promote :: MonadError AnalysisError m => Type -> Type -> m Type
 promote IntType IntType = pure IntType
 promote p@(PtrType _) IntType = pure p
 promote IntType p@(PtrType _) = pure p
-promote f@(FnPtrType _ _) IntType = pure f
-promote IntType f@(FnPtrType _ _) = pure f
-promote ty1 ty2 = throwError $ TypeError (RealType ty1) (RealType ty2)
+promote ty1 ty2 = throwError $ TypeError ty1 ty2

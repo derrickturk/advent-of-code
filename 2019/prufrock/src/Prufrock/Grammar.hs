@@ -40,7 +40,8 @@ newtype Ident = Ident { getIdent :: T.Text }
 data Type
   = IntType
   | PtrType Type
-  | FnPtrType [Type] (Maybe Type)
+  | FnType [Type] Type
+  | UnitType
   deriving (Eq, Show)
 
 -- x | 73 | ...
@@ -74,11 +75,11 @@ data Stmt
   | AssignOp BinaryOp Expr Expr
   | Input Expr
   | Output Expr
-  | Return Expr
+  | Return (Maybe Expr)
   | ExprStmt Expr
   deriving (Eq, Show)
 
-data FnDef = FnDef Ident [(Ident, Type)] (Maybe Type) [Stmt]
+data FnDef = FnDef Ident [(Ident, Type)] Type [Stmt]
   deriving (Eq, Show)
 
 data Item
