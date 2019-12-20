@@ -76,6 +76,7 @@ data Stmt
   | Input Expr
   | Output Expr
   | Return (Maybe Expr)
+  | Exit
   | ExprStmt Expr
   deriving (Eq, Show)
 

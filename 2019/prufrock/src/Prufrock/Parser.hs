@@ -125,6 +125,7 @@ stmt' =  try (Decl <$> ident
      <|> try (Input <$> ("input" *> space1 *> expr))
      <|> try (Output <$> ("output" *> space1 *> expr))
      <|> try (Return <$> ("return" *> (optional $ space1 *> expr)))
+     <|> try (Exit <$ symbol "exit")
      <|> (ExprStmt <$> expr)
 
 fndef :: Parser FnDef

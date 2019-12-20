@@ -93,6 +93,7 @@ symbolTable prog = do
     visitStmt s (Output e) = visitExpr s e
     visitStmt s (Return (Just e)) = visitExpr s e
     visitStmt _ (Return Nothing) = pure ()
+    visitStmt _ Exit = pure ()
     visitStmt s (ExprStmt e) = visitExpr s e
     visitExpr s (Var name) = do
       tab <- get
@@ -152,6 +153,7 @@ checkStmt _ _ (Return Nothing) = pure ()
 checkStmt tab s (Return (Just e)) = do 
   _ <- concreteExpr tab s e
   pure ()
+checkStmt _ _ Exit = pure ()
 checkStmt tab s (ExprStmt e) = checkExpr tab s e >> pure ()
 
 checkFnDef :: MonadError AnalysisError m => SymbolTable -> FnDef -> m ()
