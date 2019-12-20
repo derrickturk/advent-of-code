@@ -5,6 +5,8 @@ module Prufrock.Parser (
   , ty
   , expr
   , stmt
+  , item
+  , program
 ) where
 
 import Data.Void (Void)
@@ -60,12 +62,6 @@ ty =  IntType <$ "int"
   <|> FnPtrType <$> ("fn" *> enclosed "(" ")" (sepBy ty comma))
                 <*> (optional $ lexeme "->" *> ty)
 
--- TODO: operators (uggggggh)
-nonRecExpr :: Parser Expr
-nonRecExpr =  try (Lit <$> integer)
-          <|> Var <$> ident 
-          <|> enclosed "(" ")" expr
-
 expr :: Parser Expr
 expr = makeExprParser nonRecExpr opTable where
   opTable = [ [ someFnCalls
@@ -99,6 +95,11 @@ expr = makeExprParser nonRecExpr opTable where
   somePrefix sym f = Prefix $ foldr1 (.) <$> some (f <$ symbol sym)
   -- somePostfix sym f :: Prefix $ foldr1 (.) <$> some (f <$ symbol sym)
 
+nonRecExpr :: Parser Expr
+nonRecExpr =  try (Lit <$> integer)
+          <|> Var <$> ident 
+          <|> enclosed "(" ")" expr
+
 stmt :: Parser Stmt
 stmt = stmt' <* term
 {-# INLINE stmt #-}
@@ -111,3 +112,18 @@ stmt' =  try (Decl <$> ident
      <|> try (Input <$> ("input" *> space1 *> expr))
      <|> try (Output <$> ("output" *> space1 *> expr))
      <|> (Return <$> ("return" *> space1 *> expr))
+
+fndef :: Parser FnDef
+fndef = FnDef <$> (symbol "fn" *> ident)
+              <*> (enclosed "(" ")" $ sepBy fnarg comma)
+              <*> (optional $ symbol "->" *> lexeme ty)
+              <*> (enclosed "{" "}" $ many stmt)
+  where fnarg = (,) <$> ident <*> (symbol ":" *> lexeme ty)
+
+item :: Parser Item
+item = try (StmtItem <$> stmt) <|> (FnDefItem <$> fndef)
+{-# INLINE item #-}
+
+program :: Parser Program
+program = space *> many item <* eof
+{-# INLINE program #-}
