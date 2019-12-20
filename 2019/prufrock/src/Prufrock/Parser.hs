@@ -68,7 +68,7 @@ nonRecExpr =  try (Lit <$> integer)
 
 expr :: Parser Expr
 expr = makeExprParser nonRecExpr opTable where
-  opTable = [ [ fncall 
+  opTable = [ [ someFnCalls
               ] 
             , [ somePrefix "-" $ UnOpApp Negate
               , somePrefix "*" $ UnOpApp DeRef
@@ -87,9 +87,10 @@ expr = makeExprParser nonRecExpr opTable where
             , [ binary "||" $ BinOpApp LogOr
               ]
             ]
-  fncall = Postfix $ do
+  fncall = do
     args <- enclosed "(" ")" (sepBy expr comma)
     pure $ \e -> FnCall e args
+  someFnCalls = Postfix $ foldr1 (.) <$> some fncall
   prefix sym f = Prefix (f <$ symbol sym)
   -- postfix sym f = Postfix (f <$ symbol sym)
   binary sym f = InfixL (f <$ symbol sym)
