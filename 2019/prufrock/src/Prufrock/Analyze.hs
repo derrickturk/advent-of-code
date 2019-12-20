@@ -10,6 +10,7 @@ module Prufrock.Analyze (
   , symbolTableScopes
   , getSymbolInfo
   , symbolTable
+  , typecheck
 ) where
 
 import qualified Data.Map.Strict as M
@@ -100,3 +101,26 @@ fnTable = flip execStateT M.empty . mapM_ visitItem where
       Just _ -> throwError $ AlreadyDefined name) name tab
     put tab'
   visitItem _ = pure ()
+
+typecheck :: MonadError AnalysisError m => SymbolTable -> Program -> m ()
+typecheck tab = mapM_ checkItem where
+  checkItem (StmtItem stmt) = checkStmt tab Nothing stmt
+  checkItem (FnDefItem fndef) = checkFnDef tab fndef
+{-# INLINE typecheck #-}
+
+checkStmt :: MonadError AnalysisError m
+          => SymbolTable
+          -> Maybe Ident
+          -> Stmt
+          -> m ()
+checkStmt = undefined
+
+checkFnDef :: MonadError AnalysisError m => SymbolTable -> FnDef -> m ()
+checkFnDef = undefined
+
+checkExpr :: MonadError AnalysisError m
+          => SymbolTable
+          -> Maybe Ident
+          -> Expr
+          -> m (Maybe Type)
+checkExpr = undefined

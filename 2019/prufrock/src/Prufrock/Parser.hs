@@ -111,7 +111,8 @@ stmt' =  try (Decl <$> ident
      <|> try (Assign <$> expr <*> (symbol "=" *> expr))
      <|> try (Input <$> ("input" *> space1 *> expr))
      <|> try (Output <$> ("output" *> space1 *> expr))
-     <|> (Return <$> ("return" *> space1 *> expr))
+     <|> try (Return <$> ("return" *> space1 *> expr))
+     <|> (ExprStmt <$> expr)
 
 fndef :: Parser FnDef
 fndef = FnDef <$> (symbol "fn" *> ident)

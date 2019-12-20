@@ -75,6 +75,7 @@ data Stmt
   | Input Expr
   | Output Expr
   | Return Expr
+  | ExprStmt Expr
   deriving (Eq, Show)
 
 data FnDef = FnDef Ident [(Ident, Type)] (Maybe Type) [Stmt]

@@ -35,6 +35,7 @@ parseTest = do
   MP.parseTest stmt "output f(-521, *p)(**x < 7)(&y <= 3) && 5;"
   MP.parseTest item "fn f(x: int) -> *int { return &x; }"
   MP.parseTest item "x: int = 3;"
+  MP.parseTest item "f(23);"
   MP.parseTest program " x: int; y: *int = &x; *y = 3; output x; "
 
 main :: IO ()

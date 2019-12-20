@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Prufrock.IR (
-    MonadIR(..)
-  , Src(..)
+    -- MonadIR(..)
+    Src(..)
   , Dst(..)
   , FnCall(..)
   , IRInstruction(..)
