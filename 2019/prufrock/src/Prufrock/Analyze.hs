@@ -26,7 +26,10 @@ data AnalysisError
   | Undefined Ident
   | TypeError Type Type
   | ExpectedFnType Type
-  | NonConstructibleType Type
+  | ExpectedPtrType Type
+  | NonConcreteType Type
+  | NonPointableType Type -- are we going to have void*?
+  | NonLValue Expr
   deriving (Eq, Show)
 
 type FnTable = M.Map Ident ([(Ident, Type)], Type)
@@ -116,7 +119,7 @@ checkStmt :: MonadError AnalysisError m
           -> Maybe Ident
           -> Stmt
           -> m ()
-checkStmt = undefined
+checkStmt tab s (ExprStmt e) = checkExpr tab s e >> pure ()
 
 checkFnDef :: MonadError AnalysisError m => SymbolTable -> FnDef -> m ()
 checkFnDef = undefined
@@ -135,14 +138,47 @@ checkExpr tab s (FnCall f args) = do
   fnTy <- checkExpr tab s f
   argTys <- traverse (checkExpr tab s) args
   case fnTy of
-    FnType args ret -> traverse checkArg (zip args argTys) >> pure ret
-    PtrType (FnType args ret) -> traverse checkArg (zip args argTys) >> pure ret
+    FnType prmTys ret -> do
+      mapM_ checkArg (zip prmTys argTys)
+      pure ret
+    PtrType (FnType prmTys ret) -> do
+      mapM_ checkArg (zip prmTys argTys)
+      pure ret
     ty -> throwError $ ExpectedFnType ty
   where
     checkArg (declTy, argTy) = if declTy == argTy
       then pure ()
       else throwError $ TypeError declTy argTy
--- checkExpr (UnOpApp AddressOf e) = RealType . PtrType <$>
+checkExpr tab s (UnOpApp AddressOf e) = do
+  when (not $ lvalue e) (throwError $ NonLValue e)
+  ty <- checkExpr tab s e
+  when (not $ pointable ty) (throwError $ NonPointableType ty)
+  pure $ PtrType ty
+checkExpr tab s (UnOpApp DeRef e) = do
+  ty <- checkExpr tab s e
+  case ty of
+    PtrType pTy -> pure pTy
+    _ -> throwError $ ExpectedPtrType ty
+checkExpr tab s (UnOpApp Negate e) = do
+  ty <- checkExpr tab s e
+  case ty of
+    IntType -> pure IntType
+    _ -> throwError $ TypeError IntType ty
+checkExpr tab s (BinOpApp op e1 e2) = do
+  ty1 <- checkExpr tab s e1
+  ty2 <- checkExpr tab s e2
+  promote op ty1 ty2
+
+concrete :: Type -> Bool
+concrete (FnType _ _) = False
+concrete UnitType = False
+concrete _ = True
+{-# INLINE concrete #-}
+
+pointable :: Type -> Bool
+pointable UnitType = False
+pointable _ = True
+{-# INLINE pointable #-}
 
 lvalue :: Expr -> Bool
 lvalue (Var _) = True
@@ -150,8 +186,17 @@ lvalue (UnOpApp DeRef _) = True
 lvalue _ = False
 {-# INLINE lvalue #-}
 
-promote :: MonadError AnalysisError m => Type -> Type -> m Type
-promote IntType IntType = pure IntType
-promote p@(PtrType _) IntType = pure p
-promote IntType p@(PtrType _) = pure p
-promote ty1 ty2 = throwError $ TypeError ty1 ty2
+promote :: MonadError AnalysisError m => BinaryOp -> Type -> Type -> m Type
+promote _ IntType IntType = pure IntType
+promote Add p@(PtrType _) IntType = pure p
+promote Add IntType p@(PtrType _) = pure p
+promote Add ty IntType = throwError $ TypeError IntType ty
+promote Add _ ty = throwError $ TypeError IntType ty
+promote Mul ty IntType = throwError $ TypeError IntType ty
+promote Mul _ ty = throwError $ TypeError IntType ty
+promote Eql _ _ = pure IntType -- TODO: this is shady
+promote Less _ _ = pure IntType
+promote LessEql _ _ = pure IntType
+promote LogAnd _ _ = pure IntType
+promote LogOr _ _ = pure IntType
+{-# INLINE promote #-}
