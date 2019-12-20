@@ -15,8 +15,8 @@ import qualified Data.List.NonEmpty as NE
 
 import Text.Megaparsec
 import Text.Megaparsec.Char
--- import Text.Megaparsec.Expr
 import qualified Text.Megaparsec.Char.Lexer as L
+import Control.Monad.Combinators.Expr
 
 import Prufrock.Grammar
 
@@ -61,11 +61,42 @@ ty =  IntType <$ "int"
                 <*> (optional $ lexeme "->" *> ty)
 
 -- TODO: operators (uggggggh)
+nonRecExpr :: Parser Expr
+nonRecExpr =  try (Lit <$> integer)
+          <|> Var <$> ident 
+          <|> enclosed "(" ")" expr
+
 expr :: Parser Expr
-expr =  try (Lit <$> integer)
-    <|> Var <$> ident 
--- vvv EVIL LEFT RECURSION vvv
--- expr =  try (FnCall <$> expr <*> enclosed "(" ")" (sepBy expr comma))
+expr = makeExprParser nonRecExpr opTable where
+  opTable = [ [ fncall 
+              ] 
+            , [ somePrefix "-" $ UnOpApp Negate
+              , somePrefix "*" $ UnOpApp DeRef
+              , prefix "&" $ UnOpApp AddressOf
+              ]
+            , [ binary "*" $ BinOpApp Mul
+              , binary "+" $ BinOpApp Add
+              ]
+            , [ binary "<=" $ BinOpApp LessEql
+              , binaryAmb "<" $ BinOpApp Less
+              ]
+            , [ binary "==" $ BinOpApp Eql
+              ]
+            , [ binary "&&" $ BinOpApp LogAnd
+              ]
+            , [ binary "||" $ BinOpApp LogOr
+              ]
+            ]
+  fncall = Postfix $ do
+    args <- enclosed "(" ")" (sepBy expr comma)
+    pure $ \e -> FnCall e args
+  prefix sym f = Prefix (f <$ symbol sym)
+  -- postfix sym f = Postfix (f <$ symbol sym)
+  binary sym f = InfixL (f <$ symbol sym)
+  binaryAmb sym f = InfixL
+    (f <$ (lexeme $ try $ string sym <* notFollowedBy punctuationChar))
+  somePrefix sym f = Prefix $ foldr1 (.) <$> some (f <$ symbol sym)
+  -- somePostfix sym f :: Prefix $ foldr1 (.) <$> some (f <$ symbol sym)
 
 stmt :: Parser Stmt
 stmt = stmt' <* term

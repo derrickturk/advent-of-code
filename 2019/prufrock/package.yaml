@@ -23,6 +23,7 @@ dependencies:
 - containers >= 0.6 && < 7
 - megaparsec >= 7.0 && < 8
 - mtl >= 2.2 && < 3
+- parser-combinators >= 1.1 && < 2
 - text >= 1.2 && < 2
 
 library:

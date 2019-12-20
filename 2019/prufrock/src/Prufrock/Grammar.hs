@@ -61,6 +61,9 @@ data UnaryOp
 data BinaryOp
   = Add
   | Mul
+  | Less
+  | Eql
+  | LessEql
   | LogAnd
   | LogOr
   deriving (Eq, Show)

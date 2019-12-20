@@ -26,11 +26,13 @@ parseTest = do
   MP.parseTest ident "_Azrael"
   MP.parseTest expr "23"
   MP.parseTest expr "-23"
-  MP.parseTest stmt "x: int = 23;"
+  MP.parseTest expr "**p <= ----23"
+  MP.parseTest stmt "x: int = 23 < 5;"
   MP.parseTest stmt "p: *int;"
   MP.parseTest stmt "return p;"
   MP.parseTest stmt "output f(521);"
   MP.parseTest stmt "output f(521, *p);"
+  MP.parseTest stmt "output f(-521, *p)(**x < 7)(&y <= 3) && 5;"
 
 main :: IO ()
 main = do
