@@ -116,6 +116,7 @@ async fn run_vm(pool: &ThreadPool, program: Vec<i64>, options: &Options,
             let mut line = String::new();
             while io::stdin().read_line(&mut line)? != 0 {
                 for c in line.chars() {
+                    if c == '\r' { continue; }
                     match input_send.send(c as i64).await {
                         Ok(_) => { },
                         Err(_) => { break; },

@@ -608,19 +608,44 @@ fn write_image(writer: &mut impl Write, image: &impl Borrow<[i64]>)
     Ok(())
 }
 
-struct InputIter { }
+struct InputIter {
+    text: bool,
+    line: String,
+}
+
+impl InputIter {
+    #[inline]
+    fn new(text: bool) -> Self {
+        Self { text, line: String::new(), }
+    }
+}
 
 impl Iterator for InputIter {
     type Item = i64;
 
     fn next(&mut self) -> Option<i64> {
         loop {
-            let mut line = String::new();
-            print!("{}input>{} ", BEGIN_GREEN, CLEAR_COLOR);
-            io::stdout().flush().ok()?;
-            io::stdin().read_line(&mut line).ok()?;
-            if let Ok(num) = line.trim().parse::<i64>() {
-                return Some(num);
+            if self.text {
+                if self.line.is_empty() {
+                    print!("{}input>{} ", BEGIN_GREEN, CLEAR_COLOR);
+                    io::stdout().flush().ok()?;
+                    self.line.clear();
+                    io::stdin().read_line(&mut self.line).ok()?;
+                }
+                if let Some(first) = self.line.drain(..1).next() {
+                    if first == '\r' {
+                        continue;
+                    }
+                    return Some(first as i64);
+                }
+            } else {
+                print!("{}input>{} ", BEGIN_GREEN, CLEAR_COLOR);
+                io::stdout().flush().ok()?;
+                self.line.clear();
+                io::stdin().read_line(&mut self.line).ok()?;
+                if let Ok(num) = self.line.trim().parse::<i64>() {
+                    return Some(num);
+                }
             }
         }
     }
@@ -663,7 +688,8 @@ async fn run_vm(image: Vec<i64>, options: &Options) -> Result<(), Error> {
         TracerState::new()
     };
 
-    let mut input = stream::iter(start_input.drain(..).chain(InputIter { }));
+    let mut input = stream::iter(start_input.drain(..)
+        .chain(InputIter::new(options.text)));
 
     loop {
         let opcode = OpCode::parse_next(&mut program)?;
