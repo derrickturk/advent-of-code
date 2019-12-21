@@ -644,6 +644,7 @@ async fn run_vm(image: Vec<i64>, options: &Options) -> Result<(), Error> {
                 for c in line?.chars() {
                     start_input.push(c as i64);
                 }
+                start_input.push('\n' as i64);
             }
         } else {
             for line in BufReader::new(file).lines() {

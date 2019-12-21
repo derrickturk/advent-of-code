@@ -99,6 +99,8 @@ async fn run_vm(pool: &ThreadPool, program: Vec<i64>, options: &Options,
                     input_send.send(c as i64)
                         .await.map_err(|_| Error::StartInputError)?;
                 }
+                input_send.send('\n' as i64)
+                    .await.map_err(|_| Error::StartInputError)?;
             }
         } else {
             for line in BufReader::new(file).lines() {
