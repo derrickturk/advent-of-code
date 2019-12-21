@@ -1,5 +1,6 @@
 use std::{
     borrow::Borrow,
+    convert::TryInto,
     collections::{HashSet, hash_map::Entry},
     io::{self, Read, BufRead, BufReader, Write},
     fs::File,
@@ -36,6 +37,9 @@ const CLEAR_COLOR: &'static str = "\u{1b}[0m";
 struct Options {
     #[structopt(short, long, default_value="512")]
     buf_size: usize,
+
+    #[structopt(short, long)]
+    text: bool,
 
     #[structopt(short="s", long)]
     start_input: Option<Vec<i64>>,
@@ -635,10 +639,18 @@ async fn run_vm(image: Vec<i64>, options: &Options) -> Result<(), Error> {
 
     if let Some(input_file) = &options.start_input_file {
         let file = File::open(input_file)?;
-        for line in BufReader::new(file).lines() {
-            let i = line?.trim_end().parse::<i64>()
-                .map_err(|_| IntCodeError::ParseError)?;
-            start_input.push(i);
+        if options.text {
+            for line in BufReader::new(file).lines() {
+                for c in line?.chars() {
+                    start_input.push(c as i64);
+                }
+            }
+        } else {
+            for line in BufReader::new(file).lines() {
+                let i = line?.trim_end().parse::<i64>()
+                    .map_err(|_| IntCodeError::ParseError)?;
+                start_input.push(i);
+            }
         }
     }
 
@@ -706,7 +718,14 @@ async fn run_vm(image: Vec<i64>, options: &Options) -> Result<(), Error> {
         if let Ok(msg) = output_recv.try_next() {
             match msg {
                 Some(msg) => {
-                    println!("{}output> {}{}", BEGIN_GREEN, msg, CLEAR_COLOR);
+                    if options.text {
+                        println!("{}output> {}{}", BEGIN_GREEN,
+                            (msg as u32).try_into()
+                              .unwrap_or(std::char::REPLACEMENT_CHARACTER),
+                            CLEAR_COLOR);
+                    } else {
+                        println!("{}output> {}{}", BEGIN_GREEN, msg, CLEAR_COLOR);
+                    }
                 },
                 None => break,
             };
