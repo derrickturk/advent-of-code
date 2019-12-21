@@ -126,7 +126,6 @@ impl DisAsm for OpCode {
                 cnd.disassemble_at(writer, labels, ip + 1)?;
                 write!(writer, ", ")?;
                 dst.disassemble_at(writer, labels, ip + 2)?;
-                // disassemble_jmp_dst_at(&dst, writer, labels, ip + 2)?;
             },
 
             OpCode::JmpFalse(cnd, dst) => {
@@ -134,7 +133,6 @@ impl DisAsm for OpCode {
                 cnd.disassemble_at(writer, labels, ip + 1)?;
                 write!(writer, ", ")?;
                 dst.disassemble_at(writer, labels, ip + 2)?;
-                // disassemble_jmp_dst_at(&dst, writer, labels, ip + 2)?;
             },
 
             OpCode::Less(src1, src2, dst) => {
@@ -244,13 +242,13 @@ pub fn parse_memory(memory: &[i64], opts: &DisAsmOpts) -> MemoryParse {
         };
     }
 
-    labels.retain(|ptr, _| *ptr < original_size);
-
     if let Some(file_labels) = &opts.labels {
         for (ptr, lbl) in file_labels.iter() {
             labels.insert(*ptr, lbl.clone());
         }
     }
+
+    labels.retain(|ptr, _| *ptr < original_size);
 
     MemoryParse { stmts, original_size, labels }
 }
@@ -346,30 +344,3 @@ fn add_jmp_dst_label(labels: &mut LabelMap, param: &ReadOperand) {
         }
     }
 }
-
-/*
-fn disassemble_jmp_dst_at(op: &ReadOperand, writer: &mut impl Write,
-      labels: &LabelMap, ip: usize) -> Result<(), DisAsmError> {
-    match *op {
-        ReadOperand::Immediate(n) => {
-            if let Some(lbl) = labels.get(&ip) {
-                write!(writer, "{}: ", lbl)?;
-            }
-
-            if let Ok(n) = n.try_into() {
-                if let Some(lbl) = labels.get(&n) {
-                    write!(writer, "${}", lbl)?;
-                } else {
-                    write!(writer, "${}", n)?;
-                }
-            } else {
-                write!(writer, "${}", n)?;
-            }
-
-            Ok(())
-        },
-
-        ReadOperand::Memory(op) => op.disassemble_at(writer, labels, ip),
-    }
-}
-*/
