@@ -2,6 +2,7 @@
 
 import sys
 import asyncio
+from collections import deque
 
 from itertools import permutations
 
@@ -11,14 +12,14 @@ PHASES = [0, 1, 2, 3, 4]
 
 def run_with_phases(image, phases):
     for i, p in enumerate(phases):
-        inputs = [p]
+        inputs = deque((p,))
         if i == 0:
             inputs.append(0)
         else:
             inputs.extend(outputs)
-        outputs = []
+        outputs = deque()
         exec(Mem(image.copy()), inputs, outputs)
-    return outputs[0]
+    return outputs.popleft()
 
 def main(argv):
     if len(argv) == 2:

@@ -1,6 +1,7 @@
 # blinder - minimalist intcode with "blind faith" in I/O
 
 import sys
+from collections import deque
 
 class Mem:
     __slots__ = ('_mem', '_bp')
@@ -56,8 +57,7 @@ def exec(mem, inputs, outputs):
             mem.w(ip + 3, m3, mem.r(ip + 1, m1) * mem.r(ip + 2, m2))
             ip += 4
         elif instr == 3:
-            mem.w(ip + 1, m1, inputs[0])
-            del inputs[0]
+            mem.w(ip + 1, m1, inputs.popleft())
             ip += 2
         elif instr == 4:
             outputs.append(mem.r(ip + 1, m1))
@@ -93,8 +93,8 @@ def main(argv):
     else:
         image = [int(x) for x in sys.stdin.readline().rstrip().split(',')]
 
-    inputs = [int(line.rstrip()) for line in sys.stdin]
-    outputs = []
+    inputs = deque(int(line.rstrip()) for line in sys.stdin)
+    outputs = deque()
     exec(Mem(image), inputs, outputs)
     for o in outputs:
         print(o)

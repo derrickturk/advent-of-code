@@ -1,6 +1,7 @@
 # use the "blocker" VM to solve problem 7
 
 import sys
+from collections import deque
 
 from itertools import permutations
 
@@ -12,9 +13,9 @@ def run_with_phases(image, phases):
     mems = [Mem(image.copy()) for _ in phases]
     ips = [0 for _ in phases]
 
-    loopback = list()
+    loopback = deque()
 
-    between = [list() for _ in range(len(phases) - 1)]
+    between = [deque() for _ in range(len(phases) - 1)]
 
     inputs = [loopback, *between]
     outputs = [*between, loopback]
@@ -36,7 +37,6 @@ def run_with_phases(image, phases):
         ips = [ip for _, ip in states]
         states = [state for state, _ in states]
 
-        # clear the output pipe
         if loopback:
             last_out = loopback[-1]
 

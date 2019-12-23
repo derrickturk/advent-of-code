@@ -1,6 +1,7 @@
 # blocker - minimalist intcode with explicit "blocking" I/O
 
 import sys
+from collections import deque
 from enum import Enum
 
 class State(Enum):
@@ -50,9 +51,7 @@ def load(opcode):
     modes = opcode // 100
     return instr, modes % 10, modes // 10 % 10, modes // 100
 
-# there's no "unsynchronized" queue that's not also async, so
-#   we'll use an inefficient front pop on a list just to show the concept
-def exec(mem, ip, in_list, out_list):
+def exec(mem, ip, in_deque, out_deque):
     while True:
         instr, m1, m2, m3 = load(mem[ip])
         if instr == 1:
@@ -62,12 +61,12 @@ def exec(mem, ip, in_list, out_list):
             mem.w(ip + 3, m3, mem.r(ip + 1, m1) * mem.r(ip + 2, m2))
             ip += 4
         elif instr == 3:
-            if len(in_list) == 0:
+            if len(in_deque) == 0:
                 return State.WAIT_INPUT, ip
-            mem.w(ip + 1, m1, in_list.pop(0))
+            mem.w(ip + 1, m1, in_deque.popleft())
             ip += 2
         elif instr == 4:
-            out_list.append(mem.r(ip + 1, m1))
+            out_deque.append(mem.r(ip + 1, m1))
             ip += 2
         elif instr == 5:
             if mem.r(ip + 1, m1) != 0:
@@ -100,8 +99,8 @@ def main(argv):
     else:
         image = [int(x) for x in sys.stdin.readline().rstrip().split(',')]
 
-    inputs = list()
-    outputs = list()
+    inputs = deque()
+    outputs = deque()
     ip = 0
     while True:
         state, ip = exec(Mem(image), ip, inputs, outputs)
