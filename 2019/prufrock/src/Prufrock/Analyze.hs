@@ -32,6 +32,7 @@ data AnalysisError
   | NonConcreteType Type
   | NonPointableType Type -- are we going to have void*?
   | NonLValue Expr
+  | AddressOfLocal Ident
   deriving (Eq, Show)
 
 type FnTable = M.Map Ident ([(Ident, Type)], Type)
@@ -45,16 +46,17 @@ data SymbolTable
 
 data SymbolInfo
   = SymbolFn [(Ident, Type)] Type
-  | SymbolVar Type
+  | SymbolGlobalVar Type
+  | SymbolLocalVar Type
   deriving (Eq, Show)
 
 getSymbolInfo :: SymbolTable -> Maybe Ident -> Ident -> Maybe SymbolInfo
 getSymbolInfo (SymbolTable fns globs locs) s name
   | Just (args, ret) <- M.lookup name fns = Just $ SymbolFn args ret
   | otherwise = case s of
-      Nothing -> SymbolVar <$> M.lookup name globs
-      Just fn -> SymbolVar <$>
-        (M.lookup name (locs M.! fn) <|> M.lookup name globs)
+      Nothing -> SymbolGlobalVar <$> M.lookup name globs
+      Just fn -> SymbolLocalVar <$> (M.lookup name (locs M.! fn))
+             <|> SymbolGlobalVar <$> M.lookup name globs
 
 insertScope :: (MonadState SymbolTable m, MonadError AnalysisError m)
             => Maybe Ident
@@ -193,7 +195,8 @@ checkExpr :: MonadError AnalysisError m
           -> m Type
 checkExpr tab s (Var x) = case getSymbolInfo tab s x of
   Just (SymbolFn args ret) -> pure $ FnType (snd <$> args) ret
-  Just (SymbolVar ty) -> pure ty
+  Just (SymbolGlobalVar ty) -> pure ty
+  Just (SymbolLocalVar ty) -> pure ty
   Nothing -> throwError $ Undefined x
 checkExpr _ _ (Lit _) = pure IntType
 checkExpr tab s (FnCall f args) = do
@@ -215,7 +218,11 @@ checkExpr tab s (UnOpApp AddressOf e) = do
   when (not $ lvalue e) (throwError $ NonLValue e)
   ty <- checkExpr tab s e
   when (not $ pointable ty) (throwError $ NonPointableType ty)
-  pure $ PtrType ty
+  case e of
+    Var v -> case getSymbolInfo tab s v of
+      Just (SymbolLocalVar _) -> throwError $ AddressOfLocal v
+      _ -> pure $ PtrType ty
+    _ -> pure $ PtrType ty
 checkExpr tab s (UnOpApp DeRef e) = do
   ty <- checkExpr tab s e
   case ty of
