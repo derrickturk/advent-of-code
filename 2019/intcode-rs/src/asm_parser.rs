@@ -34,7 +34,7 @@ pub fn parse<'a>(lines: impl Iterator<Item = &'a str>
     let mut offset = 0;
     let mut ast = Vec::new();
     for (i, mut line) in lines.enumerate() {
-        if COMMENTLINE.is_match(line) {
+        if COMMENTLINE.is_match(line) || EMPTYLINE.is_match(line) {
             continue;
         }
 
@@ -64,6 +64,8 @@ lazy_static! {
 
     static ref COMMENTLINE: Regex = Regex::new(r"^\s*#").unwrap();
     static ref LINEENDCOMMENT: Regex = Regex::new(r"#.*$").unwrap();
+
+    static ref EMPTYLINE: Regex = Regex::new(r"^\s*$").unwrap(); 
 }
 
 fn stmt(line: &str, line_num: usize, offset: &mut usize
