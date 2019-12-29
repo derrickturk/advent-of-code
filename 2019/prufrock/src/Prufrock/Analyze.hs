@@ -11,6 +11,7 @@ module Prufrock.Analyze (
   , getSymbolInfo
   , symbolTable
   , typecheck
+  , needsStack
 ) where
 
 import Data.List (find)
@@ -122,6 +123,10 @@ typecheck tab = mapM_ checkItem where
   checkItem (StmtItem stmt) = checkStmt tab Nothing stmt
   checkItem (FnDefItem fndef) = checkFnDef tab fndef
 {-# INLINE typecheck #-}
+
+needsStack :: SymbolTable -> Bool
+needsStack =  not . M.null . symbolTableFns
+{-# INLINE needsStack #-}
 
 checkStmt :: MonadError AnalysisError m
           => SymbolTable

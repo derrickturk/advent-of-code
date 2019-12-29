@@ -5,10 +5,13 @@ module Prufrock.IR (
   , Dst(..)
   , FnCall(..)
   , IRInstruction(..)
+  , IRProgram(..)
 ) where
 
 import Data.Int (Int64)
 import qualified Data.Text as T
+
+import Prufrock.Asm (L(..))
 
 data Src
   = Const Int64 
@@ -26,12 +29,25 @@ data FnCall
   deriving (Eq, Show)
 
 data IRInstruction
-  = Store Src Dst
-  | AddInto Src Src Dst
-  | MulInto Src Src Dst
-  | InputInto Dst
-  | OutputFrom Src
+  = Store (L Src) (L Dst)
+  | AddInto (L Src) (L Src) (L Dst)
+  | MulInto (L Src) (L Src) (L Dst)
+  | InputInto (L Dst)
+  | OutputFrom (L Src)
   | Call FnCall [Src]
-  | Ret
+  | Ret Int64
+  | Value Int64
   | End
   deriving (Eq, Show)
+
+data IRProgram = IRProgram { irText :: [L IRInstruction]
+                           , irFunctions :: [L IRInstruction]
+                           , irGlobals :: [L IRInstruction]
+                           } deriving (Eq, Show)
+
+instance Semigroup IRProgram where
+  (IRProgram t1 f1 g1) <> (IRProgram t2 f2 g2) =
+    IRProgram (t1 <> t2) (f1 <> f2) (g1 <> g2)
+
+instance Monoid IRProgram where
+  mempty = IRProgram [] [] []
