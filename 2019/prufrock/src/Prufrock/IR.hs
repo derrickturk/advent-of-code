@@ -34,6 +34,7 @@ data IRInstruction
   | MulInto (L Src) (L Src) (L Dst)
   | InputInto (L Dst)
   | OutputFrom (L Src)
+  | GrowStack Int64
   | Call FnCall [Src]
   | Ret Int64
   | Value Int64

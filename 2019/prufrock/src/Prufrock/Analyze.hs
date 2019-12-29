@@ -8,10 +8,12 @@ module Prufrock.Analyze (
   , symbolTableFns
   , symbolTableGlobals
   , symbolTableScopes
+  , SymbolInfo(..)
   , getSymbolInfo
   , symbolTable
   , typecheck
   , needsStack
+  , baseFrameSize
 ) where
 
 import Data.List (find)
@@ -42,13 +44,13 @@ type VarTable = M.Map Ident Type
 data SymbolTable
   = SymbolTable { symbolTableFns :: FnTable
                 , symbolTableGlobals :: VarTable
-                , symbolTableScopes :: M.Map Ident VarTable
+                , symbolTableScopes :: M.Map Ident [(Ident, Type)]
                 } deriving (Eq, Show)
 
 data SymbolInfo
   = SymbolFn [(Ident, Type)] Type
   | SymbolGlobalVar Type
-  | SymbolLocalVar Type
+  | SymbolLocalVar Int Type
   deriving (Eq, Show)
 
 getSymbolInfo :: SymbolTable -> Maybe Ident -> Ident -> Maybe SymbolInfo
@@ -56,7 +58,7 @@ getSymbolInfo (SymbolTable fns globs locs) s name
   | Just (args, ret) <- M.lookup name fns = Just $ SymbolFn args ret
   | otherwise = case s of
       Nothing -> SymbolGlobalVar <$> M.lookup name globs
-      Just fn -> SymbolLocalVar <$> (M.lookup name (locs M.! fn))
+      Just fn -> uncurry SymbolLocalVar <$> (lookupIx name (locs M.! fn))
              <|> SymbolGlobalVar <$> M.lookup name globs
 
 insertScope :: (MonadState SymbolTable m, MonadError AnalysisError m)
@@ -73,15 +75,15 @@ insertScope Nothing name ty = do
 insertScope (Just fn) name ty = do
   (SymbolTable fns globs locs) <- get
   let loc = locs M.! fn
-  loc' <- M.alterF (\case
-     Nothing -> pure $ Just ty
-     Just _ -> throwError $ AlreadyDefined name) name loc
+  loc' <- case lookup name loc of
+    Nothing -> pure $ loc ++ [(name, ty)]
+    Just _ -> throwError $ AlreadyDefined name
   put $ SymbolTable fns globs (M.insert fn loc' locs)
 
 symbolTable :: Program -> Either AnalysisError SymbolTable
 symbolTable prog = do
   fns <- fnTable prog
-  let initTab = SymbolTable fns M.empty (M.empty <$ fns)
+  let initTab = SymbolTable fns M.empty ([] <$ fns)
   execStateT (mapM_ visitItem prog) initTab
   where
     visitItem (StmtItem stmt) = visitStmt Nothing stmt
@@ -127,6 +129,15 @@ typecheck tab = mapM_ checkItem where
 needsStack :: SymbolTable -> Bool
 needsStack =  not . M.null . symbolTableFns
 {-# INLINE needsStack #-}
+
+baseFrameSize :: SymbolTable -> FnDef -> Int
+baseFrameSize tab (FnDef fn args ret _)
+  = let retStack = case ret of
+          UnitType -> 0
+          _ -> 1
+        locals = length (symbolTableScopes tab M.! fn)
+       in 1 + length args + retStack + locals
+{-# INLINE baseFrameSize #-}
 
 checkStmt :: MonadError AnalysisError m
           => SymbolTable
@@ -201,7 +212,7 @@ checkExpr :: MonadError AnalysisError m
 checkExpr tab s (Var x) = case getSymbolInfo tab s x of
   Just (SymbolFn args ret) -> pure $ FnType (snd <$> args) ret
   Just (SymbolGlobalVar ty) -> pure ty
-  Just (SymbolLocalVar ty) -> pure ty
+  Just (SymbolLocalVar _ ty) -> pure ty
   Nothing -> throwError $ Undefined x
 checkExpr _ _ (Lit _) = pure IntType
 checkExpr tab s (FnCall f args) = do
@@ -225,7 +236,7 @@ checkExpr tab s (UnOpApp AddressOf e) = do
   when (not $ pointable ty) (throwError $ NonPointableType ty)
   case e of
     Var v -> case getSymbolInfo tab s v of
-      Just (SymbolLocalVar _) -> throwError $ AddressOfLocal v
+      Just (SymbolLocalVar _ _) -> throwError $ AddressOfLocal v
       _ -> pure $ PtrType ty
     _ -> pure $ PtrType ty
 checkExpr tab s (UnOpApp DeRef e) = do
@@ -294,3 +305,11 @@ coerce (FnType fnArgs fnRet) (PtrType (FnType pArgs pRet))
   | otherwise = False
 coerce ty1 ty2 = ty1 == ty2
 {-# INLINE coerce #-}
+
+lookupIx :: Eq a => a -> [(a, b)] -> Maybe (Int, b)
+lookupIx = go 0 where
+  go _ _ [] = Nothing
+  go i a (((a', b)):rest)
+    | a == a' = Just (i, b)
+    | otherwise = go (i + 1) a rest
+{-# INLINE lookupIx #-}
