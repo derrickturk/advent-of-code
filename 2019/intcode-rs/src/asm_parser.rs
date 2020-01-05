@@ -57,6 +57,9 @@ lazy_static! {
     static ref WORDSTMT: Regex = Regex::new(
         r"^\$([A-Za-z_][A-Za-z0-9_]*|-?\d+)$").unwrap();
 
+    static ref SPECIAL: Regex = Regex::new(
+        r#"^\.(?i)(asci[ipz])\s*"((?:\\.|[^"])*)""#).unwrap();
+
     static ref WORDOPERAND: Regex = Regex::new(
         r"^\$?([A-Za-z_][A-Za-z0-9_]*|\(-?\d+\)|-?\d+)$").unwrap();
 
@@ -114,7 +117,7 @@ fn stmt(line: &str, line_num: usize, offset: &mut usize
         return make_instr(line, instr, label, line_num, offset)
     }
 
-    WORDSTMT.captures(line)
+    let word = WORDSTMT.captures(line)
         .and_then(|caps| caps.get(1))
         .and_then(|wmatch| {
             let word = wmatch.as_str();
@@ -122,19 +125,46 @@ fn stmt(line: &str, line_num: usize, offset: &mut usize
             if c.is_ascii_digit() || c == '-' {
                 let word = word.parse::<i64>().ok()?;
                 *offset += 1;
-                Some(Labeled {
-                    item: Stmt::Immediate(Word::Number(word)),
-                    label: label,
-                })
+                Some(Stmt::Immediate(Word::Number(word)))
             } else {
                 *offset += 1;
-                Some(Labeled {
-                    item: Stmt::Immediate(Word::Label(word.to_string())),
-                    label: label,
-                })
+                Some(Stmt::Immediate(Word::Label(word.to_string())))
             }
-        })
-        .ok_or(err)
+        });
+
+    if let Some(word) = word {
+        return Ok(Labeled { item: word, label });
+    }
+
+    let special = SPECIAL.captures(line)
+        .map(|caps| (caps.get(1), caps.get(2)));
+    match special {
+        Some((Some(cmdmatch), Some(strmatch))) => {
+            let cons = match cmdmatch.as_str().to_lowercase().as_str() {
+                "ascii" => {
+                    Stmt::Ascii
+                },
+                "asciz" => {
+                    *offset += 1;
+                    Stmt::Asciz
+                },
+                "ascip" => {
+                    *offset += 1;
+                    Stmt::Ascip
+                },
+                _ => return Err(err),
+            };
+
+            let unesc = unescape(strmatch.as_str());
+            *offset += unesc.len();
+            return Ok(Labeled {
+                item: cons(unesc),
+                label: label,
+            });
+        },
+
+        _ => return Err(err),
+    };
 }
 
 fn make_instr(line: &str, instr: Instruction, label: Option<(usize, String)>,
@@ -215,4 +245,28 @@ fn make_operand(mut operand: &str, line_num: usize, offset: usize
             }
         })
         .ok_or(err)
+}
+
+fn unescape(lit: &str) -> Vec<u8> {
+    let mut buf = Vec::new();
+    let mut escape = false;
+    for b in lit.bytes() {
+        if b == b'\\' {
+            escape = true;
+            continue;
+        }
+
+        let b = if escape {
+            match b {
+                b'n' => b'\n',
+                b't' => b'\t',
+                _ => b,
+            }
+        } else {
+            b
+        };
+        buf.push(b);
+        escape = false;
+    }
+    buf
 }

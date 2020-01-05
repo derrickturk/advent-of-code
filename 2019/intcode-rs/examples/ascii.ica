@@ -1,0 +1,46 @@
+start: rel $stack
+add $0, $_r1, (0)
+add $0, $12, (1)
+add $0, $text, (2)
+jz $0, $print
+_r1: add $0, $_r2, (0)
+add $0, $pext, (1)
+jz $0, $printp
+_r2: add $0, $_r3, (0)
+add $0, $zext, (1)
+jz $0, $printz
+_r3: hlt
+
+zext: .asciz "hello world\n"
+pext: .ascip "hello world\n"
+text: .ascii "hello world\n"
+
+# print(len, ascii)
+print: jz (1), $print_ret
+add $0, (2), print_ptr
+out print_ptr: 0
+add $1, (2), (2)
+add $-1, (1), (1)
+jz $0, $print
+print_ret: jz $0, (0)
+
+# printp(ascip)
+printp: rel $2
+add $0, $printp_ret, (0)
+add $0, (-1), printp_len
+add $0, printp_len: 0, (1)
+add $1, (-1), (2)
+jz $0, $print
+printp_ret: rel $-2
+jz $0, (0)
+
+# printz(asciz)
+printz: add $0, (1), printz_ptr
+add printz_ptr: 0, $0, (2)
+jz (2), $printz_ret
+out (2)
+add $1, (1), (1)
+jz $0, $printz
+printz_ret: jz $0, (0)
+
+stack: $0

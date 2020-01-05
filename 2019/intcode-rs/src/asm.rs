@@ -21,6 +21,7 @@ pub enum AsmError {
     UnknownLabel(String),
     LabelAlreadyDefined(String),
     IOError(io::Error),
+    AscipTooLong(usize),
 }
 
 impl From<io::Error> for AsmError {
@@ -66,6 +67,9 @@ pub enum Operand {
 pub enum Stmt {
     Instr(Instruction, Vec<Labeled<Operand>>),
     Immediate(Word),
+    Ascii(Vec<u8>),
+    Asciz(Vec<u8>),
+    Ascip(Vec<u8>),
 }
 
 #[derive(Debug, Clone)]
@@ -229,7 +233,7 @@ pub fn assemble_with_labels(program: &[Labeled<Stmt>], labels: &LabelMap
 
             Stmt::Immediate(Word::Number(n)) => {
                 items.push(AsmItem::Value(*n));
-            }
+            },
 
             Stmt::Immediate(Word::Label(lbl)) => {
                 let ptr = *labels.get(lbl.as_str())
@@ -237,7 +241,24 @@ pub fn assemble_with_labels(program: &[Labeled<Stmt>], labels: &LabelMap
                 let ptr: i64 = ptr.try_into()
                     .map_err(|_| AsmError::AddressTooLarge(ptr))?;
                 items.push(AsmItem::Value(ptr));
-            }
+            },
+
+            Stmt::Ascii(text) => {
+                items.extend(text.iter().map(|c| AsmItem::Value(*c as i64)));
+            },
+
+            Stmt::Asciz(text) => {
+                items.extend(text.iter().map(|c| AsmItem::Value(*c as i64)));
+                items.push(AsmItem::Value(0));
+            },
+
+            Stmt::Ascip(text) => {
+                let size = text.len();
+                let size = size.try_into()
+                    .map_err(|_| AsmError::AscipTooLong(size))?;
+                items.push(AsmItem::Value(size));
+                items.extend(text.iter().map(|c| AsmItem::Value(*c as i64)));
+            },
         }
     }
     Ok(items)
