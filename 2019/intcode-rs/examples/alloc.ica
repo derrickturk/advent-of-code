@@ -1,0 +1,66 @@
+rel stack_start
+
+add $0, $_r1, (0)
+add $0, $text, (1)
+jz $0, $strlen
+_r1: add $1, (2), size
+
+add $0, $_r2, (0)
+add $0, size, (1)
+jz $0, $alloc
+_r2: add $0, (2), text_copy
+
+add $0, $_r3, (0)
+add $0, text_copy, (1)
+add $0, $text, (2)
+add $0, size, (3)
+jz $0, $memcpy
+
+_r3: add $0, $_r4, (0)
+add $0, text_copy, (1)
+jz $0, $printz
+
+_r4: hlt
+
+text: .asciz "hello world\n"
+size: $0
+text_copy: $0
+stack_start: $1048576
+next_alloc: $heap
+
+# strlen(asciz) -> size
+strlen: add $0, $0, (2)
+strlen_loop: add $0, (1), strlen_ptr
+add $0, strlen_ptr: 0, (3)
+jz (3), $strlen_ret
+add $1, (1), (1)
+add $1, (2), (2)
+jz $0, $strlen_loop
+strlen_ret: jz $0, (0)
+
+# memcpy(dst, src, size)
+memcpy: jz (3), $memcpy_ret
+add $0, (1), memcpy_dst_ptr
+add $0, (2), memcpy_src_ptr
+add $0, memcpy_src_ptr: 0, memcpy_dst_ptr: 0
+add $1, (1), (1)
+add $1, (2), (2)
+add $-1, (3), (3)
+jz $0, $memcpy
+memcpy_ret: jz $0, (0)
+
+# alloc(size) -> ptr
+alloc: add $0, next_alloc, (2)
+add next_alloc, (1), next_alloc
+jz $0, (0)
+
+# printz(asciz)
+printz: add $0, (1), printz_ptr
+add printz_ptr: 0, $0, (2)
+jz (2), $printz_ret
+out (2)
+add $1, (1), (1)
+jz $0, $printz
+printz_ret: jz $0, (0)
+
+heap: $0
