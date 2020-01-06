@@ -11,10 +11,13 @@ jz $0, _j2: 0
 
 ip: $thread
 
-thread: $push3
-$push3
+thread: $lit
+$7
+$lit
+$3
 $quadruple
 $double
+$plus
 $print
 $halt
 
@@ -44,13 +47,15 @@ add $0, _jplus1: 0, _jplus2
 add $1, ip, ip
 jz $0, _jplus2: 0
 
-push3: $push3_code
-push3_code: rel $1
-add $0, $3, (0)
-add $0, ip, _jpush31
-add $0, _jpush31: 0, _jpush32
+lit: $lit_code
+lit_code: rel $1
+add $0, ip, lit_src
+add $0, lit_src: 0, (0)
 add $1, ip, ip
-jz $0, _jpush32: 0
+add $0, ip, _jlit1
+add $0, _jlit1: 0, _jlit2
+add $1, ip, ip
+jz $0, _jlit2: 0
 
 dup: $dup_code
 dup_code: rel $1
