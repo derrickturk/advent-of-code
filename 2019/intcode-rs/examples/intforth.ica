@@ -4,6 +4,7 @@ rel $stack
 jz $0, $_next
 
 ip: $thread
+
 var_base: $10
 var_latest: $exit_link
 var_state: $0
@@ -26,10 +27,7 @@ $65535
 $fetch
 $emit
 $word
-$number
-$drop
-$emit
-$here
+$find
 $emit
 $_halt
 
@@ -303,9 +301,48 @@ add $0, (1), (-1)
 add $0, (2), (0)
 jz $0, $_next
 
+find_link: $number_link
+$0
+$0
+.ascip "FIND" # (ptr len -- dict-ptr)
+find: $find_code
+find_code: rel $3 # temporaries: cur_ptr cnd count
+add $0, var_latest, (-2)
+find_loop: eq $0, (-2), (-1)
+jnz (-1), $find_ret
+
+# load hidden flag and test
+add $1, (-2), find_hidden_ptr
+jnz find_hidden_ptr: 0, $find_next
+
+# skip if length doesn't match
+add $3, (-2), find_len
+eq find_len: 0, (-3), (-1)
+jz (-1), $find_next
+
+# loop and check each char
+add $0, $0, (0)
+find_inner_loop: eq (-3), (0), (-1)
+jnz (-1), $find_ret
+add $4, (-2), find_word_name_ptr
+add find_word_name_ptr, (0), find_word_name_ptr
+add (-4), (0), find_sought_name_ptr
+eq find_word_name_ptr: 0, find_sought_name_ptr: 0, (-1)
+jz (-1), $find_next
+add $1, (0), (0)
+jz $0, $find_inner_loop
+
+find_next: add $0, (-2), find_next_link
+add $0, find_next_link: 0, (-2)
+jz $0, $find_loop
+
+find_ret: add $0, (-2), (-4)
+rel $-4
+jz $0, $_next
+
 # somewhat more "magic" words
 
-exit_link: $number_link
+exit_link: $find_link
 $0
 $0
 .ascip "EXIT"
