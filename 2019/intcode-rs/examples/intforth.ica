@@ -6,12 +6,11 @@ jz $0, $_next
 ip: $thread
 
 thread: $lit
-$lit
 $3
 $quadruple
 $double
 $lit
-$7
+$41
 $plus
 $dup
 $emit
@@ -20,6 +19,13 @@ $65535
 $store
 $lit
 $65535
+$fetch
+$emit
+$word
+$lit
+$48
+$plus
+$emit
 $fetch
 $emit
 $_halt
@@ -126,6 +132,48 @@ key_code: rel $1
 in (0)
 jz $0, $_next
 
+$0
+.ascip "WORD"
+word: $word_code
+word_code: rel $3
+add $0, $0, (-1) # length
+add $0, $0, (-2) # temporary for now...
+word_skip_blanks: in (0)
+# skip tab
+eq (0), $9, (-2)
+jnz (-2), $word_skip_blanks
+# skip space
+eq (0), $32, (-2)
+jnz (-2), $word_skip_blanks
+# skip LF
+eq (0), $10, (-2)
+jnz (-2), $word_skip_blanks
+# skip CR
+eq (0), $13, (-2)
+jnz (-2), $word_skip_blanks
+# else...
+jz $0, $word_valid_char
+word_til_blank: in (0)
+eq (0), $9, (-2)
+jnz (-2), $word_ret
+eq (0), $32, (-2)
+jnz (-2), $word_ret
+eq (0), $10, (-2)
+jnz (-2), $word_ret
+eq (0), $13, (-2)
+jnz (-2), $word_ret
+word_valid_char: add (-1), $word_buf, word_dst
+add $0, (0), word_dst: 0
+add $1, (-1), (-1)
+# check length!
+eq (-1), $32, (-2)
+jnz (-2), $word_ret
+jz $0, $word_til_blank
+word_ret: rel $-1
+add $0, $word_buf, (-1)
+jz $0, $_next
+word_buf: .zeroes 32
+
 # somewhat more "magic" words
 
 $0
@@ -145,22 +193,7 @@ _halt: $halt_code
 halt_code: hlt
 
 # assumption: data stack will be larger than return stack
-# return stack will have a max capacity of 16
+# return stack will have a max capacity of 64
 rstack_bp: $rstack
-rstack: $0
-$0
-$0
-$0
-$0
-$0
-$0
-$0
-$0
-$0
-$0
-$0
-$0
-$0
-$0
-$0
+rstack: .zeroes 64
 stack: $0

@@ -70,6 +70,7 @@ pub enum Stmt {
     Ascii(Vec<u8>),
     Asciz(Vec<u8>),
     Ascip(Vec<u8>),
+    Zeroes(usize),
 }
 
 #[derive(Debug, Clone)]
@@ -258,6 +259,10 @@ pub fn assemble_with_labels(program: &[Labeled<Stmt>], labels: &LabelMap
                     .map_err(|_| AsmError::AscipTooLong(size))?;
                 items.push(AsmItem::Value(size));
                 items.extend(text.iter().map(|c| AsmItem::Value(*c as i64)));
+            },
+
+            Stmt::Zeroes(count) => {
+                items.extend((0..*count).map(|_| AsmItem::Value(0)));
             },
         }
     }

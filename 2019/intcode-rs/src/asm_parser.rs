@@ -57,8 +57,11 @@ lazy_static! {
     static ref WORDSTMT: Regex = Regex::new(
         r"^\$([A-Za-z_][A-Za-z0-9_]*|-?\d+)$").unwrap();
 
-    static ref SPECIAL: Regex = Regex::new(
-        r#"^\.(?i)(asci[ipz])\s*"((?:\\.|[^"])*)""#).unwrap();
+    static ref ZEROES: Regex = Regex::new(
+        r"^\.(?i)zeroes\s*(\d+)$").unwrap();
+
+    static ref STRING: Regex = Regex::new(
+        r#"^\.(?i)(asci[ipz])\s*"((?:\\.|[^"])*)"$"#).unwrap();
 
     static ref WORDOPERAND: Regex = Regex::new(
         r"^\$?([A-Za-z_][A-Za-z0-9_]*|\(-?\d+\)|-?\d+)$").unwrap();
@@ -136,9 +139,21 @@ fn stmt(line: &str, line_num: usize, offset: &mut usize
         return Ok(Labeled { item: word, label });
     }
 
-    let special = SPECIAL.captures(line)
+    let zeroes = ZEROES.captures(line)
+        .and_then(|caps| caps.get(1))
+        .and_then(|cmatch| {
+            let count = cmatch.as_str().parse().unwrap();
+            *offset += count;
+            Some(Stmt::Zeroes(count))
+        });
+
+    if let Some(zeroes) = zeroes {
+        return Ok(Labeled { item: zeroes, label });
+    }
+
+    let string = STRING.captures(line)
         .map(|caps| (caps.get(1), caps.get(2)));
-    match special {
+    match string {
         Some((Some(cmdmatch), Some(strmatch))) => {
             let cons = match cmdmatch.as_str().to_lowercase().as_str() {
                 "ascii" => {
