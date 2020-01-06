@@ -20,21 +20,35 @@ $plus
 $dup
 $emit
 $lit
+$10
+$emit
+$lit
 $65535
 $store
 $lit
 $65535
 $fetch
 $emit
+$lit
+$10
+$emit
 $word
 $find
 $dfa
 $emit
+$lit
+$10
+$emit
 $word
+$twodup
 $create
 $lit
 $docol
 $comma
+$find
+$emit
+$lit
+$10
 $_halt
 
 # DOCOL is the inner interpreter
@@ -139,7 +153,25 @@ dup_code: rel $1
 add $0, (-1), (0)
 jz $0, $_next
 
-plus_link: $dup_link
+twodrop_link: $dup_link
+$0
+$0
+.ascip "2DROP" # (x y -- )
+twodrop: $twodrop_code
+twodrop_code: rel $-2
+jz $0, $_next
+
+twodup_link: $twodrop_link
+$0
+$0
+.ascip "2DUP" # (x y -- x y x y)
+twodup: $twodup_code
+twodup_code: rel $2
+add $0, (-3), (-1)
+add $0, (-2), (0)
+jz $0, $_next
+
+plus_link: $twodup_link
 $0
 $0
 .ascip "+" # (n1 n2 -- n1 + n2)
@@ -413,7 +445,67 @@ add $1, var_here, var_here
 rel $-1
 jz $0, $_next
 
-exit_link: $comma_link
+lbrac_link: $comma_link
+$0
+$1 # is immediate
+.ascip "[" # (--)
+lbrac: $lbrac_code
+lbrac_code: add $0, $0, var_state
+jz $0, $_next
+
+rbrac_link: $lbrac_link
+$0
+$0
+.ascip "[" # (--)
+rbrac: $rbrac_code
+rbrac_code: add $0, $1, var_state
+jz $0, $_next
+
+colon_link: $rbrac_link
+$0
+$0
+.ascip ":" # (--)
+colon: $docol
+$word
+$create
+$lit
+$docol
+$comma
+$latest
+$fetch
+$hidden
+$rbrac
+$exit
+
+semicolon_link: $colon_link
+$0
+$1 # immediate
+.ascip ";" # (--)
+semicolon: $docol
+$lit
+$exit
+$comma
+$latest
+$fetch
+$hidden
+$exit
+
+hidden_link: $semicolon_link
+$0
+$0
+.ascip "HIDDEN" # (dict-ptr --)
+hidden: $hidden_code
+hidden_code: add $1, (0), hidden_ptr
+jz hidden_ptr: 0, $hidden_set
+add $0, $0, (0)
+jz $0, $hidden_write
+hidden_set: add $1, $0, (0)
+hidden_write: add $0, hidden_ptr, hidden_ptr2
+add $0, (0), hidden_ptr2: 0
+rel $-1
+jz $0, $_next
+
+exit_link: $hidden_link
 $0
 $0
 .ascip "EXIT"
