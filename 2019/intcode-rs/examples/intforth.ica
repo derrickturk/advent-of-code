@@ -3,53 +3,14 @@
 rel $2048 # stack starts at addr 2048 - allows ~ 2kw of heap
 jz $0, $_next
 
-ip: $thread
+ip: $cold_start
 
 var_base: $10
 var_latest: $exit_link
 var_state: $0
-var_here: $heap # TODO
+var_here: $heap
 
-thread: $lit
-$3
-$quadruple
-$double
-$lit
-$41
-$plus
-$dup
-$emit
-$lit
-$10
-$emit
-$lit
-$65535
-$store
-$lit
-$65535
-$fetch
-$emit
-$lit
-$10
-$emit
-$word
-$find
-$dfa
-$emit
-$lit
-$10
-$emit
-$word
-$twodup
-$create
-$lit
-$docol
-$comma
-$find
-$emit
-$lit
-$10
-$_halt
+cold_start: $quit
 
 # DOCOL is the inner interpreter
 docol: add $0, rstack_bp, docol_push_target
@@ -234,7 +195,25 @@ fetch_code: add $0, (0), fetch_src
 add $0, fetch_src: 0, (0)
 jz $0, $_next
 
-emit_link: $fetch_link
+rspstore_link: $fetch_link
+$0
+$0
+.ascip "RSP!" # (new-rsp --)
+rspstore: $rspstore_code
+rspstore_code: add $0, (0), rstack_bp
+rel $-1
+jz $0, $_next
+
+rspfetch_link: $rspstore_link
+$0
+$0
+.ascip "RSP@" # (-- rsp)
+rspfetch: $rspfetch_code
+rspfetch_code: rel $1
+add $0, rstack_bp, (0)
+jz $0, $_next
+
+emit_link: $rspfetch_link
 $0
 $0
 .ascip "EMIT" # (chr --)
@@ -243,7 +222,21 @@ emit_code: out (0)
 rel $-1
 jz $0, $_next
 
-key_link: $emit_link
+tell_link: $emit_link
+$0
+$0
+.ascip "TELL" # (ptr len --)
+tell: $tell_code
+tell_code: jz (0), $tell_ret
+add $0, (-1), tell_ptr
+out tell_ptr: 0
+add $1, (-1), (-1)
+add $-1, (0), (0)
+jz $0, $tell_code
+tell_ret: rel $-2
+jz $0, $_next
+
+key_link: $tell_link
 $0
 $0
 .ascip "KEY" # (-- chr)
@@ -505,7 +498,68 @@ add $0, (0), hidden_ptr2: 0
 rel $-1
 jz $0, $_next
 
-exit_link: $hidden_link
+hide_link: $hidden_link
+$0
+$0
+.ascip "HIDE" # (--)
+hide: $docol
+$word
+$find
+$hidden
+$exit
+
+immediate_link: $hide_link
+$0
+$0
+.ascip "IMMEDIATE" # (--)
+immediate: $immediate_code
+immediate_code: rel $1
+add $2, var_latest, immed_ptr
+jz immed_ptr: 0, $immed_set
+add $0, $0, (0)
+jz $0, $immed_write
+immed_set: add $1, $0, (0)
+immed_write: add $0, immed_ptr, immed_ptr2
+add $0, (0), immed_ptr2: 0
+rel $-1
+jz $0, $_next
+
+branch_link: $immediate_link
+$0
+$0
+.ascip "BRANCH" # (--)
+branch: $branch_code
+branch_code: rel $1
+add $0, ip, branch_src
+add ip, branch_src: 0, ip
+jz $0, $_next
+
+quit_link: $branch_link
+$0
+$0
+.ascip "QUIT" # (--)
+quit: $docol
+$lit
+$rstack
+$rspstore
+$interpret
+$branch
+$-2
+
+# TODO: this could get ugly
+interpret_link: $quit_link
+$0
+$0
+.ascip "INTERPRET" # (--)
+interpret: $docol
+$word
+$tell
+$lit
+$10
+$emit
+$exit
+
+exit_link: $interpret_link
 $0
 $0
 .ascip "EXIT"
