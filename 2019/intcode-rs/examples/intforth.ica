@@ -28,6 +28,7 @@ $fetch
 $emit
 $word
 $find
+$dfa
 $emit
 $_halt
 
@@ -151,7 +152,15 @@ mult_code: mul (-1), (0), (-1)
 rel $-1
 jz $0, $_next
 
-equals_link: $mult_link
+incr_link: $mult_link
+$0
+$0
+.ascip "INCR" # (n -- n + 1)
+incr: $incr_code
+incr_code: add $1, (0), (0)
+jz $0, $_next
+
+equals_link: $incr_link
 $0
 $0
 .ascip "=" # (n1 n2 -- n1 = n2)
@@ -340,9 +349,29 @@ find_ret: add $0, (-2), (-4)
 rel $-4
 jz $0, $_next
 
+cfa_link: $find_link
+$0
+$0
+.ascip ">CFA" # (dict-ptr -- codeword-ptr)
+cfa: $cfa_code
+cfa_code: add $3, (0), cfa_len_ptr
+# codeword is at link + 4 + name-length
+add cfa_len_ptr, cfa_len_ptr: 0, (0)
+add $1, (0), (0)
+jz $0, $_next
+
+dfa_link: $cfa_link
+$0
+$0
+.ascip ">DFA" # (dict-ptr -- data-ptr)
+dfa: $docol
+$cfa
+$incr
+$exit
+
 # somewhat more "magic" words
 
-exit_link: $find_link
+exit_link: $dfa_link
 $0
 $0
 .ascip "EXIT"
