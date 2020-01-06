@@ -1,6 +1,6 @@
 # an indirect-threaded mini-FORTH on intcode [WIP]
 
-rel $stack
+rel $2048 # stack starts at addr 2048 - allows ~ 2kw of heap
 jz $0, $_next
 
 ip: $thread
@@ -8,7 +8,7 @@ ip: $thread
 var_base: $10
 var_latest: $exit_link
 var_state: $0
-var_here: $67 # TODO
+var_here: $heap # TODO
 
 thread: $lit
 $3
@@ -30,6 +30,11 @@ $word
 $find
 $dfa
 $emit
+$word
+$create
+$lit
+$docol
+$comma
 $_halt
 
 # DOCOL is the inner interpreter
@@ -371,7 +376,44 @@ $exit
 
 # somewhat more "magic" words
 
-exit_link: $dfa_link
+create_link: $dfa_link
+$0
+$0
+.ascip "CREATE" # (ptr len --)
+create: $create_code
+create_code: add $0, var_here, create_link_dst
+add $0, var_latest, create_link_dst: 0
+add $0, var_here, var_latest
+add $1, var_here, create_hidden_dst
+add $0, $0, create_hidden_dst: 0
+add $2, var_here, create_imm_dst
+add $0, $0, create_imm_dst: 0
+add $3, var_here, create_len_dst
+add $0, (0), create_len_dst: 0
+add $4, var_here, var_here
+create_copy_loop: jz (0), $create_ret
+add $0, (-1), create_char_src
+add $0, var_here, create_char_dst
+add $0, create_char_src: 0, create_char_dst: 0
+add $-1, (0), (0)
+add $1, (-1), (-1)
+add $1, var_here, var_here
+jz $0, $create_copy_loop
+create_ret: rel $-2
+jz $0, $_next
+
+comma_link: $create_link
+$0
+$0
+.ascip "," # (ptr --)
+comma: $comma_code
+comma_code: add $0, var_here, comma_dst
+add $0, (0), comma_dst: 0
+add $1, var_here, var_here
+rel $-1
+jz $0, $_next
+
+exit_link: $comma_link
 $0
 $0
 .ascip "EXIT"
@@ -393,4 +435,6 @@ halt_code: hlt
 # return stack will have a max capacity of 64
 rstack_bp: $rstack
 rstack: .zeroes 64
-stack: $0
+
+# "heap" goes here...
+heap: $0
