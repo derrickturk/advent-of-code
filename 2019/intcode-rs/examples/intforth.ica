@@ -29,6 +29,24 @@ $drop
 $emit
 $_halt
 
+# DOCOL is the inner interpreter
+docol: add $0, rstack_bp, docol_push_target
+add $0, ip, docol_push_target: 0
+add $1, rstack_bp, rstack_bp
+add $-1, ip, old_ip
+add $1, old_ip: 0, ip
+jz $0, $_next
+
+# each word's layout is:
+# link to previous word
+# hidden flag
+# immediate flag
+# ASCIP name
+# codeword
+# code...
+
+$0
+$0
 $0
 .ascip "DOUBLE" # (n -- n)
 double: $docol
@@ -36,6 +54,8 @@ $dup
 $plus
 $exit
 
+$double
+$0
 $0
 .ascip "QUADRUPLE" # (n -- n)
 quadruple: $docol
@@ -43,6 +63,8 @@ $double
 $double
 $exit
 
+$quadruple
+$0
 $0
 .ascip "LIT" # ( -- n)
 lit: $lit_code
@@ -52,12 +74,16 @@ add $0, lit_src: 0, (0)
 add $1, ip, ip
 jz $0, $_next
 
+$lit
+$0
 $0
 .ascip "DROP" # (x -- )
 drop: $drop_code
 drop_code: rel $-1
 jz $0, $_next
 
+$drop
+$0
 $0
 .ascip "DUP" # (x -- x x)
 dup: $dup_code
@@ -65,6 +91,8 @@ dup_code: rel $1
 add $0, (-1), (0)
 jz $0, $_next
 
+$dup
+$0
 $0
 .ascip "+" # (n1 n2 -- n1 + n2)
 plus: $plus_code
@@ -72,6 +100,8 @@ plus_code: add (-1), (0), (-1)
 rel $-1
 jz $0, $_next
 
+$plus
+$0
 $0
 .ascip "*" # (n1 n2 -- n1 * n2)
 mult: $mult_code
@@ -79,6 +109,8 @@ mult_code: mul (-1), (0), (-1)
 rel $-1
 jz $0, $_next
 
+$mult
+$0
 $0
 .ascip "=" # (n1 n2 -- n1 = n2)
 equals: $equals_code
@@ -86,6 +118,8 @@ equals_code: eq (-1), (0), (-1)
 rel $-1
 jz $0, $_next
 
+$equals
+$0
 $0
 .ascip "<" # (n1 n2 -- n1 < n2)
 lessthan: $lessthan_code
@@ -93,15 +127,8 @@ lessthan_code: lt (-1), (0), (-1)
 rel $-1
 jz $0, $_next
 
+$lessthan
 $0
-.ascip "DOCOL" # (??)
-docol: add $0, rstack_bp, docol_push_target
-add $0, ip, docol_push_target: 0
-add $1, rstack_bp, rstack_bp
-add $-1, ip, old_ip
-add $1, old_ip: 0, ip
-jz $0, $_next
-
 $0
 .ascip "!" # (val addr --)
 store: $store_code
@@ -110,6 +137,8 @@ add $0, (-1), store_dst: 0
 rel $-2
 jz $0, $_next
 
+$store
+$0
 $0
 .ascip "@" # (addr -- val)
 fetch: $fetch_code
@@ -117,6 +146,8 @@ fetch_code: add $0, (0), fetch_src
 add $0, fetch_src: 0, (0)
 jz $0, $_next
 
+$fetch
+$0
 $0
 .ascip "EMIT" # (chr --)
 emit: $emit_code
@@ -124,6 +155,8 @@ emit_code: out (0)
 rel $-1
 jz $0, $_next
 
+$emit
+$0
 $0
 .ascip "KEY" # (-- chr)
 key: $key_code
@@ -131,6 +164,8 @@ key_code: rel $1
 in (0)
 jz $0, $_next
 
+$key
+$0
 $0
 .ascip "WORD" # (-- ptr len)
 word: $word_code
@@ -173,6 +208,8 @@ add $0, $word_buf, (-1)
 jz $0, $_next
 word_buf: .zeroes 32
 
+$word
+$0
 $0
 .ascip "NUMBER" # (ptr len -- num n-unparsed)
 number: $number_code
@@ -224,6 +261,8 @@ jz $0, $_next
 
 # somewhat more "magic" words
 
+$number
+$0
 $0
 .ascip "EXIT"
 exit: $exit_code
