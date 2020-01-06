@@ -1,0 +1,104 @@
+# toys from a FORTH?
+
+# some "indirect threaded" code...
+
+rel $stack
+
+add $0, ip, _j1
+add $0, _j1: 0, _j2
+add $1, ip, ip
+jz $0, _j2: 0
+
+ip: $thread
+
+thread: $push3
+$push3
+$quadruple
+$double
+$print
+$halt
+
+quadruple: $docol
+$double
+$double
+$exit
+
+double: $docol
+$dup
+$plus
+$exit
+
+print: $print_code
+print_code: out (0)
+rel $-1
+add $0, ip, _jout1
+add $0, _jout1: 0, _jout2
+add $1, ip, ip
+jz $0, _jout2: 0
+
+plus: $plus_code
+plus_code: add (-1), (0), (-1)
+rel $-1
+add $0, ip, _jplus1
+add $0, _jplus1: 0, _jplus2
+add $1, ip, ip
+jz $0, _jplus2: 0
+
+push3: $push3_code
+push3_code: rel $1
+add $0, $3, (0)
+add $0, ip, _jpush31
+add $0, _jpush31: 0, _jpush32
+add $1, ip, ip
+jz $0, _jpush32: 0
+
+dup: $dup_code
+dup_code: rel $1
+add $0, (-1), (0)
+add $0, ip, _jdup1
+add $0, _jdup1: 0, _jdup2
+add $1, ip, ip
+jz $0, _jdup2: 0
+
+docol: add $0, rstack_bp, docol_push_target
+add $0, ip, docol_push_target: 0
+add $1, rstack_bp, rstack_bp
+add $-1, ip, old_ip
+add $1, old_ip: 0, ip
+add $0, ip, _jdocol1
+add $0, _jdocol1: 0, _jdocol2
+add $1, ip, ip
+jz $0, _jdocol2: 0
+
+exit: $exit_code
+exit_code: add $-1, rstack_bp, rstack_bp
+add $0, rstack_bp, exit_pop_src
+add $0, exit_pop_src: 0, ip
+add $0, ip, _jexit1
+add $0, _jexit1: 0, _jexit2
+add $1, ip, ip
+jz $0, _jexit2: 0
+
+halt: $halt_code
+halt_code: hlt
+
+# assumption: data stack will be larger than return stack
+# return stack will have a max capacity of 16
+rstack_bp: $rstack
+rstack: $0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+stack: $0

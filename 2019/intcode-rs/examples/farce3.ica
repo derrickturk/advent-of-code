@@ -1,0 +1,40 @@
+# toys from a FORTH?
+
+# some "direct threaded" code...
+
+rel $stack
+
+add $0, ip, _j
+add $1, ip, ip
+jz $0, _j: 0
+
+ip: $thread
+thread: $push3
+$push3
+$plus
+$push3
+$plus
+$print
+$exit
+
+print: out (0)
+rel $-1
+add $0, ip, _jout
+add $1, ip, ip
+jz $0, _jout: 0
+
+plus: add (-1), (0), (-1)
+rel $-1
+add $0, ip, _jplus
+add $1, ip, ip
+jz $0, _jplus: 0
+
+push3: rel $1
+add $0, $3, (0)
+add $0, ip, _jpush3
+add $1, ip, ip
+jz $0, _jpush3: 0
+
+exit: hlt
+
+stack: $0

@@ -1,0 +1,24 @@
+# toys from a FORTH?
+
+# some threaded code...
+
+step: add $0, ip, _j
+add $1, ip, ip
+jz $0, _j: 0
+
+ip: $thread
+thread: $f1
+$f2
+$f3
+$exit
+
+f1: out $1
+jz $0, $step
+
+f2: out $2
+jz $0, $step
+
+f3: out $3
+jz $0, $step
+
+exit: hlt
