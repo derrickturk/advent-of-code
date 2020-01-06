@@ -1,0 +1,166 @@
+# an indirect-threaded mini-FORTH on intcode [WIP]
+
+rel $stack
+jz $0, $_next
+
+ip: $thread
+
+thread: $lit
+$lit
+$3
+$quadruple
+$double
+$lit
+$7
+$plus
+$dup
+$emit
+$lit
+$65535
+$store
+$lit
+$65535
+$fetch
+$emit
+$_halt
+
+$0
+.ascip "DOUBLE"
+double: $docol
+$dup
+$plus
+$exit
+
+$0
+.ascip "QUADRUPLE"
+quadruple: $docol
+$double
+$double
+$exit
+
+$0
+.ascip "LIT"
+lit: $lit_code
+lit_code: rel $1
+add $0, ip, lit_src
+add $0, lit_src: 0, (0)
+add $1, ip, ip
+jz $0, $_next
+
+$0
+.ascip "DROP"
+drop: $drop_code
+drop_code: rel $-1
+jz $0, $_next
+
+$0
+.ascip "DUP"
+dup: $dup_code
+dup_code: rel $1
+add $0, (-1), (0)
+jz $0, $_next
+
+$0
+.ascip "+"
+plus: $plus_code
+plus_code: add (-1), (0), (-1)
+rel $-1
+jz $0, $_next
+
+$0
+.ascip "*"
+mult: $mult_code
+mult_code: mul (-1), (0), (-1)
+rel $-1
+jz $0, $_next
+
+$0
+.ascip "="
+equals: $equals_code
+equals_code: eq (-1), (0), (-1)
+rel $-1
+jz $0, $_next
+
+$0
+.ascip "<"
+lessthan: $lessthan_code
+lessthan_code: lt (-1), (0), (-1)
+rel $-1
+jz $0, $_next
+
+$0
+.ascip "DOCOL"
+docol: add $0, rstack_bp, docol_push_target
+add $0, ip, docol_push_target: 0
+add $1, rstack_bp, rstack_bp
+add $-1, ip, old_ip
+add $1, old_ip: 0, ip
+jz $0, $_next
+
+$0
+.ascip "!"
+store: $store_code
+store_code: add $0, (0), store_dst
+add $0, (-1), store_dst: 0
+rel $-2
+jz $0, $_next
+
+$0
+.ascip "@"
+fetch: $fetch_code
+fetch_code: add $0, (0), fetch_src
+add $0, fetch_src: 0, (0)
+jz $0, $_next
+
+$0
+.ascip "EMIT"
+emit: $emit_code
+emit_code: out (0)
+rel $-1
+jz $0, $_next
+
+$0
+.ascip "KEY"
+key: $key_code
+key_code: rel $1
+in (0)
+jz $0, $_next
+
+# somewhat more "magic" words
+
+$0
+.ascip "EXIT"
+exit: $exit_code
+exit_code: add $-1, rstack_bp, rstack_bp
+add $0, rstack_bp, exit_pop_src
+add $0, exit_pop_src: 0, ip
+jz $0, $_next
+
+_next: add $0, ip, _jnext1
+add $0, _jnext1: 0, _jnext2
+add $1, ip, ip
+jz $0, _jnext2: 0
+
+_halt: $halt_code
+halt_code: hlt
+
+# assumption: data stack will be larger than return stack
+# return stack will have a max capacity of 16
+rstack_bp: $rstack
+rstack: $0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+$0
+stack: $0
