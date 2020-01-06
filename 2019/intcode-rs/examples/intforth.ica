@@ -176,39 +176,48 @@ word_buf: .zeroes 32
 $0
 .ascip "NUMBER" # (ptr len -- num n-unparsed)
 number: $number_code
-number_code: rel $4 # temporaries: num n-unparsed char cnd
-add $0, $0, (-2)
+number_code: rel $5 # temporaries: num n-unparsed char cnd neg
 add $0, $0, (-3)
-number_loop: jz (-4), $number_ret
-add $0, (-5), number_src
+add $0, $0, (-4)
+jz (-5), $number_ret # fail if 0-length input
+add $0, (-6), number_first
+eq $45, number_first: 0, (0) # check for negative sign
+jz (0), $number_loop
+# skip negative sign
+add $-1, (-5), (-5)
+add $1, (-6), (-6)
 
-add $0, number_src: 0, (-1)
-lt (-1), $48, (0)
-jnz (0), $number_fail
-lt (-1), $58, (0)
-jnz (0), $number_digit
-lt (-1), $65, (0)
-jnz (0), $number_fail
-lt (-1), $91, (0)
-jnz (0), $number_alpha
+number_loop: jz (-5), $number_ret
+add $0, (-6), number_src
+add $0, number_src: 0, (-2)
+lt (-2), $48, (-1)
+jnz (-1), $number_fail
+lt (-2), $58, (-1)
+jnz (-1), $number_digit
+lt (-2), $65, (-1)
+jnz (-1), $number_fail
+lt (-2), $91, (-1)
+jnz (-1), $number_alpha
 jz $0, $number_fail
 
-number_digit: add $-48, (-1), (-1)
+number_digit: add $-48, (-2), (-2)
 jz $0, $number_accum
 
-number_alpha: add $-55, (-1), (-1)
+number_alpha: add $-55, (-2), (-2)
 jz $0, $number_accum
 
-number_accum: lt (-1), base, (0)
-jz (0), $number_fail
-mul (-3), base, (-3)
-add (-3), (-1), (-3)
-add $-1, (-4), (-4)
-add $1, (-5), (-5)
+number_accum: lt (-2), base, (-1)
+jz (-1), $number_fail
+mul (-4), base, (-4)
+add (-4), (-2), (-4)
+add $-1, (-5), (-5)
+add $1, (-6), (-6)
 jz $0, $number_loop
 
-number_fail: add $0, (-4), (-2)
-number_ret: rel $-4
+number_fail: add $0, (-5), (-3)
+number_ret: jz (0), $number_no_negate
+mul $-1, (-4), (-4)
+number_no_negate: rel $-5
 add $0, (1), (-1)
 add $0, (2), (0)
 jz $0, $_next
