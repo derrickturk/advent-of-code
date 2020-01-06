@@ -5,6 +5,8 @@ jz $0, $_next
 
 ip: $thread
 
+base: $10
+
 thread: $lit
 $3
 $quadruple
@@ -22,30 +24,27 @@ $65535
 $fetch
 $emit
 $word
-$lit
-$48
-$plus
-$emit
-$fetch
+$number
+$drop
 $emit
 $_halt
 
 $0
-.ascip "DOUBLE"
+.ascip "DOUBLE" # (n -- n)
 double: $docol
 $dup
 $plus
 $exit
 
 $0
-.ascip "QUADRUPLE"
+.ascip "QUADRUPLE" # (n -- n)
 quadruple: $docol
 $double
 $double
 $exit
 
 $0
-.ascip "LIT"
+.ascip "LIT" # ( -- n)
 lit: $lit_code
 lit_code: rel $1
 add $0, ip, lit_src
@@ -54,48 +53,48 @@ add $1, ip, ip
 jz $0, $_next
 
 $0
-.ascip "DROP"
+.ascip "DROP" # (x -- )
 drop: $drop_code
 drop_code: rel $-1
 jz $0, $_next
 
 $0
-.ascip "DUP"
+.ascip "DUP" # (x -- x x)
 dup: $dup_code
 dup_code: rel $1
 add $0, (-1), (0)
 jz $0, $_next
 
 $0
-.ascip "+"
+.ascip "+" # (n1 n2 -- n1 + n2)
 plus: $plus_code
 plus_code: add (-1), (0), (-1)
 rel $-1
 jz $0, $_next
 
 $0
-.ascip "*"
+.ascip "*" # (n1 n2 -- n1 * n2)
 mult: $mult_code
 mult_code: mul (-1), (0), (-1)
 rel $-1
 jz $0, $_next
 
 $0
-.ascip "="
+.ascip "=" # (n1 n2 -- n1 = n2)
 equals: $equals_code
 equals_code: eq (-1), (0), (-1)
 rel $-1
 jz $0, $_next
 
 $0
-.ascip "<"
+.ascip "<" # (n1 n2 -- n1 < n2)
 lessthan: $lessthan_code
 lessthan_code: lt (-1), (0), (-1)
 rel $-1
 jz $0, $_next
 
 $0
-.ascip "DOCOL"
+.ascip "DOCOL" # (??)
 docol: add $0, rstack_bp, docol_push_target
 add $0, ip, docol_push_target: 0
 add $1, rstack_bp, rstack_bp
@@ -104,7 +103,7 @@ add $1, old_ip: 0, ip
 jz $0, $_next
 
 $0
-.ascip "!"
+.ascip "!" # (val addr --)
 store: $store_code
 store_code: add $0, (0), store_dst
 add $0, (-1), store_dst: 0
@@ -112,28 +111,28 @@ rel $-2
 jz $0, $_next
 
 $0
-.ascip "@"
+.ascip "@" # (addr -- val)
 fetch: $fetch_code
 fetch_code: add $0, (0), fetch_src
 add $0, fetch_src: 0, (0)
 jz $0, $_next
 
 $0
-.ascip "EMIT"
+.ascip "EMIT" # (chr --)
 emit: $emit_code
 emit_code: out (0)
 rel $-1
 jz $0, $_next
 
 $0
-.ascip "KEY"
+.ascip "KEY" # (-- chr)
 key: $key_code
 key_code: rel $1
 in (0)
 jz $0, $_next
 
 $0
-.ascip "WORD"
+.ascip "WORD" # (-- ptr len)
 word: $word_code
 word_code: rel $3
 add $0, $0, (-1) # length
@@ -173,6 +172,46 @@ word_ret: rel $-1
 add $0, $word_buf, (-1)
 jz $0, $_next
 word_buf: .zeroes 32
+
+$0
+.ascip "NUMBER" # (ptr len -- num n-unparsed)
+number: $number_code
+number_code: rel $4 # temporaries: num n-unparsed char cnd
+add $0, $0, (-2)
+add $0, $0, (-3)
+number_loop: jz (-4), $number_ret
+add $0, (-5), number_src
+
+add $0, number_src: 0, (-1)
+lt (-1), $48, (0)
+jnz (0), $number_fail
+lt (-1), $58, (0)
+jnz (0), $number_digit
+lt (-1), $65, (0)
+jnz (0), $number_fail
+lt (-1), $91, (0)
+jnz (0), $number_alpha
+jz $0, $number_fail
+
+number_digit: add $-48, (-1), (-1)
+jz $0, $number_accum
+
+number_alpha: add $-55, (-1), (-1)
+jz $0, $number_accum
+
+number_accum: lt (-1), base, (0)
+jz (0), $number_fail
+mul (-3), base, (-3)
+add (-3), (-1), (-3)
+add $-1, (-4), (-4)
+add $1, (-5), (-5)
+jz $0, $number_loop
+
+number_fail: add $0, (-4), (-2)
+number_ret: rel $-4
+add $0, (1), (-1)
+add $0, (2), (0)
+jz $0, $_next
 
 # somewhat more "magic" words
 
