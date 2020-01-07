@@ -321,51 +321,57 @@ $0
 $0
 .ascip "NUMBER" # (ptr len -- num n-unparsed)
 number: $number_code
-number_code: rel $5 # temporaries: num n-unparsed char cnd neg
+number_code: rel $1
+add $0, $number_ret, (0)
+jz $0, $_number
+number_ret: rel $-1
+jz $0, $_next
+
+_number: rel $5 # temporaries: num n-unparsed char cnd neg
 add $0, $0, (-3)
 add $0, $0, (-4)
-jz (-5), $number_ret # fail if 0-length input
-add $0, (-6), number_first
-eq $45, number_first: 0, (0) # check for negative sign
-jz (0), $number_loop
+jz (-6), $_number_ret # fail if 0-length input
+add $0, (-7), _number_first
+eq $45, _number_first: 0, (0) # check for negative sign
+jz (0), $_number_loop
 # skip negative sign
-add $-1, (-5), (-5)
-add $1, (-6), (-6)
+add $-1, (-6), (-6)
+add $1, (-7), (-7)
 
-number_loop: jz (-5), $number_ret
-add $0, (-6), number_src
-add $0, number_src: 0, (-2)
+_number_loop: jz (-6), $_number_ret
+add $0, (-7), _number_src
+add $0, _number_src: 0, (-2)
 lt (-2), $48, (-1)
-jnz (-1), $number_fail
+jnz (-1), $_number_fail
 lt (-2), $58, (-1)
-jnz (-1), $number_digit
+jnz (-1), $_number_digit
 lt (-2), $65, (-1)
-jnz (-1), $number_fail
+jnz (-1), $_number_fail
 lt (-2), $91, (-1)
-jnz (-1), $number_alpha
-jz $0, $number_fail
+jnz (-1), $_number_alpha
+jz $0, $_number_fail
 
-number_digit: add $-48, (-2), (-2)
-jz $0, $number_accum
+_number_digit: add $-48, (-2), (-2)
+jz $0, $_number_accum
 
-number_alpha: add $-55, (-2), (-2)
-jz $0, $number_accum
+_number_alpha: add $-55, (-2), (-2)
+jz $0, $_number_accum
 
-number_accum: lt (-2), var_base, (-1)
-jz (-1), $number_fail
+_number_accum: lt (-2), var_base, (-1)
+jz (-1), $_number_fail
 mul (-4), var_base, (-4)
 add (-4), (-2), (-4)
-add $-1, (-5), (-5)
-add $1, (-6), (-6)
-jz $0, $number_loop
+add $-1, (-6), (-6)
+add $1, (-7), (-7)
+jz $0, $_number_loop
 
-number_fail: add $0, (-5), (-3)
-number_ret: jz (0), $number_no_negate
+_number_fail: add $0, (-6), (-3)
+_number_ret: jz (0), $_number_no_negate
 mul $-1, (-4), (-4)
-number_no_negate: rel $-5
-add $0, (1), (-1)
-add $0, (2), (0)
-jz $0, $_next
+_number_no_negate: rel $-5
+add $0, (1), (-2)
+add $0, (2), (-1)
+jz $0, (0)
 
 find_link: $number_link
 $0
@@ -580,7 +586,9 @@ $0
 .ascip "INTERPRET" # (--)
 interpret: $docol
 $word
-$tell
+$number
+$drop
+$emit
 $lit
 $10
 $emit
