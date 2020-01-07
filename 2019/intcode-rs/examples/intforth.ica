@@ -528,6 +528,7 @@ $comma
 $latest
 $fetch
 $hidden
+$lbrac
 $exit
 
 hidden_link: $semicolon_link
@@ -592,7 +593,6 @@ $interpret
 $branch
 $-2
 
-# TODO: this could get ugly
 interpret_link: $quit_link
 $0
 $0
@@ -640,7 +640,7 @@ interpret_compile_done: jz $0, $_next
 
 interpret_exec: jnz interpret_is_num, $interpret_exec_lit
 # load codeword pointer
-add $3, (0), interpret_exec_len_ptr
+XXXX: add $3, (0), interpret_exec_len_ptr
 # codeword is at link + 4 + name-length
 add interpret_exec_len_ptr, interpret_exec_len_ptr: 0, (0)
 # jmp to **codeword
