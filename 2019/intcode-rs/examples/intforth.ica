@@ -419,14 +419,21 @@ $0
 $0
 .ascip "TELL" # (ptr len --)
 tell: $tell_code
-tell_code: jz (0), $tell_ret
-add $0, (-1), tell_ptr
-out tell_ptr: 0
+tell_code: rel $1
+add $0, $tell_ret, (0)
+jz $0, $_tell
+tell_ret: jz $0, $_next
+
+_tell: add $0, (0), _tell_rip
+rel $-1
+_tell_loop: jz (0), $_tell_ret
+add $0, (-1), _tell_ptr
+out _tell_ptr: 0
 add $1, (-1), (-1)
 add $-1, (0), (0)
-jz $0, $tell_code
-tell_ret: rel $-2
-jz $0, $_next
+jz $0, $_tell_loop
+_tell_ret: rel $-2
+jz $0, _tell_rip: $0
 
 key_link: $tell_link
 $0
@@ -762,7 +769,18 @@ branch_code: add $0, ip, branch_src
 add ip, branch_src: 0, ip
 jz $0, $_next
 
-quit_link: $branch_link
+zerobranch_link: $branch_link
+$0
+$0
+.ascip "0BRANCH" # (cnd --)
+zerobranch: $zerobranch_code
+zerobranch_code: rel $-1
+jnz (1), $zerobranch_ret
+add $0, ip, zerobranch_src
+add ip, zerobranch_src: 0, ip
+zerobranch_ret: jz $0, $_next
+
+quit_link: $zerobranch_link
 $0
 $0
 .ascip "QUIT" # (--)
@@ -836,15 +854,23 @@ jz $0, interpret_exec_jmp2: $0 # stack now at + 0
 interpret_exec_lit: add $0, interpret_word_len, (0) # stack still at + 1
 jz $0, $_next
 
-# TODO
-interpret_fail: out $33
-out $33
-out $10
+interpret_fail: rel $2
+add $0, $interpret_err_msg, (-1)
+add $0, $interpret_fail_r1, (0)
+jz $0, $_printp
+interpret_fail_r1: rel $3
+add $0, interpret_word_ptr, (-2)
+add $0, interpret_word_len, (-1)
+add $0, $interpret_fail_r2, (0)
+jz $0, $_tell
+interpret_fail_r2: out $10
 jz $0, $_next
 
 interpret_is_num: $0
 interpret_word_len: $0
 interpret_word_ptr: $0
+
+interpret_err_msg: .ascip "Unknown word: "
 
 exit_link: $interpret_link
 $0
@@ -868,6 +894,14 @@ add $0, _jnext1: 0, _jnext2
 add $1, ip, ip
 add $0, _jnext2, cw
 jz $0, _jnext2: 0
+
+# (asciip --)
+_printp: rel $1
+add $0, (-1), (0) # copy rip
+add $0, (-2), _printp_len_ptr
+add $0, _printp_len_ptr: 0, (-1)
+add $1, (-2), (-2)
+jz $0, $_tell
 
 # assumption: data stack will be larger than return stack
 # return stack will have a max capacity of 64
