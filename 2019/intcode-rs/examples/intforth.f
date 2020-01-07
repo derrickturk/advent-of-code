@@ -164,3 +164,46 @@
              ELSE BEGIN KEY DUP '"' = IF DROP EXIT THEN EMIT AGAIN
              THEN
 ;
+
+: CONSTANT WORD CREATE ( const -- )
+           DOCOL ,
+           ' LIT ,
+           ,
+           ' EXIT ,
+;
+
+( a crappy malloc )
+: ALLOT ( words -- ptr )
+    HERE @ SWAP
+    HERE +!
+;
+
+: VARIABLE ( -- )
+    1 ALLOT
+    WORD CREATE
+    DOCOL ,
+    ' LIT ,
+    ,
+    ' EXIT ,
+;
+
+( reflection and such )
+
+: ID. ( link-ptr -- )
+    3 + ( &length )
+    DUP ( &length &length )
+    @ ( &length length )
+    SWAP 1+ SWAP ( ptr length )
+    TELL
+;
+
+
+: GREET
+."   ____  ___   _ _____ ___ ____ ______ _____ __  __" CR
+."  /_ _/ / _ \ ///_  _// _//__ // /_/ //_  _// /_/ /" CR
+."  _//_ / / \ v/  / / / _///_/// __  /  / / / __  / " CR
+." /___//_/   \/  /_/ /_/ /___//_/  \_\ /_/ /_/ /_/  " CR
+CR
+;
+
+GREET
