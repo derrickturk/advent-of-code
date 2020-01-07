@@ -6,5 +6,6 @@
 : 0> 0 > ;
 : 0<= 0 <= ;
 : 0>= 0 >= ;
-: DOUBLE DUP + ;
-: QUADRUPLE DOUBLE DOUBLE ;
+: NEGATE 0 SWAP - ;
+: TRUE 1 ;
+: FALSE 0 ;

@@ -1,6 +1,6 @@
 # an indirect-threaded mini-FORTH on intcode [WIP]
 
-rel $4096 # stack starts at addr 4096 - allows ~ 4kw of heap
+rel $4096 # stack starts at addr 4096 - allows ~ 2kw of heap
 jz $0, $_next
 
 ip: $cold_start
@@ -746,7 +746,7 @@ $exit
 
 immediate_link: $hide_link
 $0
-$0
+$1
 .ascip "IMMEDIATE" # (--)
 immediate: $immediate_code
 immediate_code: rel $1
@@ -780,7 +780,18 @@ add $0, ip, zerobranch_src
 add ip, zerobranch_src: 0, ip
 zerobranch_ret: jz $0, $_next
 
-quit_link: $zerobranch_link
+tick_link: $zerobranch_link
+$0
+$0
+.ascip "'" # (--)
+tick: $tick_code
+tick_code: rel $1
+add $0, ip, tick_src_ptr
+add $0, tick_src_ptr: 0, (0)
+add $1, ip, ip
+jz $0, $_next
+
+quit_link: $tick_link
 $0
 $0
 .ascip "QUIT" # (--)
