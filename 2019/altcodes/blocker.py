@@ -102,8 +102,9 @@ def main(argv):
     inputs = deque()
     outputs = deque()
     ip = 0
+    mem = Mem(image)
     while True:
-        state, ip = exec(Mem(image), ip, inputs, outputs)
+        state, ip = exec(mem, ip, inputs, outputs)
         if state == State.HALT:
             break
         elif state == State.WAIT_INPUT:
