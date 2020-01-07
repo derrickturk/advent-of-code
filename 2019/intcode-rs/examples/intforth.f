@@ -6,3 +6,5 @@
 : 0> 0 > ;
 : 0<= 0 <= ;
 : 0>= 0 >= ;
+: DOUBLE DUP + ;
+: QUADRUPLE DOUBLE DOUBLE ;

@@ -1,6 +1,6 @@
 # an indirect-threaded mini-FORTH on intcode [WIP]
 
-rel $2048 # stack starts at addr 2048 - allows ~ 2kw of heap
+rel $4096 # stack starts at addr 4096 - allows ~ 4kw of heap
 jz $0, $_next
 
 ip: $cold_start
@@ -33,7 +33,7 @@ jz $0, $_next
 base_link: $0
 $0
 $0
-.ascip "BASE" # (-- base)
+.ascip "BASE" # (-- &base)
 base: $base_code
 base_code: rel $1
 add $0, $var_base, (0)
@@ -42,7 +42,7 @@ jz $0, $_next
 latest_link: $base_link
 $0
 $0
-.ascip "LATEST" # (-- latest)
+.ascip "LATEST" # (-- &latest)
 latest: $latest_code
 latest_code: rel $1
 add $0, $var_latest, (0)
@@ -51,7 +51,7 @@ jz $0, $_next
 state_link: $latest_link
 $0
 $0
-.ascip "STATE" # (-- state)
+.ascip "STATE" # (-- &state)
 state: $state_code
 state_code: rel $1
 add $0, $var_state, (0)
@@ -60,33 +60,26 @@ jz $0, $_next
 here_link: $state_link
 $0
 $0
-.ascip "HERE" # (-- here)
+.ascip "HERE" # (-- &here)
 here: $here_code
 here_code: rel $1
 add $0, $var_here, (0)
 jz $0, $_next
 
+# then "constants"
+
+docol_link: $here_link
+$0
+$0
+.ascip "DOCOL" # (-- docol-codeword)
+$docol_code
+docol_code: rel $1
+add $0, $docol, (0)
+jz $0, $_next
+
 # then come proper words
 
-double_link: $here_link
-$0
-$0
-.ascip "DOUBLE" # (n -- n)
-double: $docol
-$dup
-$plus
-$exit
-
-quadruple_link: $double_link
-$0
-$0
-.ascip "QUADRUPLE" # (n -- n)
-quadruple: $docol
-$double
-$double
-$exit
-
-lit_link: $quadruple_link
+lit_link: $docol_link
 $0
 $0
 .ascip "LIT" # ( -- n)
@@ -364,7 +357,29 @@ fetch_code: add $0, (0), fetch_src
 add $0, fetch_src: 0, (0)
 jz $0, $_next
 
-rspstore_link: $fetch_link
+tor_link: $fetch_link
+$0
+$0
+.ascip ">R" # (new-rip --)
+tor: $tor_code
+tor_code: add $0, rstack_bp, tor_push_dst
+add $0, (0), tor_push_dst: 0
+add $1, rstack_bp, rstack_bp
+rel $-1
+jz $0, $_next
+
+fromr_link: $tor_link
+$0
+$0
+.ascip "R>" # (-- old-rip)
+fromr: $fromr_code
+fromr_code: rel $1
+add $-1, rstack_bp, rstack_bp
+add $0, rstack_bp, fromr_pop_src
+add $0, fromr_pop_src: 0, (0)
+jz $0, $_next
+
+rspstore_link: $fromr_link
 $0
 $0
 .ascip "RSP!" # (new-rsp --)
@@ -382,7 +397,15 @@ rspfetch_code: rel $1
 add $0, rstack_bp, (0)
 jz $0, $_next
 
-emit_link: $rspfetch_link
+rdrop_link: $rspfetch_link
+$0
+$0
+.ascip "RDROP" # (--)
+rdrop: $rdrop_code
+rdrop_code: add $-1, rstack_bp, rstack_bp
+jz $0, $_next
+
+emit_link: $rdrop_link
 $0
 $0
 .ascip "EMIT" # (chr --)
