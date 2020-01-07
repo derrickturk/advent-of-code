@@ -160,7 +160,64 @@ mult_code: mul (-1), (0), (-1)
 rel $-1
 jz $0, $_next
 
-incr_link: $mult_link
+# rounds toward 0, I guess?
+div_link: $mult_link
+$0
+$0
+.ascip "/" # (n1 n2 -- n1 / n2)
+div: $div_code
+div_code: rel $1
+add $0, $div_ret, (0)
+jz $0, $_div
+div_ret: jz $0, $_next
+
+_div: add $0, (0), _div_rip
+rel $-1
+rel $4 # temporaries: cnd (-y) acc sign
+add $0, $0, (-1)
+# test for zero
+eq (-4), $0, (-3)
+jnz (-3), $_div_ret
+# establish sign
+add $1, $0, (0)
+lt (-5), $0, (-3)
+jz (-3), $_div_x_positive
+mul (0), $-1, (0)
+mul (-5), $-1, (-5)
+_div_x_positive: lt (-4), $0, (-3)
+jz (-3), $_div_y_positive
+mul (0), $-1, (0)
+mul (-4), $-1, (-4)
+_div_y_positive: mul (-4), $-1, (-2)
+_div_loop: lt (-5), (-4), (-3)
+jnz (-3), $_div_ret
+add (-5), (-2), (-5)
+add $1, (-1), (-1)
+jz $0, $_div_loop
+_div_ret: add $0, (-1), (-5)
+mul (0), (-5), (-5)
+rel $-5
+jz $0, _div_rip: $0
+
+# identity: (x / y) * y + x % y = x
+# thus x % y = x - (x / y) * y
+mod_link: $div_link
+$0
+$0
+.ascip "MOD" # (n1 n2 -- n1 % n2)
+mod: $mod_code
+mod_code: rel $3 # temporaries: dupx dupy [+ div rip]
+add $0, (-3), (-1)
+add $0, (-4), (-2)
+add $0, $mod_r1, (0)
+jz $0, $_div
+mod_r1: mul (0), (-1), (-1) # stack is now (n1 n2 quo)
+mul $-1, (-1), (-1)
+add (-2), (-1), (-2)
+rel $-2
+jz $0, $_next
+
+incr_link: $mod_link
 $0
 $0
 .ascip "1+" # (n -- n + 1)
