@@ -384,7 +384,30 @@ fetch_code: add $0, (0), fetch_src
 add $0, fetch_src: 0, (0)
 jz $0, $_next
 
-tor_link: $fetch_link
+addstore_link: $fetch_link
+$0
+$0
+.ascip "+!" # (val addr --)
+addstore: $addstore_code
+addstore_code: add $0, (0), addstore_dst
+add $0, (0), addstore_src
+add addstore_src: 0, (-1), addstore_dst: 0
+rel $-2
+jz $0, $_next
+
+substore_link: $addstore_link
+$0
+$0
+.ascip "-!" # (val addr --)
+substore: $substore_code
+mul $-1, (-1), (-1)
+substore_code: add $0, (0), substore_dst
+add $0, (0), substore_src
+add substore_src: 0, (-1), substore_dst: 0
+rel $-2
+jz $0, $_next
+
+tor_link: $substore_link
 $0
 $0
 .ascip ">R" # (new-rip --)
@@ -842,7 +865,20 @@ add $0, tick_src_ptr: 0, (0)
 add $1, ip, ip
 jz $0, $_next
 
-quit_link: $tick_link
+litstring_link: $tick_link
+$0
+$0
+.ascip "LITSTRING"
+litstring: $litstring_code
+litstring_code: rel $2
+add $0, ip, litstring_len_ptr
+add $0, litstring_len_ptr: 0, (0)
+add $1, ip, (-1)
+add $1, ip, ip
+add (0), ip, ip
+jz $0, $_next
+
+quit_link: $litstring_link
 $0
 $0
 .ascip "QUIT" # (--)

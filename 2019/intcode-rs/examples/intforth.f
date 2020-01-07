@@ -18,6 +18,7 @@
 : ')' [ CHAR ) ] LITERAL ;
 : '0' [ CHAR 0 ] LITERAL ;
 : 'A' [ CHAR A ] LITERAL ;
+: '"' [ CHAR " ] LITERAL ;
 : '\n' 10 ;
 : BL 32 ;
 
@@ -119,3 +120,47 @@
 
 : DECIMAL 10 BASE ! ; ( -- )
 : HEX 16 BASE ! ; ( -- )
+
+( strings? )
+
+: C, ( "bytes" are 64-bit )
+  HERE @ !
+  1 HERE +!
+;
+
+: S" IMMEDIATE
+     STATE @ IF ' LITSTRING ,
+                HERE @
+                0 ,
+                BEGIN
+                  KEY
+                  DUP '"' <>
+                WHILE
+                  C,
+                REPEAT
+                DROP
+                DUP
+                HERE @ SWAP -
+                1-
+                SWAP !
+             ELSE
+                HERE @
+                BEGIN
+                  KEY
+                  DUP '"' <>
+                WHILE
+                  OVER !
+                  1+
+                REPEAT
+                DROP
+                HERE @ -
+                HERE @
+                SWAP
+             THEN
+;
+
+: ." IMMEDIATE
+     STATE @ IF [COMPILE] S" ' TELL ,
+             ELSE BEGIN KEY DUP '"' = IF DROP EXIT THEN EMIT AGAIN
+             THEN
+;
