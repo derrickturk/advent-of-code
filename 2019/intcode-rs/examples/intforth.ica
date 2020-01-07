@@ -271,12 +271,11 @@ word: $word_code
 word_code: rel $1
 add $0, $word_ret, (0)
 jz $0, $_word
-word_ret: add $0, (-1), (-2)
-add $0, (0), (-1)
-rel $-1
-jz $0, $_next
+word_ret: jz $0, $_next
 
-_word: rel $3 # (rip ptr len tmp)
+_word: add $0, (0), _word_rip
+rel $-1 # pop rip
+rel $3 # (ptr len tmp)
 add $0, $0, (-1) # length
 add $0, $0, (-2) # temporary for now...
 _word_skip_blanks: in (0)
@@ -312,7 +311,7 @@ jnz (-2), $_word_ret
 jz $0, $_word_til_blank
 _word_ret: rel $-1
 add $0, $_word_buf, (-1)
-jz $0, (-2)
+jz $0, _word_rip: $0
 
 _word_buf: .zeroes 32
 
@@ -324,22 +323,23 @@ number: $number_code
 number_code: rel $1
 add $0, $number_ret, (0)
 jz $0, $_number
-number_ret: rel $-1
-jz $0, $_next
+number_ret: jz $0, $_next
 
-_number: rel $5 # temporaries: num n-unparsed char cnd neg
+_number: add $0, (0), _number_rip
+rel $-1 # pop rip
+rel $5 # temporaries: num n-unparsed char cnd neg
 add $0, $0, (-3)
 add $0, $0, (-4)
-jz (-6), $_number_ret # fail if 0-length input
-add $0, (-7), _number_first
+jz (-5), $_number_ret # fail if 0-length input
+add $0, (-6), _number_first
 eq $45, _number_first: 0, (0) # check for negative sign
 jz (0), $_number_loop
 # skip negative sign
-add $-1, (-6), (-6)
-add $1, (-7), (-7)
+add $-1, (-5), (-5)
+add $1, (-6), (-6)
 
-_number_loop: jz (-6), $_number_ret
-add $0, (-7), _number_src
+_number_loop: jz (-5), $_number_ret
+add $0, (-6), _number_src
 add $0, _number_src: 0, (-2)
 lt (-2), $48, (-1)
 jnz (-1), $_number_fail
@@ -361,17 +361,17 @@ _number_accum: lt (-2), var_base, (-1)
 jz (-1), $_number_fail
 mul (-4), var_base, (-4)
 add (-4), (-2), (-4)
-add $-1, (-6), (-6)
-add $1, (-7), (-7)
+add $-1, (-5), (-5)
+add $1, (-6), (-6)
 jz $0, $_number_loop
 
-_number_fail: add $0, (-6), (-3)
+_number_fail: add $0, (-5), (-3)
 _number_ret: jz (0), $_number_no_negate
 mul $-1, (-4), (-4)
 _number_no_negate: rel $-5
-add $0, (1), (-2)
-add $0, (2), (-1)
-jz $0, (0)
+add $0, (1), (-1)
+add $0, (2), (0)
+jz $0, _number_rip: $0
 
 find_link: $number_link
 $0
@@ -465,11 +465,18 @@ $0
 $0
 .ascip "," # (ptr --)
 comma: $comma_code
-comma_code: add $0, var_here, comma_dst
+comma_code: rel $1
+add $0, $comma_ret, (0)
+jz $0, $_comma
+comma_ret: jz $0, $_next
+
+_comma: add $0, (0), _comma_rip
+rel $-1
+add $0, var_here, comma_dst
 add $0, (0), comma_dst: 0
 add $1, var_here, var_here
 rel $-1
-jz $0, $_next
+jz $0, _comma_rip: $0
 
 lbrac_link: $comma_link
 $0
