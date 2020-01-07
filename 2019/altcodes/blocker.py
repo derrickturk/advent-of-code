@@ -4,6 +4,8 @@ import sys
 from collections import deque
 from enum import Enum
 
+import argparse
+
 class State(Enum):
     HALT = 0
     WAIT_INPUT = 1
@@ -92,15 +94,29 @@ def exec(mem, ip, in_deque, out_deque):
         else:
             raise ValueError(f'Invalid opcode: {mem[ip]} / instruction {instr}')
 
+def arg_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('file', metavar='IMAGE-FILE', type=open)
+    parser.add_argument('--text', '-t', action='store_true')
+    parser.add_argument('--start-input-file', '-f', nargs='+', type=open)
+    return parser
+
 def main(argv):
-    if len(argv) == 2:
-        with open(argv[1], 'r') as f:
-            image = [int(x) for x in f.readline().rstrip().split(',')]
-    else:
-        image = [int(x) for x in sys.stdin.readline().rstrip().split(',')]
+    args = arg_parser().parse_args(argv[1:])
+
+    image = [int(x) for x in args.file.readline().rstrip().split(',')]
+    args.file.close()
 
     inputs = deque()
     outputs = deque()
+
+    if args.start_input_file:
+        for f in args.start_input_file:
+            if args.text:
+                inputs.extend(ord(c) for c in f.read() if c != '\r')
+            else:
+                inputs.extend(int(line.rstrip()) for line in f)
+
     ip = 0
     mem = Mem(image)
     while True:
@@ -109,13 +125,26 @@ def main(argv):
             break
         elif state == State.WAIT_INPUT:
             # first, emit queued output
-            for o in outputs:
-                print(o)
+            if args.text:
+                for o in outputs:
+                    sys.stdout.write(chr(o))
+            else:
+                for o in outputs:
+                    print(o)
             outputs.clear()
-            inputs.append(int(sys.stdin.readline().rstrip()))
+            line = sys.stdin.readline()
+            if args.text:
+                inputs.extend(ord(c) for c in line if c != '\r')
+            else:
+                inputs.append(int(line.rstrip()))
+
     # emit remaining output after halt
-    for o in outputs:
-        print(o)
+    if args.text:
+        for o in outputs:
+            sys.stdout.write(chr(o))
+    else:
+        for o in outputs:
+            print(o)
 
 if __name__ == '__main__':
     main(sys.argv)
