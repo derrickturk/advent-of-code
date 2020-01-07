@@ -1,19 +1,27 @@
-: >= 2DUP = ROT > OR ;
-: <= 2DUP = ROT < OR ;
-: 0= 0 = ;
-: 0<> 0 <> ;
-: 0< 0 < ;
-: 0> 0 > ;
-: 0<= 0 <= ;
-: 0>= 0 >= ;
+: >= 2DUP = -ROT > OR ; \ (x y -- x >= y)
+: <= 2DUP = -ROT < OR ; \ (x y -- x <= y)
+: 0= 0 = ; \ (x -- x = 0)
+: 0<> 0 <> ; \ (x -- x <> 0)
+: 0< 0 < ; \ (x -- x < 0)
+: 0> 0 > ; \ (x -- x > 0)
+: 0<= 0 <= ; \ (x -- x <= 0)
+: 0>= 0 >= ; \ (x -- x >= 0)
 
-: NEGATE 0 SWAP - ;
+: /MOD 2DUP MOD -ROT / ; \ (x y -- rem quo)
+
+: NEGATE 0 SWAP - ; \ (x -- -x)
 : TRUE 1 ;
 : FALSE 0 ;
 
 : LITERAL IMMEDIATE ' LIT , , ;
 : '(' [ CHAR ( ] LITERAL ;
 : ')' [ CHAR ) ] LITERAL ;
+: '0' [ CHAR 0 ] LITERAL ;
+: 'A' [ CHAR A ] LITERAL ;
+: '\n' 10 ;
+: BL 32 ;
+
+: CR '\n' EMIT ;
 
 : IF IMMEDIATE ' 0BRANCH , HERE @ 0 , ;
 : THEN IMMEDIATE DUP HERE @ SWAP - SWAP ! ;
@@ -54,8 +62,60 @@
 
 ( now we have comments! )
 
-: FAC DUP 0<= IF DROP 1 ELSE DUP 1- RECURSE * THEN ;
-: AS BEGIN 65 EMIT 10 EMIT 1- DUP 0= UNTIL ;
+: SPACE ( -- ) BL EMIT ;
+: SPACES ( n -- ) BEGIN DUP 0> WHILE SPACE 1- REPEAT DROP ;
 
-: SAFEAS BEGIN DUP 0> WHILE 65 EMIT 10 EMIT 1- REPEAT ;
-: BACKFAC DUP 0<= UNLESS DUP 1- RECURSE * ELSE DROP 1 THEN ;
+: U. ( u -- )
+  BASE @ /MOD
+  ?DUP IF RECURSE THEN
+  DUP 10 < IF '0'
+           ELSE 10 -
+                'A'
+           THEN
+  +
+  EMIT
+;
+
+: UWIDTH ( u -- width )
+  BASE @ /
+  ?DUP IF RECURSE 1+ ELSE 1 THEN
+;
+
+: U.R ( u width -- )
+  SWAP
+  DUP
+  UWIDTH
+  ROT
+  SWAP -
+  SPACES
+  U.
+;
+
+: .R ( n width -- )
+  SWAP
+  DUP 0< IF NEGATE
+            1
+            SWAP
+            ROT
+            1-
+         ELSE 0
+              SWAP
+              ROT
+         THEN
+  SWAP
+  DUP
+  UWIDTH
+  ROT
+  SWAP -
+  SPACES
+  SWAP
+  IF 45 EMIT THEN
+  U.
+;
+
+: . 0 .R SPACE ;
+: U. U. SPACE ;
+: ? ( addr -- ) @ . ;
+
+: DECIMAL 10 BASE ! ; ( -- )
+: HEX 16 BASE ! ; ( -- )

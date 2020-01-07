@@ -129,15 +129,26 @@ jz $0, $_next
 rot_link: $over_link
 $0
 $0
-.ascip "ROT" # (x y z -- z x y)
+.ascip "ROT" # (x y z -- y z x)
 rot: $rot_code
-rot_code: add $0, (-2), (1)
+rot_code: add $0, (-2), (1) # x y z (x)
+add $0, (-1), (-2) # y y z (x)
+add $0, (0), (-1) # y z z (x)
+add $0, (1), (0) # y z x (x)
+jz $0, $_next
+
+mrot_link: $rot_link
+$0
+$0
+.ascip "-ROT" # (x y z -- z x y)
+mrot: $mrot_code
+mrot_code: add $0, (-2), (1)
 add $0, (0), (-2)
 add $0, (-1), (0)
 add $0, (1), (-1)
 jz $0, $_next
 
-twodrop_link: $rot_link
+twodrop_link: $mrot_link
 $0
 $0
 .ascip "2DROP" # (x y -- )
@@ -168,7 +179,17 @@ add $0, (-3), (-1)
 add $0, (-2), (0)
 jz $0, $_next
 
-plus_link: $twodup_link
+quesdup_link: $twodup_link
+$0
+$0
+.ascip "?DUP" # (x -- x) or (x -- x x)
+quesdup: $quesdup_code
+quesdup_code: jz (0), $_next
+rel $1
+add $0, (-1), (0)
+jz $0, $_next
+
+plus_link: $quesdup_link
 $0
 $0
 .ascip "+" # (n1 n2 -- n1 + n2)
