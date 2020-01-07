@@ -242,7 +242,17 @@ equals_code: eq (-1), (0), (-1)
 rel $-1
 jz $0, $_next
 
-lessthan_link: $equals_link
+nequals_link: $equals_link
+$0
+$0
+.ascip "<>" # (n1 n2 -- n1 <> n2)
+nequals: $nequals_code
+nequals_code: eq (-1), (0), (-1)
+eq (-1), $0, (-1)
+rel $-1
+jz $0, $_next
+
+lessthan_link: $nequals_link
 $0
 $0
 .ascip "<" # (n1 n2 -- n1 < n2)
@@ -251,7 +261,48 @@ lessthan_code: lt (-1), (0), (-1)
 rel $-1
 jz $0, $_next
 
-store_link: $lessthan_link
+greaterthan_link: $lessthan_link
+$0
+$0
+.ascip ">" # (n1 n2 -- n1 > n2)
+greaterthan: $greaterthan_code
+greaterthan_code: lt (-1), (0), (-1)
+eq (-1), $0, (-1)
+rel $-1
+jz $0, $_next
+
+and_link: $greaterthan_link
+$0
+$0
+.ascip "AND" # (n1 n2 -- n1 AND n2)
+and: $and_code
+and_code: mul (-1), (0), (-1)
+eq (-1), $0, (-1)
+eq (-1), $0, (-1)
+rel $-1
+jz $0, $_next
+
+or_link: $and_link
+$0
+$0
+.ascip "OR" # (n1 n2 -- n1 OR n2)
+or: $or_code
+or_code: eq (-1), $0, (-1) # not n1
+eq (0), $0, (0) # not n2
+mul (-1), (0), (-1) # not n1 && not n2
+eq (-1), $0, (-1) # not (not n1 && not n2)
+rel $-1
+jz $0, $_next
+
+not_link: $or_link
+$0
+$0
+.ascip "NOT" # (n -- NOT n)
+not: $not_code
+not_code: eq (0), $0, (0)
+jz $0, $_next
+
+store_link: $not_link
 $0
 $0
 .ascip "!" # (val addr --)
