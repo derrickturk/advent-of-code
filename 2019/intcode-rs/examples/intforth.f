@@ -11,6 +11,10 @@
 : TRUE 1 ;
 : FALSE 0 ;
 
+: LITERAL IMMEDIATE ' LIT , , ;
+: '(' [ CHAR ( ] LITERAL ;
+: ')' [ CHAR ) ] LITERAL ;
+
 : IF IMMEDIATE ' 0BRANCH , HERE @ 0 , ;
 : THEN IMMEDIATE DUP HERE @ SWAP - SWAP ! ;
 : ELSE IMMEDIATE ' BRANCH , HERE @ 0 , SWAP DUP HERE @ SWAP - SWAP ! ;
@@ -35,7 +39,23 @@
          SWAP !
 ;
 
-: FAC DUP 0= IF DROP 1 ELSE DUP 1- RECURSE * THEN ;
+: UNLESS IMMEDIATE ' NOT , [COMPILE] IF ;
+
+: ( IMMEDIATE
+    1
+    BEGIN
+      KEY
+      DUP '(' = IF DROP 1+
+                ELSE ')' = IF 1- THEN
+                THEN
+    DUP 0= UNTIL
+    DROP
+;
+
+( now we have comments! )
+
+: FAC DUP 0<= IF DROP 1 ELSE DUP 1- RECURSE * THEN ;
 : AS BEGIN 65 EMIT 10 EMIT 1- DUP 0= UNTIL ;
 
 : SAFEAS BEGIN DUP 0> WHILE 65 EMIT 10 EMIT 1- REPEAT ;
+: BACKFAC DUP 0<= UNLESS DUP 1- RECURSE * ELSE DROP 1 THEN ;

@@ -560,7 +560,20 @@ add $0, (1), (-1)
 add $0, (2), (0)
 jz $0, _number_rip: $0
 
-find_link: $number_link
+char_link: $number_link
+$0
+$0
+.ascip "CHAR" # (-- char)
+char: $char_code
+char_code: rel $1
+add $0, $char_ret, (0)
+jz $0, $_word
+char_ret: rel $-1
+add $0, (0), char_src
+add $0, char_src: 0, (0)
+jz $0, $_next
+
+find_link: $char_link
 $0
 $0
 .ascip "FIND" # (ptr len -- dict-ptr)
@@ -690,7 +703,7 @@ jz $0, $_next
 rbrac_link: $lbrac_link
 $0
 $0
-.ascip "[" # (--)
+.ascip "]" # (--)
 rbrac: $rbrac_code
 rbrac_code: add $0, $1, var_state
 jz $0, $_next
