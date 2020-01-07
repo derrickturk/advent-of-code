@@ -775,8 +775,10 @@ $0
 .ascip "0BRANCH" # (cnd --)
 zerobranch: $zerobranch_code
 zerobranch_code: rel $-1
-jnz (1), $zerobranch_ret
-add $0, ip, zerobranch_src
+jz (1), $zerobranch_branch
+add $1, ip, ip
+jz $0, $zerobranch_ret
+zerobranch_branch: add $0, ip, zerobranch_src
 add ip, zerobranch_src: 0, ip
 zerobranch_ret: jz $0, $_next
 
