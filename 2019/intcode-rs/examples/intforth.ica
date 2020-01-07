@@ -478,6 +478,9 @@ jnz (-2), $_word_skip_blanks
 # skip CR
 eq (0), $13, (-2)
 jnz (-2), $_word_skip_blanks
+# skip \ to end of line
+eq (0), $92, (-2)
+jnz (-2), $_word_skip_backslash
 # else...
 jz $0, $_word_valid_char
 _word_til_blank: in (0)
@@ -499,6 +502,12 @@ jz $0, $_word_til_blank
 _word_ret: rel $-1
 add $0, $_word_buf, (-1)
 jz $0, _word_rip: $0
+
+_word_skip_backslash: in (0)
+# check for LF only
+eq (0), $10, (-2)
+jnz (-2), $_word_skip_blanks # jump back if LF
+jz $0, $_word_skip_backslash
 
 _word_buf: .zeroes 32
 
