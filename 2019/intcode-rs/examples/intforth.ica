@@ -1,6 +1,6 @@
 # an indirect-threaded mini-FORTH on intcode [WIP]
 
-rel $4096 # stack starts at addr 4096 - allows ~ 2kw of heap
+rel $8192 # stack starts at addr 8192 - allows ~ 4.5kw of heap
 jz $0, $_next
 
 ip: $cold_start
