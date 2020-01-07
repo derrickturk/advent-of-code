@@ -7,7 +7,7 @@ ip: $cold_start
 
 var_base: $10
 var_latest: $exit_link
-var_state: $0
+var_state: $0 # 0 = execute, 1 = compile
 var_here: $heap
 
 cold_start: $quit
@@ -378,39 +378,46 @@ $0
 $0
 .ascip "FIND" # (ptr len -- dict-ptr)
 find: $find_code
-find_code: rel $3 # temporaries: cur_ptr cnd count
+find_code: rel $1
+add $0, $find_ret, (0)
+jz $0, $_find
+find_ret: jz $0, $_next
+
+_find: add $0, (0), _find_rip
+rel $-1
+rel $3 # temporaries: cur_ptr cnd count
 add $0, var_latest, (-2)
-find_loop: eq $0, (-2), (-1)
-jnz (-1), $find_ret
+_find_loop: eq $0, (-2), (-1)
+jnz (-1), $_find_ret
 
 # load hidden flag and test
-add $1, (-2), find_hidden_ptr
-jnz find_hidden_ptr: 0, $find_next
+add $1, (-2), _find_hidden_ptr
+jnz _find_hidden_ptr: 0, $_find_next
 
 # skip if length doesn't match
-add $3, (-2), find_len
-eq find_len: 0, (-3), (-1)
-jz (-1), $find_next
+add $3, (-2), _find_len
+eq _find_len: 0, (-3), (-1)
+jz (-1), $_find_next
 
 # loop and check each char
 add $0, $0, (0)
-find_inner_loop: eq (-3), (0), (-1)
-jnz (-1), $find_ret
-add $4, (-2), find_word_name_ptr
-add find_word_name_ptr, (0), find_word_name_ptr
-add (-4), (0), find_sought_name_ptr
-eq find_word_name_ptr: 0, find_sought_name_ptr: 0, (-1)
-jz (-1), $find_next
+_find_inner_loop: eq (-3), (0), (-1)
+jnz (-1), $_find_ret
+add $4, (-2), _find_word_name_ptr
+add _find_word_name_ptr, (0), _find_word_name_ptr
+add (-4), (0), _find_sought_name_ptr
+eq _find_word_name_ptr: 0, _find_sought_name_ptr: 0, (-1)
+jz (-1), $_find_next
 add $1, (0), (0)
-jz $0, $find_inner_loop
+jz $0, $_find_inner_loop
 
-find_next: add $0, (-2), find_next_link
-add $0, find_next_link: 0, (-2)
-jz $0, $find_loop
+_find_next: add $0, (-2), _find_next_link
+add $0, _find_next_link: 0, (-2)
+jz $0, $_find_loop
 
-find_ret: add $0, (-2), (-4)
+_find_ret: add $0, (-2), (-4)
 rel $-4
-jz $0, $_next
+jz $0, _find_rip: $0
 
 cfa_link: $find_link
 $0
@@ -569,8 +576,7 @@ $0
 $0
 .ascip "BRANCH" # (--)
 branch: $branch_code
-branch_code: rel $1
-add $0, ip, branch_src
+branch_code: add $0, ip, branch_src
 add ip, branch_src: 0, ip
 jz $0, $_next
 
@@ -591,15 +597,70 @@ interpret_link: $quit_link
 $0
 $0
 .ascip "INTERPRET" # (--)
-interpret: $docol
-$word
-$number
-$drop
-$emit
-$lit
-$10
-$emit
-$exit
+interpret: $interpret_code
+interpret_code: rel $1
+add $0, $interpret_r1, (0)
+jz $0, $_word # stack now at + 2
+interpret_r1: add $0, $0, interpret_is_num
+add $0, (-1), interpret_word_ptr
+add $0, (0), interpret_word_len
+
+rel $1
+add $0, $interpret_r2, (0)
+jz $0, $_find # stack now at + 1
+interpret_r2: jz (0), $interpret_number
+add $2, (0), interpret_immed_ptr
+jnz interpret_immed_ptr: 0, $interpret_exec
+jz $0, $interpret_not_number
+
+interpret_number: add $1, $0, interpret_is_num
+rel $2
+add $0, interpret_word_ptr, (-2)
+add $0, interpret_word_len, (-1)
+add $0, $interpret_r3, (0)
+jz $0, $_number # stack now at + 2
+interpret_r3: jnz (0), $interpret_fail
+rel $-1 # stack now at + 1
+add $0, (0), interpret_word_len # use to store number...
+add $0, $lit, (0) # and make LIT the link ptr
+
+interpret_not_number: jz var_state, $interpret_exec
+
+# compile
+rel $1
+add $0, $interpret_r4, (0)
+jz $0, _comma # stack now at +0
+interpret_r4: jz interpret_is_num, $interpret_compile_done
+# if literal, write LIT then number
+rel $2
+add $0, interpret_word_len, (-1)
+add $0, $interpret_compile_done, (0)
+jz $0, _comma # stack now at + 0
+interpret_compile_done: jz $0, $_next
+
+interpret_exec: jnz interpret_is_num, $interpret_exec_lit
+# load codeword pointer
+add $3, (0), interpret_exec_len_ptr
+# codeword is at link + 4 + name-length
+add interpret_exec_len_ptr, interpret_exec_len_ptr: 0, (0)
+# jmp to **codeword
+add $1, (0), interpret_exec_jmp1
+rel $-1
+add $0, interpret_exec_jmp1: 0, interpret_exec_jmp2
+jz $0, interpret_exec_jmp2: $0 # stack now at + 0
+
+interpret_exec_lit: add $0, interpret_word_len, (0) # stack still at + 1
+jz $0, $_next
+
+# TODO
+interpret_fail: out $33
+out $33
+out $10
+jz $0, $_next
+
+interpret_is_num: $0
+interpret_word_len: $0
+interpret_word_ptr: $0
 
 exit_link: $interpret_link
 $0
