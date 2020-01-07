@@ -519,7 +519,6 @@ $lit
 $docol
 $comma
 $latest
-$fetch
 $hidden
 $rbrac
 $exit
@@ -533,7 +532,6 @@ $lit
 $exit
 $comma
 $latest
-$fetch
 $hidden
 $lbrac
 $exit
