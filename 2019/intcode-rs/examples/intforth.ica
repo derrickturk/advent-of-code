@@ -424,11 +424,18 @@ $0
 $0
 .ascip ">CFA" # (dict-ptr -- codeword-ptr)
 cfa: $cfa_code
-cfa_code: add $3, (0), cfa_len_ptr
+cfa_code: rel $1
+add $0, $cfa_ret, (0)
+jz $0, $_cfa
+cfa_ret: jz $0, $_next
+
+_cfa: add $0, (0), _cfa_rip
+rel $-1
+add $3, (0), _cfa_len_ptr
 # codeword is at link + 4 + name-length
-add cfa_len_ptr, cfa_len_ptr: 0, (0)
+add _cfa_len_ptr, _cfa_len_ptr: 0, (0)
 add $1, (0), (0)
-jz $0, $_next
+jz $0, _cfa_rip: $0
 
 dfa_link: $cfa_link
 $0
@@ -622,29 +629,31 @@ jz $0, $_number # stack now at + 2
 interpret_r3: jnz (0), $interpret_fail
 rel $-1 # stack now at + 1
 add $0, (0), interpret_word_len # use to store number...
-add $0, $lit, (0) # and make LIT the link ptr
+add $0, $lit_link, (0) # and make LIT the link ptr
 
 interpret_not_number: jz var_state, $interpret_exec
 
 # compile
 rel $1
 add $0, $interpret_r4, (0)
-jz $0, _comma # stack now at +0
-interpret_r4: jz interpret_is_num, $interpret_compile_done
+jz $0, $_cfa # load codeword ptr
+interpret_r4: rel $1
+add $0, $interpret_r5, (0)
+jz $0, $_comma # stack now at +0
+interpret_r5: jz interpret_is_num, $interpret_compile_done
 # if literal, write LIT then number
 rel $2
 add $0, interpret_word_len, (-1)
 add $0, $interpret_compile_done, (0)
-jz $0, _comma # stack now at + 0
+jz $0, $_comma # stack now at + 0
 interpret_compile_done: jz $0, $_next
 
 interpret_exec: jnz interpret_is_num, $interpret_exec_lit
-# load codeword pointer
-XXXX: add $3, (0), interpret_exec_len_ptr
-# codeword is at link + 4 + name-length
-add interpret_exec_len_ptr, interpret_exec_len_ptr: 0, (0)
+rel $1
+add $0, $interpret_r6, (0)
+jz $0, $_cfa # load codeword ptr
 # jmp to **codeword
-add $1, (0), interpret_exec_jmp1
+interpret_r6: add $0, (0), interpret_exec_jmp1
 rel $-1
 add $0, interpret_exec_jmp1, cw
 add $0, interpret_exec_jmp1: 0, interpret_exec_jmp2
