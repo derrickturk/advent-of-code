@@ -197,6 +197,16 @@
     TELL
 ;
 
+: ?HIDDEN ( link-ptr -- bool ) 1+ @ ;
+: ?IMMEDIATE ( link-ptr -- bool ) 2 + @ ;
+
+: WORDS ( -- )
+    LATEST @
+    BEGIN ?DUP
+    WHILE
+      DUP ?HIDDEN UNLESS DUP ID. CR THEN @
+    REPEAT
+;
 
 : GREET
 ."   ____  ___   _ _____ ___ ____ ______ _____ __  __" CR
