@@ -208,6 +208,29 @@
     REPEAT
 ;
 
+( case statements )
+
+: CASE IMMEDIATE 0 ;
+
+: OF IMMEDIATE
+     ' OVER ,
+     ' = ,
+     [COMPILE] IF
+     ' DROP ,
+;
+
+: ENDOF IMMEDIATE
+    [COMPILE] ELSE
+;
+
+: ENDCASE IMMEDIATE
+    ' DROP ,
+    BEGIN ?DUP
+    WHILE
+      [COMPILE] THEN
+    REPEAT
+;
+
 : GREET
 ."   ____  ___   _ _____ ___ ____ ______ _____ __  __" CR
 ."  /_ _/ / _ \ ///_  _// _//__ // /_/ //_  _// /_/ /" CR
