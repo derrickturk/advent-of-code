@@ -27,9 +27,22 @@ valid (Query (Rule low high char) pass) =
   let n = T.count (T.singleton char) pass
    in low <= n && high >= n
 
+xor :: Bool -> Bool -> Bool
+xor True False = True
+xor False True = True
+xor _ _ = False
+
+valid2 :: Query -> Bool
+valid2 (Query (Rule low high char) pass) =
+  low <= T.length pass
+  && high <= T.length pass
+  && xor (T.index pass (low - 1) == char) (T.index pass (high - 1) == char)
+
 main :: IO ()
 main = do
   queries <- sequence . fmap parseQuery . T.lines <$> TIO.getContents
   case queries of
-    Just queries' -> print $ length $ filter valid queries'
+    Just queries' -> do
+      print $ length $ filter valid queries'
+      print $ length $ filter valid2 queries'
     Nothing -> putStrLn "invalid query"
