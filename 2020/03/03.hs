@@ -46,3 +46,10 @@ main :: IO ()
 main = do
   forest <- parseForest . lines <$> getContents
   print $ treesOnPath (Trajectory 3 1) forest
+  let slopes = [ Trajectory 1 1
+               , Trajectory 3 1
+               , Trajectory 5 1
+               , Trajectory 7 1
+               , Trajectory 1 2
+               ]
+  print $ product $ fmap (`treesOnPath` forest) slopes
