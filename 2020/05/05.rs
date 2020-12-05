@@ -95,11 +95,28 @@ fn main() -> Result<(), Box<dyn Error>> {
         seats.push(seat_pos);
     }
 
-    let max_id_seat = seats.iter().max_by_key(|s| s.seat_id())
-      .ok_or("No seat descriptors provided.")?;
+    if seats.is_empty() {
+        println!("No seat descriptors.");
+        return Ok(())
+    }
+
+    seats.sort_by_key(SeatPos::seat_id);
+
+    let max_id_seat = seats.last().unwrap();
     println!("row {}, seat {}, id {}",
       max_id_seat.row_number(), max_id_seat.seat_number(),
       max_id_seat.seat_id());
+
+    if seats.len() < 3 {
+        println!("Not enough seats for part 2.");
+        return Ok(())
+    }
+
+    for i in 1..seats.len() {
+        if seats[i].seat_id() - 2 == seats[i - 1].seat_id() {
+            println!("found gap at {}", seats[i].seat_id() - 1);
+        }
+    }
 
     Ok(())
 }
