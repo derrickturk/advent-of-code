@@ -3,8 +3,6 @@ use std::{
     io::{self, BufRead},
 };
 
-
-
 fn main() -> Result<(), Box<dyn Error>> {
     let mut sum = 0u32;
 
