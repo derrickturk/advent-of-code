@@ -6,14 +6,14 @@ use std::{
 
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut counts = Vec::new();
+    let mut sum = 0u32;
     let mut set = 0u32;
 
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
         let line = line?;
         if line.is_empty() {
-            counts.push(set.count_ones());
+            sum += set.count_ones();
             set = 0u32;
             continue;
         }
@@ -26,9 +26,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    counts.push(set.count_ones());
-
-    println!("{}", counts.iter().sum::<u32>());
+    sum += set.count_ones();
+    println!("{}", sum);
 
     Ok(())
 }
