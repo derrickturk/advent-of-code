@@ -34,11 +34,20 @@ def reachable(rules: Dict[str, Rule], source: str, target: str) -> bool:
             return True
     return False
 
+def contained_bags(rules: Dict[str, Rule], source: str) -> int:
+    sum = 0
+    for child in rules[source].contents:
+        count, color = child
+        sum += count
+        sum += count * contained_bags(rules, color)
+    return sum
+
 def main() -> int:
     rules = parse_ruletable(sys.stdin)
     print(sum(
         1 if reachable(rules, source, 'shiny gold') and source != 'shiny gold' else 0
         for source in rules))
+    print(contained_bags(rules, 'shiny gold'))
     return 0
 
 if __name__ == '__main__':
