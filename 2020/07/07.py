@@ -44,9 +44,8 @@ def contained_bags(rules: Dict[str, Rule], source: str) -> int:
 
 def main() -> int:
     rules = parse_ruletable(sys.stdin)
-    print(sum(
-        1 if reachable(rules, source, 'shiny gold') and source != 'shiny gold' else 0
-        for source in rules))
+    print(sum(1 for source in rules
+        if source != 'shiny gold' and reachable(rules, source, 'shiny gold')))
     print(contained_bags(rules, 'shiny gold'))
     return 0
 
