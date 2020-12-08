@@ -7,3 +7,4 @@
 *.pbm
 .mypy_cache
 *.swo
+*.idr~
