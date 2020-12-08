@@ -117,9 +117,27 @@ use std::{
     io::{self, BufRead},
 };
 
-fn main() -> Result<(), Box<dyn Error>> {
-    use gameboiii::*;
+use gameboiii::*;
 
+#[derive(Clone, Debug)]
+enum Termination {
+    Halt,
+    Loop,
+}
+
+fn run_to_termination(console: &mut GameBoiii
+  ) -> Result<Termination, GameBoiiiError> {
+    let mut seen_ip = HashSet::new();
+    while let Some(ip) = console.step()? {
+        seen_ip.insert(ip);
+        if seen_ip.contains(&console.ip()) {
+            return Ok(Termination::Loop);
+        }
+    }
+    Ok(Termination::Halt)
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
     let stdin = io::stdin();
     // I don't know how to combine Box<dyn Error> with ...map()...collect()
     let mut prog = Vec::new();
@@ -127,13 +145,32 @@ fn main() -> Result<(), Box<dyn Error>> {
         prog.push(Instr::parse(&line?)?);
     }
 
-    let mut console = GameBoiii::new(prog);
-    let mut seen_ip = HashSet::new();
-    while let Some(ip) = console.step()? {
-        seen_ip.insert(ip);
-        if seen_ip.contains(&console.ip()) {
-            println!("{}", console.acc());
-            break;
+    let mut console = GameBoiii::new(prog.clone());
+    match run_to_termination(&mut console)? {
+        Termination::Halt => eprintln!("part 1: program halted!"),
+        Termination::Loop => println!("part 1: acc = {}", console.acc()),
+    };
+
+    for (i, instr) in prog.iter().enumerate() {
+        let tweaked = match instr {
+            Instr { op: Op::Nop, val } => {
+                let mut flipped = prog.clone();
+                flipped[i] = Instr { op: Op::Jmp, val: *val };
+                flipped
+            },
+
+            Instr { op: Op::Jmp, val } => {
+                let mut flipped = prog.clone();
+                flipped[i] = Instr { op: Op::Nop, val: *val };
+                flipped
+            },
+
+            _ => continue,
+        };
+
+        let mut console = GameBoiii::new(tweaked);
+        if let Ok(Termination::Halt) = run_to_termination(&mut console) {
+            println!("part 2: acc = {}", console.acc());
         }
     }
 
