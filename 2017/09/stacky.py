@@ -2,7 +2,7 @@ import sys
 
 from enum import Enum, auto
 
-# from typing import List
+from typing import NamedTuple
 
 class State(Enum):
     Initial = auto()
@@ -10,11 +10,16 @@ class State(Enum):
     Garbage = auto()
     Cancel = auto()
 
-# parse a stream and return its score
-def score(stream: str) -> int:
+class Metrics(NamedTuple):
+    group_score: int
+    garbage_count: int
+
+# parse a stream and return its score and garbage count
+def metrics(stream: str) -> Metrics:
     state_stack = [State.Initial]
     total_score = 0
     group_score = 0
+    garbage_count = 0
     for c in stream:
         state = state_stack[-1] # "peek"
         if state == State.Cancel:
@@ -25,7 +30,7 @@ def score(stream: str) -> int:
             elif c == '!':
                 state_stack.append(State.Cancel)
             else:
-                pass # ignore
+                garbage_count += 1 # ignore
         elif state == State.Initial:
             if c == '{':
                 state_stack.append(State.Group)
@@ -49,11 +54,13 @@ def score(stream: str) -> int:
                      #   invalid strings, but we don't care...)
             else:
                 raise ValueError('Expected "}" or "<"')
-    return total_score
+    return Metrics(total_score, garbage_count)
 
 def main() -> int:
     stream = sys.stdin.read().strip()
-    print(score(stream))
+    group_score, garbage = metrics(stream)
+    print(group_score)
+    print(garbage)
     return 0
 
 if __name__ == '__main__':
