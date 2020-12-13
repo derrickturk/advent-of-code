@@ -4,13 +4,15 @@
 ██░▄▄███░██░██░█████░▄▀█████░█░█░█░▀▀░███░████░▄▄░
 ██░█████▄▀▀▄██░▀▀▄██░██░████░███░█░██░███░████░██░
 ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-*/
 
-// https://shainer.github.io/crypto/math/2017/10/22/chinese-remainder-theorem.html
-// https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
-// ^^^ none of the above actually implement a working program for this
-// this thing gets the right answer except for the last equation, so WTF knows
-// I just don't care any more!
+ * first, the iterative solution to the Chinese Remainder Theorem:
+ * https://crypto.stanford.edu/pbc/notes/numbertheory/crt.html
+ * second, a fast and correct (rare!) modular inverse from my homeboy Knuth;
+ * https://www.di-mgt.com.au/euclidean.html
+ * there's a maniac out there with some broken Python which mumbles
+ *   about the extended Euclidean algorithm - ignore him! (I lost 2 hours
+ *   and my hair turned gray.)
+ */
 
 use std::{
     error::Error,
@@ -23,63 +25,44 @@ enum Bus {
     RealBus(u32),
 }
 
-fn gauss(buses: &[(usize, u32)]) -> Option<u64> {
+fn crt(buses: &[(usize, u32)]) -> Option<u64> {
     let mut result: u64 = 0;
     let moduli_product: u64 = buses.iter().map(|&(_, n)| n as u64).product();
     for &(i, n) in buses {
+        let a = ((n as i64 - i as i64) % n as i64) as u64;
         let b = moduli_product / n as u64;
-        println!("solving for n mod {} == {}",
-          n as u64,
-          ((n as i32 - i as i32) % n as i32) as u64);
-        println!("have invmod({}, {}) = {}", b, n as u64, invmod(b, n as u64)?);
-        result +=
-          ((n as i32 - i as i32) % n as i32) as u64
-          * b
-          * invmod(b, n as u64)?;
+        result += a * b * modinv(b, n as u64)?;
     }
     Some(result % moduli_product)
 }
 
-fn extended_euclid(a: u64, b: u64) -> (i64, i64, i64) {
-    let (mut old_r, mut r) = (a as i64, b as i64);
-    let (mut old_s, mut s) = (1, 0);
-    let (mut old_t, mut t) = (0, 1);
+fn modinv(u: u64, v: u64) -> Option<u64> {
+    let mut u1 = 1u64;
+    let mut u3 = u;
+    let mut v1 = 0u64;
+    let mut v3 = v;
+    let mut t1: u64;
+    let mut t3: u64;
+    let mut q: u64;
+    let mut iter = 1i64;
 
-    while r != 0 {
-        let q = old_r / r;
-
-        // fuck the lack of destructuring assignment and fuck
-        //   whoever came up with these variable names
-        let old_r_ = r;
-        let r_ = old_r - q * r;
-        old_r = old_r_;
-        r = r_;
-
-        let old_s_ = s;
-        let s_ = old_s - q * s;
-        old_s = old_s_;
-        s = s_;
-
-        let old_t_ = t;
-        let t_ = old_t - q * t;
-        old_t = old_t_;
-        t = t_;
+    while v3 != 0 {
+        q = u3 / v3;
+        t3 = u3 % v3;
+        t1 = u1 + q * v1;
+        u1 = v1;
+        v1 = t1;
+        u3 = v3;
+        v3 = t3;
+        iter = -iter;
     }
 
-    (old_r, old_s, old_t)
-}
-
-fn invmod(a: u64, m: u64) -> Option<u64> {
-    let (gcd, x, _) = extended_euclid(a, m);
-    if gcd == 1 {
-        let r = x % m as i64;
-        if r < 0 {
-            Some((r.abs() as u64 + m) % m)
-        } else {
-            Some(r as u64)
-        }
-    } else {
+    if u3 != 1 {
         None
+    } else if iter < 0 {
+        Some(v - u1)
+    } else {
+        Some(u1)
     }
 }
 
@@ -112,7 +95,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     };
 
-    println!("{}", gauss(&sched).ok_or("gauss failed")?);
+    println!("{}", crt(&sched).ok_or("crt failed")?);
+
+    /* this was a fun approach, but doesn't scale:
     println!("from z3 import *");
     println!("(n,) = Ints('n')");
     print!("print(solve(n >= 0");
@@ -120,6 +105,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         print!(", n % {} == {}", n, (n as i32 - i as i32) % n as i32);
     }
     println!("))");
+    */
 
     Ok(())
 }
