@@ -31,12 +31,18 @@ def numbers(start: List[int]) -> Iterator[int]:
         yield val
         i += 1
 
-def main() -> int:
+def main(argv: List[int]) -> int:
+    if len(argv) != 2:
+        print(f'Usage: {argv[0]} turn-number', file=sys.stderr)
+        return 1
+
+    turn = int(argv[1]) - 1 # 1-based to 0-based
+
     start = [int(x) for x in sys.stdin.readline().strip().split(',')]
 
-    print(next(islice(numbers(start), 2019, None)))
+    print(next(islice(numbers(start), turn, None)))
 
     return 0
 
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(main(sys.argv))
