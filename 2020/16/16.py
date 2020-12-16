@@ -1,6 +1,6 @@
 import sys
 
-from typing import Dict, List, NamedTuple, Optional, TextIO, Tuple
+from typing import Dict, List, NamedTuple, Optional, Set, TextIO, Tuple
 
 RuleClause = Tuple[int, int] # e.g. 25-35
 Rule = List[RuleClause] # e.g. 25-35 or 47-90
@@ -8,6 +8,7 @@ RuleMap = Dict[str, Rule] # e.g. xxx: 25-35 or 47-90
 
 Ticket = List[int]
 
+Poss = List[Set[str]]
 RuleAssignment = List[str]
 
 class Data(NamedTuple):
@@ -81,10 +82,31 @@ def valid_tickets(data: Data) -> List[Ticket]:
 
 def solve_mapping(data: Data) -> RuleAssignment:
     valid_tix = valid_tickets(data)
-    res = solve_sub_mapping(data.rules, valid_tix, [''] * len(data.mine), 0)
-    if res is None:
-        raise ValueError('no solution!')
-    return res
+    possibilities = [set(data.rules.keys()) for _ in data.mine]
+    constrain(data.rules, valid_tix, possibilities)
+    mapping = list()
+    print(possibilities)
+    for s in possibilities:
+        if len(s) != 1:
+            raise ValueError('no unique solution!')
+        mapping.append(next(iter(s)))
+    return mapping
+
+def constrain(rules: RuleMap, tix: List[Ticket], possibilities: Poss) -> None:
+    for t in tix:
+        for i, val in enumerate(t):
+            # first, learn what's rendered impossible...
+            impossible = set()
+            for p in possibilities[i]:
+                if not valid(rules, p, val):
+                    impossible.add(p)
+            possibilities[i] -= impossible
+
+            # ... then percolate that information back!
+            if len(possibilities[i]) == 1:
+                for j in range(len(possibilities)):
+                    if i != j:
+                        possibilities[j] -= possibilities[i]
 
 def solve_sub_mapping(rules: RuleMap, tix: List[Ticket],
         mapping: RuleAssignment, start: int) -> Optional[RuleAssignment]:
