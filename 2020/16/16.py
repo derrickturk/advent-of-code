@@ -93,8 +93,6 @@ def solve_mapping(data: Data) -> RuleAssignment:
             raise ValueError('no solution!')
         possibilities = try_poss
 
-    print(possibilities)
-
     mapping = list()
     for s in possibilities:
         if len(s) != 1:
@@ -132,6 +130,8 @@ def backtrack(rules: RuleMap, tix: List[Ticket],
             try_poss[i] -= just_p
 
         constrain(rules, tix, try_poss)
+        if any(len(p) == 0 for p in try_poss):
+            continue
 
         solved = backtrack(rules, tix, try_poss, start + 1)
         if solved is not None:
