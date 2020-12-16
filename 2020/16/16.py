@@ -1,5 +1,7 @@
 import sys
 
+from copy import deepcopy
+
 from typing import Dict, List, NamedTuple, Optional, Set, TextIO, Tuple
 
 RuleClause = Tuple[int, int] # e.g. 25-35
@@ -84,11 +86,19 @@ def solve_mapping(data: Data) -> RuleAssignment:
     valid_tix = valid_tickets(data)
     possibilities = [set(data.rules.keys()) for _ in data.mine]
     constrain(data.rules, valid_tix, possibilities)
-    mapping = list()
+
+    if any(len(s) != 1 for s in possibilities):
+        try_poss = backtrack(data.rules, valid_tix, possibilities, 0)
+        if try_poss is None:
+            raise ValueError('no solution!')
+        possibilities = try_poss
+
     print(possibilities)
+
+    mapping = list()
     for s in possibilities:
         if len(s) != 1:
-            raise ValueError('no unique solution!')
+            raise ValueError('something terrible has happened')
         mapping.append(next(iter(s)))
     return mapping
 
@@ -108,26 +118,22 @@ def constrain(rules: RuleMap, tix: List[Ticket], possibilities: Poss) -> None:
                     if i != j:
                         possibilities[j] -= possibilities[i]
 
-def solve_sub_mapping(rules: RuleMap, tix: List[Ticket],
-        mapping: RuleAssignment, start: int) -> Optional[RuleAssignment]:
-    if start == len(mapping):
-        return mapping
+def backtrack(rules: RuleMap, tix: List[Ticket],
+        possibilities: Poss, start: int) -> Optional[Poss]:
+    if start == len(possibilities):
+        return possibilities
 
-    locked = set(mapping[:start])
-    possible = set(k for k in rules if k not in locked)
-    for p in possible:
-        try_mapping = list(mapping)
-        try_mapping[start] = p
+    for p in possibilities[start]:
+        just_p = { p }
+        try_poss = deepcopy(possibilities)
+        try_poss[start] = just_p
 
-        discredited = False
-        for t in tix:
-            if not valid(rules, p, t[start]):
-                discredited = True
-                break
-        if discredited:
-            continue
+        for i in range(start + 1, len(possibilities)):
+            try_poss[i] -= just_p
 
-        solved = solve_sub_mapping(rules, tix, try_mapping, start + 1)
+        constrain(rules, tix, try_poss)
+
+        solved = backtrack(rules, tix, try_poss, start + 1)
         if solved is not None:
             return solved
 
