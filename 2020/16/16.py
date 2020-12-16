@@ -85,13 +85,9 @@ def valid_tickets(data: Data) -> List[Ticket]:
 def solve_mapping(data: Data) -> RuleAssignment:
     valid_tix = valid_tickets(data)
     possibilities = [set(data.rules.keys()) for _ in data.mine]
-    constrain(data.rules, valid_tix, possibilities)
 
-    if any(len(s) != 1 for s in possibilities):
-        try_poss = backtrack(data.rules, valid_tix, possibilities, 0)
-        if try_poss is None:
-            raise ValueError('no solution!')
-        possibilities = try_poss
+    while any(len(s) != 1 for s in possibilities):
+        constrain(data.rules, valid_tix, possibilities)
 
     mapping = list()
     for s in possibilities:
@@ -115,29 +111,6 @@ def constrain(rules: RuleMap, tix: List[Ticket], possibilities: Poss) -> None:
                 for j in range(len(possibilities)):
                     if i != j:
                         possibilities[j] -= possibilities[i]
-
-def backtrack(rules: RuleMap, tix: List[Ticket],
-        possibilities: Poss, start: int) -> Optional[Poss]:
-    if start == len(possibilities):
-        return possibilities
-
-    for p in possibilities[start]:
-        just_p = { p }
-        try_poss = deepcopy(possibilities)
-        try_poss[start] = just_p
-
-        for i in range(start + 1, len(possibilities)):
-            try_poss[i] -= just_p
-
-        constrain(rules, tix, try_poss)
-        if any(len(p) == 0 for p in try_poss):
-            continue
-
-        solved = backtrack(rules, tix, try_poss, start + 1)
-        if solved is not None:
-            return solved
-
-    return None
 
 def main() -> int:
     data = parse_input(sys.stdin)
