@@ -87,14 +87,12 @@ def solve_mapping(data: Data) -> RuleAssignment:
     possibilities = [set(data.rules.keys()) for _ in data.mine]
 
     while any(len(s) != 1 for s in possibilities):
+        # we need to run this in a loop, because each pass back-propagates
+        #   new impossibilities, but doesn't "chain" that information back
+        #   forward
         constrain(data.rules, valid_tix, possibilities)
 
-    mapping = list()
-    for s in possibilities:
-        if len(s) != 1:
-            raise ValueError('something terrible has happened')
-        mapping.append(next(iter(s)))
-    return mapping
+    return [next(iter(s)) for s in possibilities]
 
 def constrain(rules: RuleMap, tix: List[Ticket], possibilities: Poss) -> None:
     for t in tix:
