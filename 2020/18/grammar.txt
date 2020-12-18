@@ -1,0 +1,12 @@
+-- part 1
+nat ::= [0-9]+
+term ::= nat | '(' expr ')'
+expr ::= term (add_term | mul_term)*
+add_term = '+' term
+mul_term = '*' term
+
+-- part 2
+nat ::= [0-9]+
+term ::= nat | '(' expr ')'
+factor ::= term ('+' term)*
+expr ::= factor ('*' factor)*
