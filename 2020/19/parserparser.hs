@@ -132,6 +132,18 @@ numberedRule = (,) <$> nat <*> (lexeme' ":" *> rule)
 ruleSet :: Parser RuleSet
 ruleSet = M.fromList <$> some (numberedRule <* ws)
 
+-- "one or more 42s, followed by one or more nested pairs of 42 and 31"
+part2Hack :: RuleSet -> Parser ()
+part2Hack set =
+  case (compileRule set (RuleRef 42), compileRule set (RuleRef 31)) of
+    (Just fortyTwo, Just thirtyOne) -> do
+      sum42 <- length <$> some fortyTwo
+      sum31 <- length <$> some thirtyOne
+      if sum42 >= sum31 + 1
+        then eof
+        else empty
+    _ -> empty
+
 main :: IO ()
 main = do
   input <- TIO.getContents
@@ -142,3 +154,4 @@ main = do
       Just p -> do
         let lines = T.lines rest
         print $ length $ filter (validate p) $ lines
+        print $ length $ filter (validate (part2Hack set)) $ lines
