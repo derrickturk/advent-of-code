@@ -144,6 +144,12 @@ numberedRule = (,) <$> nat <*> (lexeme' ":" *> rule)
 ruleSet :: Parser RuleSet
 ruleSet = M.fromList <$> some (numberedRule <* ws)
 
+{- for part 2, replace 8 with:
+ - 8: 42 ?(11) | 42 8
+ - and 11 with:
+ - 11: 42 31 | 42 11 31
+ -}
+
 main :: IO ()
 main = do
   input <- TIO.getContents
