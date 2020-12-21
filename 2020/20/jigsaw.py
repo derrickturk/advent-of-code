@@ -52,8 +52,8 @@ class Tile:
             binhashdot(line[-1] for line in reversed(self._contents))
         )
         self._west_edge = (
-            binhashdot(self._contents[0]),
-            binhashdot(reversed(self._contents[0]))
+            binhashdot(line[0] for line in self._contents),
+            binhashdot(line[0] for line in reversed(self._contents))
         )
 
     @property
@@ -248,27 +248,36 @@ def parse_tiles(stream: TextIO) -> Iterator[Tile]:
     except StopIteration:
         yield Tile(tile_id, contents)
 
-def main() -> int:
-    # tiles = list(parse_tiles(sys.stdin))
+def corners(tiles: List[Tile]) -> List[Tile]:
+    result: List[Tile] = list()
+    for t in tiles:
+        matched_edges = 0
+        for _, e in t.edges:
+            found = False
+            for u in tiles:
+                if t == u:
+                    continue
+                for v, _, _ in u.possible_edges():
+                    if v == e:
+                        matched_edges += 1
+                        found = True
+                        break
+                if found:
+                    break
+        if matched_edges == 2:
+            result.append(t)
 
-    t = Tile(1, ['abc', 'def', 'ghi'])
+    print([t.tile_id for t in result])
+    if len(result) != 4:
+        raise ValueError('assumptions violated!')
+    return result
+
+def main() -> int:
+    tiles = list(parse_tiles(sys.stdin))
+    corner_tiles = corners(tiles)
 
     # world: World = dict()
     # nucleate(tiles, world)
-
-    # corners = set()
-    # for t in tiles:
-    #     for _, e in t.edges:
-    #         found = False
-    #         for u in tiles:
-    #             if t == u:
-    #                 continue
-    #             if e in [v for v, _1, _2 in u.possible_edges()]:
-    #                 found = True
-    #                 break
-    #         if not found:
-    #             corners.add(t.tile_id)
-    # print(corners)
 
     return 0
 
