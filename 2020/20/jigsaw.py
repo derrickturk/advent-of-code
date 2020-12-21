@@ -34,6 +34,11 @@ class Tile:
     def __init__(self, tile_id: int, contents: List[str]) -> None:
         self._tile_id = tile_id
         self._contents = contents
+
+        if (len(self._contents) == 0 or
+                any(len(c) != len(self._contents) for c in self._contents)):
+            raise ValueError('not a square tile!')
+
         self._north_edge = (
             binhashdot(self._contents[0]),
             binhashdot(reversed(self._contents[0]))
@@ -99,6 +104,10 @@ class Tile:
     # def __eq__(self, other: 'Tile') -> bool:
     #     return self.tile_id == other.tile_id
 
+    # a b c    g h i
+    # d e f -> d e f
+    # g h i    a b c
+
     def flipv(self) -> 'Tile':
         flipped = copy(self)
         flipped._contents = list(reversed(self._contents))
@@ -107,6 +116,10 @@ class Tile:
         flipped._west_edge = (self._west_edge[1], self._west_edge[0])
         flipped._east_edge = (self._east_edge[1], self._east_edge[0])
         return flipped
+
+    # a b c    c b a
+    # d e f -> f e d
+    # g h i    i h g
 
     def fliph(self) -> 'Tile':
         flipped = copy(self)
@@ -117,10 +130,38 @@ class Tile:
         flipped._east_edge = self._west_edge
         return flipped
 
+    # a b c    g d a
+    # d e f -> h e b
+    # g h i    i f c
+
     def r90(self) -> 'Tile':
-        # return Tile(self.tile_id, list(zip(*self._contents)))
-        # TODO
-        raise NotImplementedError
+        dim = len(self._contents)
+        return Tile(self.tile_id, [
+            ''.join(self._contents[dim - i - 1][j] for i in range(dim))
+            for j in range(len(self._contents))
+        ])
+
+    # a b c    i h g
+    # d e f -> f e d
+    # g h i    c b a
+
+    def r180(self) -> 'Tile':
+        dim = len(self._contents)
+        return Tile(self.tile_id, [
+            ''.join(self._contents[dim - j - 1][dim - i - 1] for i in range(dim))
+            for j in range(len(self._contents))
+        ])
+
+    # a b c    c f i
+    # d e f -> b e h
+    # g h i    a d g
+
+    def r270(self) -> 'Tile':
+        dim = len(self._contents)
+        return Tile(self.tile_id, [
+            ''.join(self._contents[i][dim - j - 1] for i in range(dim))
+            for j in range(len(self._contents))
+        ])
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Tile) and self._tile_id == other._tile_id 
@@ -208,12 +249,26 @@ def parse_tiles(stream: TextIO) -> Iterator[Tile]:
         yield Tile(tile_id, contents)
 
 def main() -> int:
-    tiles = list(parse_tiles(sys.stdin))
-    print(len(tiles))
-    print(tiles[-1])
+    # tiles = list(parse_tiles(sys.stdin))
 
-    world: World = dict()
-    nucleate(tiles, world)
+    t = Tile(1, ['abc', 'def', 'ghi'])
+
+    # world: World = dict()
+    # nucleate(tiles, world)
+
+    # corners = set()
+    # for t in tiles:
+    #     for _, e in t.edges:
+    #         found = False
+    #         for u in tiles:
+    #             if t == u:
+    #                 continue
+    #             if e in [v for v, _1, _2 in u.possible_edges()]:
+    #                 found = True
+    #                 break
+    #         if not found:
+    #             corners.add(t.tile_id)
+    # print(corners)
 
     return 0
 
