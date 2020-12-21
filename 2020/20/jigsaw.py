@@ -191,14 +191,11 @@ World = Dict[Tuple[int, int], Tile]
 
 def adjust(t: Tile, source_edge: Dir, target_edge: Dir, flip: bool) -> Tile:
     if source_edge == Dir.NORTH:
-        if target_edge == Dir.SOUTH:
+        if target_edge == Dir.NORTH:
+            ret = t.r180()
             if flip:
-                return t.fliph()
-            return t
-        elif target_edge == Dir.NORTH:
-            if flip:
-                return t.flipv()
-            # TODO
+                pass
+    # TODO
     raise NotImplementedError
 
 def nucleate(tiles: List[Tile], world: World) -> None:
@@ -275,6 +272,11 @@ def corners(tiles: List[Tile]) -> List[Tile]:
 def main() -> int:
     tiles = list(parse_tiles(sys.stdin))
     corner_tiles = corners(tiles)
+
+    prod = 1
+    for c in corner_tiles:
+        prod *= c.tile_id
+    print(prod)
 
     # world: World = dict()
     # nucleate(tiles, world)
