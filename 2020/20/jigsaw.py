@@ -1,11 +1,18 @@
 import sys
 import re
 
+from enum import Enum, auto
 from copy import copy
-from typing import Iterable, Iterator, List, Set, TextIO, Tuple
+from typing import Dict, Iterable, Iterator, List, TextIO, Tuple
 
 def binhashdot(chars: Iterable[str]) -> int:
     return int(''.join('1' if c == '#' else '0' for c in chars), base=2)
+
+class Dir(Enum):
+    NORTH = auto()
+    SOUTH = auto()
+    EAST = auto()
+    WEST = auto()
 
 class Tile:
     __slots__ = (
@@ -80,6 +87,18 @@ class Tile:
     def west_edge_flipped(self) -> int:
         return self._west_edge[1]
 
+    @property
+    def edges(self) -> List[Tuple[Dir, int]]:
+        return [
+            (Dir.NORTH, self.north_edge),
+            (Dir.SOUTH, self.south_edge),
+            (Dir.EAST, self.east_edge),
+            (Dir.WEST, self.west_edge),
+        ]
+
+    # def __eq__(self, other: 'Tile') -> bool:
+    #     return self.tile_id == other.tile_id
+
     def flipv(self) -> 'Tile':
         flipped = copy(self)
         flipped._contents = list(reversed(self._contents))
@@ -98,6 +117,14 @@ class Tile:
         flipped._east_edge = self._west_edge
         return flipped
 
+    def r90(self) -> 'Tile':
+        # return Tile(self.tile_id, list(zip(*self._contents)))
+        # TODO
+        raise NotImplementedError
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Tile) and self._tile_id == other._tile_id 
+
     def __repr__(self) -> str:
         return f'Tile({self._tile_id}, {repr(self._contents)})'
 
@@ -107,13 +134,56 @@ class Tile:
 {contents}
 '''
 
-    def possible_edges(self) -> Set[int]:
-        return {
-            self.north_edge, self.north_edge_flipped,
-            self.south_edge, self.south_edge_flipped,
-            self.east_edge, self.east_edge_flipped,
-            self.west_edge, self.west_edge_flipped
-        }
+    def possible_edges(self) -> List[Tuple[int, Dir, bool]]:
+        return [
+            (self.north_edge, Dir.NORTH, False),
+            (self.south_edge, Dir.SOUTH, False),
+            (self.east_edge, Dir.EAST, False),
+            (self.west_edge, Dir.WEST, False),
+            (self.north_edge_flipped, Dir.NORTH, True),
+            (self.south_edge_flipped, Dir.SOUTH, True),
+            (self.east_edge_flipped, Dir.EAST, True),
+            (self.west_edge_flipped, Dir.WEST, True),
+        ]
+
+World = Dict[Tuple[int, int], Tile]
+
+def adjust(t: Tile, source_edge: Dir, target_edge: Dir, flip: bool) -> Tile:
+    if source_edge == Dir.NORTH:
+        if target_edge == Dir.SOUTH:
+            if flip:
+                return t.fliph()
+            return t
+        elif target_edge == Dir.NORTH:
+            if flip:
+                return t.flipv()
+            # TODO
+    raise NotImplementedError
+
+def nucleate(tiles: List[Tile], world: World) -> None:
+    open_edges: List[Tuple[Tuple[int, int], Dir, int]] = list()
+
+    if len(world) == 0:
+        t = tiles.pop()
+        world[(0, 0)] = t
+        for d, edge in t.edges:
+            open_edges.append(((0, 0), d, edge))
+
+    while tiles and open_edges:
+        for ((x, y), d, val) in open_edges:
+            poss = [(t, d, flip)
+              for t in tiles
+              for (e, d, flip) in t.possible_edges()
+              if val == e
+            ]
+
+            if len(poss) == 1:
+                add_t, add_d, flip = poss[0]
+                tiles.remove(t)
+                # TODO
+
+        print(tiles)
+        print(open_edges)
 
 ID_RE = re.compile(r'Tile (\d+):')
 
@@ -142,12 +212,8 @@ def main() -> int:
     print(len(tiles))
     print(tiles[-1])
 
-    for start in tiles:
-        for edge in (start.north_edge, start.south_edge, start.west_edge, start.east_edge):
-            poss = [t for t in tiles if edge in t.possible_edges() and t.tile_id != start.tile_id]
-            if len(poss) == 1:
-                print(f'got it: {start.tile_id}, {poss[0].tile_id}')
-    print(poss)
+    world: World = dict()
+    nucleate(tiles, world)
 
     return 0
 
