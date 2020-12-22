@@ -414,7 +414,8 @@ def main() -> int:
         prod *= c.tile_id
     print(prod)
 
-    init_edge = corner_tiles[0][1] # an arbitrary choice
+    print(corner_tiles)
+    init_edge = corner_tiles[0][2] # an "arbitrary" choice
     world = fill(init_edge, tiles)
 
     dump_world(world, sys.stdout)
