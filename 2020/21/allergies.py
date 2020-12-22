@@ -37,6 +37,17 @@ def main() -> int:
 
     print(sum(1 for f in menu for i in f.ingredients if i in safe_ingrs))
 
+    mapping = dict()
+    while all_allergens:
+        for a in all_allergens:
+            which = ingredients_might_have(a, menu) - safe_ingrs
+            if len(which) == 1:
+                mapping[a] = next(iter(which))
+                safe_ingrs.add(mapping[a])
+        all_allergens -= set(mapping.keys())
+
+    print(','.join(mapping[a] for a in sorted(mapping.keys())))
+
     return 0
 
 if __name__ == '__main__':
