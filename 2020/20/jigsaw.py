@@ -242,16 +242,16 @@ def adjust(t: Tile, source_edge: Dir, target_edge: Dir, flip: bool) -> Tile:
     elif source_edge == Dir.EAST:
         if target_edge == Dir.NORTH:
             ret = t.r270()
-            if flip:
-                return ret.flipv()
-            else:
-                return ret
-        elif target_edge == Dir.SOUTH:
-            ret = t.r90()
             if flip: # already "flipped" by 90
                 return ret
             else:
                 return ret.flipv()
+        elif target_edge == Dir.SOUTH:
+            ret = t.r90()
+            if flip:
+                return ret.flipv()
+            else:
+                return ret
         elif target_edge == Dir.EAST:
             ret = t.r180()
             if flip: # already "flipped" by 180
@@ -310,6 +310,7 @@ def fill(init_edge: int, tiles: List[Tile]) -> List[List[Tile]]:
             for e, d, f in t.possible_edges():
                 if e == init_edge:
                     row.append(adjust(t, Dir.SOUTH, d, f))
+                    assert(row[0].north_edge == init_edge)
                     init_edge = row[-1].east_edge
                     tiles.remove(t)
                     found = True
@@ -326,6 +327,11 @@ def fill(init_edge: int, tiles: List[Tile]) -> List[List[Tile]]:
                 for e, d, f in t.possible_edges():
                     if e == init_edge:
                         row.append(adjust(t, Dir.EAST, d, f))
+                        assert(row[-1].west_edge == init_edge)
+
+                        if rows:
+                            assert(rows[-1][len(row) - 1].south_edge == row[-1].north_edge)
+
                         init_edge = row[-1].east_edge
                         tiles.remove(t)
                         found = True
@@ -405,6 +411,45 @@ def merge_world(world: List[List[Tile]]) -> Tile:
             contents.append(line)
     return Tile(0, contents)
 
+def compile_monster_pat(pat: str) -> List[Tuple[int, int]]:
+    return [(i, j)
+      for i, l in enumerate(pat.split('\n'))
+      for j, c in enumerate(l)
+      if c == '#'
+    ]
+
+MONSTER = compile_monster_pat(
+'''                  # 
+#    ##    ##    ###
+ #  #  #  #  #  #   '''
+)
+
+def count_monsters(tile: Tile, pat: List[Tuple[int, int]]) -> int:
+    count = 0
+    dim = len(tile._contents)
+    for i in range(dim):
+        for j in range(dim):
+            fail = False
+            for (x, y) in pat:
+                i_ = i + x
+                j_ = j + y
+                if i_ >= dim or j_ >= dim:
+                    fail = True
+                    break
+                if tile._contents[i_][j_] != '#':
+                    fail = True
+                    break
+            if not fail:
+                count += 1
+    return count
+
+def variations(tile: Tile) -> Iterator[Tile]:
+    for t in [tile, tile.r90(), tile.r180(), tile.r270()]:
+        yield t
+        yield t.flipv()
+        yield t.fliph()
+        yield t.flipv().fliph()
+
 def main() -> int:
     tiles = list(parse_tiles(sys.stdin))
     corner_tiles = corners(tiles)
@@ -414,13 +459,20 @@ def main() -> int:
         prod *= c.tile_id
     print(prod)
 
-    print(corner_tiles)
     init_edge = corner_tiles[0][2] # an "arbitrary" choice
     world = fill(init_edge, tiles)
 
     dump_world(world, sys.stdout)
     combined = merge_world(world)
-    print(combined)
+
+    for v in variations(combined):
+        count = count_monsters(v, MONSTER)
+        if count != 0:
+            hashes = sum(1 for line in combined._contents for c in line if c == '#')
+            monster_hashes = len(MONSTER)
+            print(v)
+            print(hashes - monster_hashes * count)
+            break
 
     return 0
 
