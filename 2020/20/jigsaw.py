@@ -1,8 +1,10 @@
 import sys
 import re
 
+from math import sqrt
 from enum import Enum, auto
 from copy import copy
+
 from typing import Dict, Iterable, Iterator, List, TextIO, Tuple
 
 def binhashdot(chars: Iterable[str]) -> int:
@@ -101,9 +103,6 @@ class Tile:
             (Dir.WEST, self.west_edge),
         ]
 
-    # def __eq__(self, other: 'Tile') -> bool:
-    #     return self.tile_id == other.tile_id
-
     # a b c    g h i
     # d e f -> d e f
     # g h i    a b c
@@ -187,41 +186,159 @@ class Tile:
             (self.west_edge_flipped, Dir.WEST, True),
         ]
 
-World = Dict[Tuple[int, int], Tile]
-
 def adjust(t: Tile, source_edge: Dir, target_edge: Dir, flip: bool) -> Tile:
     if source_edge == Dir.NORTH:
         if target_edge == Dir.NORTH:
             ret = t.r180()
+            if flip: # already "flipped" by 180
+                return ret
+            else:
+                return ret.fliph()
+        elif target_edge == Dir.SOUTH:
+            ret = t
             if flip:
-                pass
-    # TODO
+                return ret.fliph()
+            else:
+                return ret
+        elif target_edge == Dir.EAST:
+            ret = t.r90()
+            if flip: # already "flipped" by 90
+                return ret
+            else:
+                return ret.fliph()
+        else: # WEST
+            ret = t.r270()
+            if flip:
+                return ret.fliph()
+            else:
+                return ret
+
+    elif source_edge == Dir.SOUTH:
+        if target_edge == Dir.NORTH:
+            ret = t
+            if flip:
+                return ret.fliph()
+            else:
+                return ret
+        elif target_edge == Dir.SOUTH:
+            ret = t.r180()
+            if flip: # already "flipped" by 180
+                return ret
+            else:
+                return ret.fliph()
+        elif target_edge == Dir.EAST:
+            ret = t.r270()
+            if flip:
+                return ret.fliph()
+            else:
+                return ret
+        else: # WEST
+            ret = t.r90()
+            if flip: # already "flipped" by 90
+                return ret
+            else:
+                return ret.fliph()
+
+    elif source_edge == Dir.EAST:
+        if target_edge == Dir.NORTH:
+            ret = t.r270()
+            if flip:
+                return ret.flipv()
+            else:
+                return ret
+        elif target_edge == Dir.SOUTH:
+            ret = t.r90()
+            if flip: # already "flipped" by 90
+                return ret
+            else:
+                return ret.flipv()
+        elif target_edge == Dir.EAST:
+            ret = t.r180()
+            if flip: # already "flipped" by 180
+                return ret
+            else:
+                return ret.flipv()
+        else: # WEST
+            ret = t
+            if flip:
+                return ret.flipv()
+            else:
+                return ret
+
+    else: # WEST
+        if target_edge == Dir.NORTH:
+            ret = t.r90()
+            if flip: # already "flipped" by 90
+                return ret
+            else:
+                return ret.flipv()
+        elif target_edge == Dir.SOUTH:
+            ret = t.r270()
+            if flip:
+                return ret.flipv()
+            else:
+                return ret
+        elif target_edge == Dir.EAST:
+            ret = t
+            if flip:
+                return ret.flipv()
+            else:
+                return ret
+        else: # WEST
+            ret = t.r180()
+            if flip: # already "flipped" by 180
+                return ret
+            else:
+                return ret.flipv()
+
     raise NotImplementedError
 
-def nucleate(tiles: List[Tile], world: World) -> None:
-    open_edges: List[Tuple[Tuple[int, int], Dir, int]] = list()
+def fill(init_edge: int, tiles: List[Tile]) -> List[List[Tile]]:
+    dim_f = sqrt(len(tiles))
+    if not dim_f.is_integer():
+        raise ValueError('non-square puzzle!')
+    dim = int(dim_f)
+    if dim == 0:
+        raise ValueError('empty puzzle!')
 
-    if len(world) == 0:
-        t = tiles.pop()
-        world[(0, 0)] = t
-        for d, edge in t.edges:
-            open_edges.append(((0, 0), d, edge))
+    rows = list()
+    for _ in range(dim):
+        row = list()
+        found = False
+        for t in tiles:
+            # first fill down the first tile...
+            for e, d, f in t.possible_edges():
+                if e == init_edge:
+                    row.append(adjust(t, Dir.SOUTH, d, f))
+                    init_edge = row[-1].east_edge
+                    tiles.remove(t)
+                    found = True
+                    break
+            if found:
+                break
+        if not found:
+            raise ValueError('assumption violated!')
 
-    while tiles and open_edges:
-        for ((x, y), d, val) in open_edges:
-            poss = [(t, d, flip)
-              for t in tiles
-              for (e, d, flip) in t.possible_edges()
-              if val == e
-            ]
+        # then fill east...
+        for _ in range(dim - 1):
+            found = False
+            for t in tiles:
+                for e, d, f in t.possible_edges():
+                    if e == init_edge:
+                        row.append(adjust(t, Dir.EAST, d, f))
+                        init_edge = row[-1].east_edge
+                        tiles.remove(t)
+                        found = True
+                        break
+                if found:
+                    break
+            if not found:
+                raise ValueError(f'assumption violated: {init_edge}!')
 
-            if len(poss) == 1:
-                add_t, add_d, flip = poss[0]
-                tiles.remove(t)
-                # TODO
+        init_edge = row[0].south_edge
+        rows.append(row)
 
-        print(tiles)
-        print(open_edges)
+    return rows
 
 ID_RE = re.compile(r'Tile (\d+):')
 
@@ -245,10 +362,10 @@ def parse_tiles(stream: TextIO) -> Iterator[Tile]:
     except StopIteration:
         yield Tile(tile_id, contents)
 
-def corners(tiles: List[Tile]) -> List[Tile]:
-    result: List[Tile] = list()
+def corners(tiles: List[Tile]) -> List[Tuple[Tile, int, int]]:
+    result: List[Tuple[Tile, int, int]] = list()
     for t in tiles:
-        matched_edges = 0
+        unmatched_edges = list()
         for _, e in t.edges:
             found = False
             for u in tiles:
@@ -256,30 +373,40 @@ def corners(tiles: List[Tile]) -> List[Tile]:
                     continue
                 for v, _, _ in u.possible_edges():
                     if v == e:
-                        matched_edges += 1
                         found = True
                         break
                 if found:
                     break
-        if matched_edges == 2:
-            result.append(t)
+            if not found:
+                unmatched_edges.append(e)
+        if len(unmatched_edges) == 2:
+            result.append((t, unmatched_edges[0], unmatched_edges[1]))
 
-    print([t.tile_id for t in result])
     if len(result) != 4:
         raise ValueError('assumptions violated!')
+
     return result
+
+def dump_world(world: List[List[Tile]], stream: TextIO) -> None:
+    for row in world:
+        for i in range(len(row[0]._contents)):
+            for t in row:
+                stream.write(t._contents[i])
+            stream.write('\n')
 
 def main() -> int:
     tiles = list(parse_tiles(sys.stdin))
     corner_tiles = corners(tiles)
 
     prod = 1
-    for c in corner_tiles:
+    for c, _, _ in corner_tiles:
         prod *= c.tile_id
     print(prod)
 
-    # world: World = dict()
-    # nucleate(tiles, world)
+    init_edge = corner_tiles[0][1] # an arbitrary choice
+    world = fill(init_edge, tiles)
+
+    dump_world(world, sys.stdout)
 
     return 0
 
