@@ -393,6 +393,17 @@ def dump_world(world: List[List[Tile]], stream: TextIO) -> None:
             for t in row:
                 stream.write(t._contents[i])
             stream.write('\n')
+    stream.write('\n')
+
+def merge_world(world: List[List[Tile]]) -> Tile:
+    contents = []
+    for row in world:
+        for i in range(1, len(row[0]._contents) - 1):
+            line = ''
+            for t in row:
+                line += t._contents[i][1:-1]
+            contents.append(line)
+    return Tile(0, contents)
 
 def main() -> int:
     tiles = list(parse_tiles(sys.stdin))
@@ -407,6 +418,8 @@ def main() -> int:
     world = fill(init_edge, tiles)
 
     dump_world(world, sys.stdout)
+    combined = merge_world(world)
+    print(combined)
 
     return 0
 
