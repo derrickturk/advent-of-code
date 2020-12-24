@@ -31,10 +31,10 @@ origin :: HexCoord
 origin = HexCoord (0, 0, 0)
 
 move :: HexCoord -> HexMove -> HexCoord
-move (HexCoord (x, y, z)) N = HexCoord (x + 1, 0, z - 1)
+move (HexCoord (x, y, z)) N = HexCoord (x + 1, y, z - 1)
 move (HexCoord (x, y, z)) NE = HexCoord (x + 1, y - 1, z)
 move (HexCoord (x, y, z)) SE = HexCoord (x, y - 1, z + 1)
-move (HexCoord (x, y, z)) S = HexCoord (x - 1, 0, z + 1)
+move (HexCoord (x, y, z)) S = HexCoord (x - 1, y, z + 1)
 move (HexCoord (x, y, z)) SW = HexCoord (x - 1, y + 1, z)
 move (HexCoord (x, y, z)) NW = HexCoord (x, y + 1, z - 1)
 
