@@ -42,11 +42,12 @@ class crab_array {
             last = this_node;
         }
 
-        for (std::size_t i = highest_seen + 1; i < max; ++i) {
+        for (std::size_t i = highest_seen + 1; i <= max; ++i) {
             buf_[i] = { 0, last };
             if (!focus_)
                 focus_ = i;
-            buf_[last].cw = i;
+            if (last)
+                buf_[last].cw = i;
             last = i;
         }
 
@@ -106,6 +107,11 @@ class crab_array {
         return result;
     }
 
+    const node& operator[](std::size_t i) const noexcept
+    {
+        return buf_[i];
+    }
+
   private:
     std::vector<node> buf_;
     std::size_t focus_;
@@ -150,11 +156,19 @@ int main(int argc, char** argv)
         crab_game(cups);
     }
 
+    /*
     auto v = cups.to_vector();
     for (const auto& c : v) {
         std::cout << c;
     }
     std::cout << '\n';
+    */
+
+    auto one = cups[1];
+    auto one_cw1 = one.cw;
+    auto one_cw2 = cups[one_cw1].cw;
+    std::cout << one_cw1 << " x " << one_cw2 << " = " << one_cw1 * one_cw2
+      << '\n';
 
     return 0;
 }
