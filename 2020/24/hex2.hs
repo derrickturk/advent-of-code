@@ -59,6 +59,35 @@ blackTiles = S.size . getHexGrid
 flipTiles :: [[HexMove]] -> HexGrid
 flipTiles = foldl' flipTile initialGrid . fmap (movePath origin)
 
+neighbors :: HexCoord -> [HexCoord]
+neighbors c = move c <$> [ E, SE, SW, W, NW, NE ]
+
+blackNeighbors :: HexGrid -> HexCoord -> Int
+blackNeighbors (HexGrid g) c = sum $ countIf <$> neighbors c where
+  countIf c' = if S.member c' g
+    then 1
+    else 0
+
+runDay :: HexGrid -> HexGrid
+runDay grid@(HexGrid g) = HexGrid $ go S.empty g S.empty where
+  go g' consider seen = if S.null consider
+    then g'
+    else let (c, rest) = S.deleteFindMin consider
+             black = blackNeighbors grid c
+             isBlack = S.member c g
+             seen' = S.insert c seen
+             considerNext = if isBlack
+               then S.union rest $ S.fromList $ neighbors c
+               else rest
+             rest' = S.difference considerNext seen
+          in if isBlack
+            then if black == 0 || black > 2
+              then go g' rest' seen'
+              else go (S.insert c g') rest' seen'
+            else if black == 2
+              then go (S.insert c g') rest' seen'
+              else go g' rest' seen'
+
 parseMove :: String -> Maybe (String, HexMove)
 parseMove ('e':rest) = Just (rest, E)
 parseMove ('s':'e':rest) = Just (rest, SE)
@@ -76,4 +105,7 @@ parseMoves input = case parseMove input of
 main :: IO ()
 main = do
   tileSeqs <- fmap parseMoves . lines <$> getContents
-  print $ blackTiles $ flipTiles tileSeqs
+  let day0 = flipTiles tileSeqs
+      days = iterate runDay day0
+  print $ blackTiles day0
+  print $ blackTiles $ days !! 100
