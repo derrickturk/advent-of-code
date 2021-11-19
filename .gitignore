@@ -3,6 +3,7 @@
 *.o
 *.hi
 *.txt
+input.*
 .stack-work
 *.pbm
 .mypy_cache
