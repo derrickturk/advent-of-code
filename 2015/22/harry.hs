@@ -218,16 +218,43 @@ example2Actions = [ castRecharge
                   ]
 -}
 
+ouch :: GameState -> GameState
+ouch game =
+  game { player = (player game) { playerHP = (playerHP $ player game) - 1 } }
+
+playRound2 :: PlayerAction -> GameState -> GameState
+playRound2 a = ouch . playRound a
+
+playRound2' :: PlayerAction -> GameState -> Either GameOver GameState
+playRound2' action game = check $ playRound2 action game where
+  check game'
+    | playerHP (player game') <= 0 = Left Loss
+    | bossHP (boss game') <= 0 = Left Win
+    | null (sanctionedActions game') = Left Loss
+    | otherwise = Right game'
+
+cheapestWin2 :: GameState -> Int
+cheapestWin2 = cheapestWin2' . qStart . Right where
+  cheapestWin2' q = case shift q of
+    Nothing -> maxBound
+    Just (cost, Left Win, _) -> cost
+    Just (_, Left Loss, rest) -> cheapestWin2' rest
+    Just (cost, Right game, rest) ->
+      let steps = [(stepCost + cost, playRound2' action game)
+                    | (stepCost, action) <- sanctionedActions game]
+          q' = foldl (flip enqueue) rest steps
+       in cheapestWin2' q' 
+
 main :: IO ()
 main = do
   Just gameBoss <- parseBoss <$> TIO.getContents
   let game = newGame gameBoss
+      game2 = ouch game
   {-
-      ex1 = foldl (flip playRound) example1Game example1Actions
-      ex2 = foldl (flip playRound) example2Game example2Actions
-      ex1' = foldM (flip playRound') example1Game example1Actions
-      ex2' = foldM (flip playRound') example2Game example2Actions
-  print game
+      ex1 = scanl (flip playRound2) (ouch example1Game) example1Actions
+      ex2 = scanl (flip playRound2) (ouch example2Game) example2Actions
+      ex1' = foldM (flip playRound2') (ouch example1Game) example1Actions
+      ex2' = foldM (flip playRound2') (ouch example2Game) example2Actions
   print ex1
   print ex2
   print ex1'
@@ -236,3 +263,4 @@ main = do
   print $ cheapestWin example2Game
   -}
   print $ cheapestWin game
+  print $ cheapestWin2 game2
