@@ -2,6 +2,7 @@
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
+import qualified Data.Map.Strict as M
 import Text.Read (readMaybe)
 import Data.Char (isSpace)
 import Control.Monad (foldM)
@@ -145,6 +146,42 @@ playRound' action game = check $ playRound action game where
     | null (sanctionedActions game') = Left Loss
     | otherwise = Right game'
 
+-- a goofy "priority queue"
+newtype Q a = Q { unQ :: M.Map Int [a] }
+
+qStart :: a -> Q a
+qStart = Q . M.singleton 0 . pure
+
+shift :: Q a -> Maybe (Int, a, Q a)
+shift (Q m) = case M.minViewWithKey m of
+  Just ((v, (x:[])), m') -> Just (v, x, Q m')
+  Just ((v, (x:xs)), m') -> Just (v, x, Q $ M.insert v xs m')
+  _ -> Nothing
+
+enqueue :: (Int, a) -> Q a -> Q a
+enqueue (v, x) (Q m) = Q $ M.alter f v m where
+  f Nothing = Just [x]
+  f (Just xs) = Just (x:xs)
+
+{-
+-- dunno what to call it, enqueue or update cost
+kerpla :: Eq a => (Int, a) -> Q a -> Q a
+kerpla (v, x) (Q m) = Q $ M.insert v x $ M.filter (/= x) m
+-}
+
+cheapestWin :: GameState -> Int
+cheapestWin = cheapestWin' . qStart . Right where
+  cheapestWin' q = case shift q of
+    Nothing -> maxBound
+    Just (cost, Left Win, _) -> cost
+    Just (_, Left Loss, rest) -> cheapestWin' rest
+    Just (cost, Right game, rest) ->
+      let steps = [(stepCost + cost, playRound' action game)
+                    | (stepCost, action) <- sanctionedActions game]
+          q' = foldl (flip enqueue) rest steps
+       in cheapestWin' q' 
+
+{-
 example1Game :: GameState
 example1Game = GameState { player = Player { playerHP = 10
                                            , mana = 250
@@ -179,11 +216,13 @@ example2Actions = [ castRecharge
                   , castPoison
                   , castMagicMissile
                   ]
+-}
 
 main :: IO ()
 main = do
   Just gameBoss <- parseBoss <$> TIO.getContents
   let game = newGame gameBoss
+  {-
       ex1 = foldl (flip playRound) example1Game example1Actions
       ex2 = foldl (flip playRound) example2Game example2Actions
       ex1' = foldM (flip playRound') example1Game example1Actions
@@ -193,3 +232,7 @@ main = do
   print ex2
   print ex1'
   print ex2'
+  print $ cheapestWin example1Game
+  print $ cheapestWin example2Game
+  -}
+  print $ cheapestWin game
