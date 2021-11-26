@@ -4,6 +4,7 @@
 
 import qualified Data.Text as T
 import qualified Data.Set as S
+import qualified Data.Map.Strict as M
 import Control.Monad (guard)
 import Data.List (foldl')
 
@@ -101,6 +102,37 @@ won :: State -> Bool
 won s = elevatorFloor s == Four && S.null (firstFloor s)
   && S.null (secondFloor s) && S.null (thirdFloor s)
 
+-- a goofy "priority queue"
+newtype Q a = Q { unQ :: M.Map Int [a] }
+
+qStart :: a -> Q a
+qStart = Q . M.singleton 0 . pure
+
+shift :: Q a -> Maybe (Int, a, Q a)
+shift (Q m) = case M.minViewWithKey m of
+  Just ((v, (x:[])), m') -> Just (v, x, Q m')
+  Just ((v, (x:xs)), m') -> Just (v, x, Q $ M.insert v xs m')
+  _ -> Nothing
+
+enqueue :: (Int, a) -> Q a -> Q a
+enqueue (v, x) (Q m) = Q $ M.alter f v m where
+  f Nothing = Just [x]
+  f (Just xs) = Just (x:xs)
+
+-- dunno what to call it, enqueue or update cost
+enqueueOrUpdate :: Eq a => (Int, a) -> Q a -> Q a
+enqueueOrUpdate (v, x) (Q m) = enqueue (v, x) $ Q $ M.map (filter (/= x)) m
+
+cheapestWin :: State -> Int
+cheapestWin = cheapestWin' . qStart where
+  cheapestWin' q = case shift q of
+    Nothing -> maxBound
+    Just (cost, s, _) | won s -> cost
+    Just (cost, s, rest) ->
+      let steps = [(1 + cost, s') | s' <- validMoves s]
+          q' = foldl (flip enqueueOrUpdate) rest steps
+       in cheapestWin' q'
+
 item :: Parser Item
 item =  RTG <$> ("a " *> letters <* " generator")
     <|> Chip <$> ("a " *> letters <* "-compatible microchip")
@@ -130,4 +162,4 @@ world = do
 main :: IO ()
 main = do
   Just state <- parseStdin world
-  print $ validMoves state
+  print $ cheapestWin state
