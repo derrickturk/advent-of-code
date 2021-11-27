@@ -4,11 +4,11 @@
 
 import qualified Data.Text as T
 import qualified Data.Set as S
-import qualified Data.Map.Strict as M
 import Control.Monad (guard)
 import Data.List (foldl')
 
 import FemtoParsec
+import Dijkstra
 
 data Floor
  = One
@@ -28,7 +28,7 @@ data State
           , secondFloor :: S.Set Item
           , thirdFloor :: S.Set Item
           , fourthFloor :: S.Set Item
-          } deriving (Show, Eq)
+          } deriving (Show, Eq, Ord)
 
 floorItems :: Floor -> State -> S.Set Item
 floorItems One = firstFloor
@@ -73,7 +73,7 @@ choose xs n = do
 -- moves of one or two items which Preserve Balance
 -- this is where the Fun begins
 validItemMoves :: S.Set Item -> S.Set Item -> [(S.Set Item, S.Set Item)]
-validItemMoves from to = moveOne <> moveTwo where
+validItemMoves from to = moveTwo <> moveOne where
   moveOne = do
     (chosen, rest) <- leaveOneOut $ S.toList from
     let from' = S.fromList rest
@@ -102,27 +102,7 @@ won :: State -> Bool
 won s = elevatorFloor s == Four && S.null (firstFloor s)
   && S.null (secondFloor s) && S.null (thirdFloor s)
 
--- a goofy "priority queue"
-newtype Q a = Q { unQ :: M.Map Int [a] }
-
-qStart :: a -> Q a
-qStart = Q . M.singleton 0 . pure
-
-shift :: Q a -> Maybe (Int, a, Q a)
-shift (Q m) = case M.minViewWithKey m of
-  Just ((v, (x:[])), m') -> Just (v, x, Q m')
-  Just ((v, (x:xs)), m') -> Just (v, x, Q $ M.insert v xs m')
-  _ -> Nothing
-
-enqueue :: (Int, a) -> Q a -> Q a
-enqueue (v, x) (Q m) = Q $ M.alter f v m where
-  f Nothing = Just [x]
-  f (Just xs) = Just (x:xs)
-
--- dunno what to call it, enqueue or update cost
-enqueueOrUpdate :: Eq a => (Int, a) -> Q a -> Q a
-enqueueOrUpdate (v, x) (Q m) = enqueue (v, x) $ Q $ M.map (filter (/= x)) m
-
+{-
 cheapestWin :: State -> Int
 cheapestWin = cheapestWin' . qStart where
   cheapestWin' q = case shift q of
@@ -132,6 +112,7 @@ cheapestWin = cheapestWin' . qStart where
       let steps = [(1 + cost, s') | s' <- validMoves s]
           q' = foldl (flip enqueueOrUpdate) rest steps
        in cheapestWin' q'
+-}
 
 item :: Parser Item
 item =  RTG <$> ("a " *> letters <* " generator")
@@ -162,4 +143,4 @@ world = do
 main :: IO ()
 main = do
   Just state <- parseStdin world
-  print $ cheapestWin state
+  print $ costToWin state (\s -> zip (repeat (1 :: Int)) (validMoves s)) won
