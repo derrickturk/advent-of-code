@@ -5,7 +5,7 @@
 import qualified Data.Text as T
 import qualified Data.Set as S
 import Control.Monad (guard)
-import Data.List (foldl')
+import Data.List (foldl', sort)
 
 import FemtoParsec
 import Dijkstra
@@ -28,7 +28,8 @@ data State
           , secondFloor :: S.Set Item
           , thirdFloor :: S.Set Item
           , fourthFloor :: S.Set Item
-          } deriving (Show, Eq, Ord)
+          , elements :: [T.Text]
+          } deriving Show
 
 floorItems :: Floor -> State -> S.Set Item
 floorItems One = firstFloor
@@ -102,6 +103,24 @@ won :: State -> Bool
 won s = elevatorFloor s == Four && S.null (firstFloor s)
   && S.null (secondFloor s) && S.null (thirdFloor s)
 
+toCanonical :: State -> (Floor, [(Floor, Floor)])
+toCanonical s = (elevatorFloor s, sort $ canonical <$> elements s) where
+  canonical e = (chipFloor e, rtgFloor e)
+  chipFloor e = head $ do
+    f <- [One, Two, Three, Four]
+    guard $ S.member (Chip e) (floorItems f s)
+    pure f
+  rtgFloor e = head $ do
+    f <- [One, Two, Three, Four]
+    guard $ S.member (RTG e) (floorItems f s)
+    pure f
+
+instance Eq State where
+  s1 == s2 = toCanonical s1 == toCanonical s2
+
+instance Ord State where
+  compare s1 s2 = compare (toCanonical s1) (toCanonical s2)
+
 {-
 cheapestWin :: State -> Int
 cheapestWin = cheapestWin' . qStart where
@@ -138,9 +157,15 @@ world = do
   _ <- "The fourth floor contains "
   f4 <- items
   _ <- lexeme "."
-  pure $ State One f1 f2 f3 f4
+  let es = S.toList $ S.map getTag $ f1 <> f2 <> f3 <> f4
+  pure $ State One f1 f2 f3 f4 es
+  where
+    getTag (RTG t) = t
+    getTag (Chip t) = t
 
 main :: IO ()
 main = do
   Just state <- parseStdin world
+  print state
+  print $ toCanonical state
   print $ costToWin state (\s -> zip (repeat (1 :: Int)) (validMoves s)) won
