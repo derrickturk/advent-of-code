@@ -25,11 +25,11 @@ data Item
   | RTG T.Text
   deriving (Show, Eq, Ord)
 
+-- Make Illegal States Unrepresentable Again, Or Don't, Jesus
 data FastFloor
-  = FastFloor { pairs :: Int
-              , loneRTGs :: Int
-              , loneChips :: [Floor] -- floor of corresponding RTG
-              } deriving (Show, Eq, Ord)
+  = LoneChips [Floor] -- original floor of corresponding RTG
+  | PairsAndRTGs [Floor] [Floor] -- original floor (sigh) of RTG
+  deriving (Show, Eq, Ord)
 
 data ReprKind
   = Normie
@@ -37,8 +37,7 @@ data ReprKind
 
 class FloorRepr (a :: ReprKind) where
   type Repr a = (r :: Type) | r -> a
-  validItemMoves :: (Floor, Repr a) -> (Floor, Repr a) -> [(Repr a, Repr a)]
-  fried :: Repr a -> Bool
+  validItemMoves :: Repr a -> Repr a -> [(Repr a, Repr a)]
   null :: Repr a -> Bool
 
 data State (a :: ReprKind)
@@ -83,12 +82,20 @@ choose xs n = do
   (group, rest') <- choose rest (n - 1)
   pure (x:group, rest')
 
+fried :: Repr 'Normie -> Bool
+fried s = any bad xs where
+  xs = S.toList s
+  bad (RTG _) = False
+  bad (Chip lbl) = any isRTG xs && not (S.member (RTG lbl) s)
+  isRTG (RTG _) = True
+  isRTG _ = False
+
 instance FloorRepr 'Normie where
   type Repr 'Normie = S.Set Item
 
   -- moves of one or two items which Preserve Balance
   -- this is where the Fun begins
-  validItemMoves (_, from) (_, to) = moveTwo <> moveOne where
+  validItemMoves from to = moveTwo <> moveOne where
     moveOne = do
       (chosen, rest) <- leaveOneOut $ S.toList from
       let from' = S.fromList rest
@@ -102,14 +109,44 @@ instance FloorRepr 'Normie where
       guard (not (fried from') && not (fried to'))
       pure (from', to')
 
-  fried s = any bad xs where
-    xs = S.toList s
-    bad (RTG _) = False
-    bad (Chip lbl) = any isRTG xs && not (S.member (RTG lbl) s)
-    isRTG (RTG _) = True
-    isRTG _ = False
-
   null = S.null
+
+instance FloorRepr 'Fast where
+  type Repr 'Fast = FastFloor
+
+  validItemMoves (LoneChips xs) (LoneChips ys) = do
+    n <- [2,1]
+    (toMove, xs') <- choose xs n
+    pure (LoneChips xs', LoneChips $ ys <> toMove)
+
+  validItemMoves (PairsAndRTGs xp xr) (PairsAndRTGs yp yr) = do
+    nr <- [2, 1, 0]
+
+    = movePair <> moveRTGs
+    where
+      movePair = guard (xp > 0) [(PairsAndRTGs (xp - 1) xr, PairsAndRTGs (yp + 1) yr]
+    np <- [2, 1, 0]
+    let nr = 2 - np
+    guard $ np <= xp && nr <= xr
+    pure (PairsAndRTGs (xp - np) (xr - nr), PairsAndRTGs (yp + np) (yr + nr))
+
+  validItemMoves (LoneChips xs) (PairsAndRTGs 0 []) = do
+    n <- [2, 1]
+    (toMove, xs') <- choose xs n
+    pure (LoneChips xs', LoneChips toMove)
+
+  {-
+  validItemMoves (_, LoneChips xs) (f2, PairsAndRTGs np nr) = do
+    let moveable = filter (== f2) xs
+    n <- [2, 1]
+    (toMove, xs') <- choose moveable n
+    let moved = length toMove
+    pure (LoneChips xs', PairsAndRTGs (np + moved) (nr - moved))
+  -}
+
+  null (LoneChips []) = True
+  null (PairsAndRTGs 0 0) = True
+  null _ = False
 
 validMoves :: FloorRepr a => State a -> [State a]
 validMoves s = do
