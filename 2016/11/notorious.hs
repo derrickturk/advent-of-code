@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, TupleSections #-}
 
 -- the notorious RTG
 
@@ -29,7 +29,15 @@ data State
           , thirdFloor :: S.Set Item
           , fourthFloor :: S.Set Item
           , elements :: [T.Text]
-          } deriving Show
+          } deriving (Show, Eq, Ord)
+
+type FastState = (Floor, [(Floor, Floor)])
+
+data FastItem
+   = FastChip Floor
+   | FastRTG Floor
+   | FastPair Floor
+   deriving (Show, Eq, Ord)
 
 floorItems :: Floor -> State -> S.Set Item
 floorItems One = firstFloor
@@ -88,6 +96,62 @@ validItemMoves from to = moveTwo <> moveOne where
     guard (not (friedChip from') && not (friedChip to'))
     pure (from', to')
 
+fastValidItemMoves :: FastState -> Floor -> [FastState]
+fastValidItemMoves (oldFloor, xs) newFloor = (newFloor,) . sort <$>
+  movePair <>
+  move2ChipToPair <>
+  move1ChipToPair <>
+  moveRTGs <>
+  moveLonerChips
+  where
+    movePair = if ((oldFloor, oldFloor) `elem` xs)
+      then [replace1 (oldFloor, oldFloor) (newFloor, newFloor) xs]
+      else []
+
+    pairableChips = length $ filter (== (oldFloor, newFloor)) xs
+
+    move2ChipToPair = if pairableChips >= 2
+      then replace1 (oldFloor, newFloor) (newFloor, newFloor) <$> move1ChipToPair
+      else []
+
+    move1ChipToPair = if pairableChips >= 1
+      then [replace1 (oldFloor, newFloor) (newFloor, newFloor) xs]
+      else []
+
+    newFloorRTGs = length $ filter (\(_, rtgFloor) -> rtgFloor == newFloor) xs
+    lonerableChips = filter (\(chipFloor, _) -> chipFloor == oldFloor) xs
+
+    moveLonerChips = do
+      guard $ newFloorRTGs == 0
+      n <- [1..2]
+      (toMove, _) <- choose lonerableChips n
+      pure $ foldl'
+        (\s old -> replace1 old (changeChipFloor newFloor old) s) xs toMove
+
+    movableRTGs = filter rtgMovable xs
+
+    rtgMovable (chipFloor, rtgFloor) = rtgFloor == oldFloor
+      && chipFloor /= oldFloor && all (wontFry oldFloor newFloor) xs
+
+    wontFry oldRTGFloor newRTGFloor (chipFloor, rtgFloor)
+      | chipFloor /= newRTGFloor = True
+      | oldRTGFloor == rtgFloor = True -- moving into a pair
+      | otherwise = False
+
+    moveRTGs = do
+      n <- [1..2]
+      (toMove, _) <- choose movableRTGs n
+      pure $ foldl'
+        (\s old -> replace1 old (changeRTGFloor newFloor old) s) xs toMove
+
+    changeChipFloor chipFloor (_, rtgFloor) = (chipFloor, rtgFloor)
+    changeRTGFloor rtgFloor (chipFloor, _) = (chipFloor, rtgFloor)
+
+    replace1 _ _ [] = []
+    replace1 x y (z:zs)
+      | x == z = y:zs
+      | otherwise = replace1 x y zs
+
 validMoves :: State -> [State]
 validMoves s = do
   let oldFloor = elevatorFloor s
@@ -98,40 +162,41 @@ validMoves s = do
       s''' = withFloor newFloor to' s''
   pure s'''
 
+fastValidMoves :: FastState -> [FastState]
+fastValidMoves s@(oldFloor, _) = do
+  newFloor <- validElevatorMoves oldFloor
+  fastValidItemMoves s newFloor
+
 -- all items on fourth floor
 won :: State -> Bool
 won s = elevatorFloor s == Four && S.null (firstFloor s)
   && S.null (secondFloor s) && S.null (thirdFloor s)
 
-toCanonical :: State -> (Floor, [(Floor, Floor)])
-toCanonical s = (elevatorFloor s, sort $ canonical <$> elements s) where
-  canonical e = (chipFloor e, rtgFloor e)
-  chipFloor e = head $ do
-    f <- [One, Two, Three, Four]
-    guard $ S.member (Chip e) (floorItems f s)
-    pure f
-  rtgFloor e = head $ do
-    f <- [One, Two, Three, Four]
-    guard $ S.member (RTG e) (floorItems f s)
-    pure f
+fastWon :: FastState -> Bool
+fastWon (Four, xs) = all (== (Four, Four)) xs
+fastWon _ = False
 
-instance Eq State where
-  s1 == s2 = toCanonical s1 == toCanonical s2
-
-instance Ord State where
-  compare s1 s2 = compare (toCanonical s1) (toCanonical s2)
-
-{-
-cheapestWin :: State -> Int
-cheapestWin = cheapestWin' . qStart where
-  cheapestWin' q = case shift q of
-    Nothing -> maxBound
-    Just (cost, s, _) | won s -> cost
-    Just (cost, s, rest) ->
-      let steps = [(1 + cost, s') | s' <- validMoves s]
-          q' = foldl (flip enqueueOrUpdate) rest steps
-       in cheapestWin' q'
--}
+toFast :: State -> FastState
+toFast s = (elevatorFloor s, sort $ fastItems <$> elements s) where
+  fastItems e = (chipFloor e, rtgFloor e)
+  chipFloor e = if S.member (Chip e) (firstFloor s)
+    then One
+    else if S.member (Chip e) (secondFloor s)
+      then Two
+      else if S.member (Chip e) (thirdFloor s)
+        then Three
+        else if S.member (Chip e) (fourthFloor s)
+          then Four
+          else error "well, this problem is hosed"
+  rtgFloor e = if S.member (RTG e) (firstFloor s)
+    then One
+    else if S.member (RTG e) (secondFloor s)
+      then Two
+      else if S.member (RTG e) (thirdFloor s)
+        then Three
+        else if S.member (RTG e) (fourthFloor s)
+          then Four
+          else error "well, this problem is hosed"
 
 item :: Parser Item
 item =  RTG <$> ("a " *> letters <* " generator")
@@ -167,5 +232,9 @@ main :: IO ()
 main = do
   Just state <- parseStdin world
   print state
-  print $ toCanonical state
-  print $ costToWin state (\s -> zip (repeat (1 :: Int)) (validMoves s)) won
+  let fastState = toFast state
+  -- print $ costToWin state (\s -> zip (repeat (1 :: Int)) (validMoves s)) won
+  print $ statesToWin
+    fastState
+    (\s -> zip (repeat (1 :: Int)) (fastValidMoves s))
+    fastWon
