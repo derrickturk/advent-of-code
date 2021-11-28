@@ -172,6 +172,14 @@ won :: State -> Bool
 won s = elevatorFloor s == Four && S.null (firstFloor s)
   && S.null (secondFloor s) && S.null (thirdFloor s)
 
+hash :: FastState -> Int
+hash (e, xs) = fv e * product (iv <$> xs) where
+  fv One = 1
+  fv Two = 3
+  fv Three = 5
+  fv Four = 7
+  iv (x, y) = 17 * fv x + 19 * fv y
+
 fastWon :: FastState -> Bool
 fastWon (Four, xs) = all (== (Four, Four)) xs
 fastWon _ = False

@@ -4,6 +4,7 @@ module Dijkstra (
 ) where
 
 import Data.List (foldl')
+import qualified Data.Set as S
 
 import PQ
 
@@ -46,11 +47,12 @@ statesToWin :: (Ord a, Num b, Bounded b, Ord b)
             -> (a -> Bool)
             -> (b, [a])
 statesToWin initial validMoves won = (total, reverse path) where
-  (total, path) = statesToWin' (fromList [(0, initial, [])])
-  statesToWin' q = case takeMin q of
-    Nothing -> (maxBound, [])
-    Just ((cost, s, p), _) | won s -> (cost, s:p)
+  (total, path) = fst $ statesToWin' (fromList [(0, initial, [])]) S.empty
+  statesToWin' q seen = case takeMin q of
+    Nothing -> ((maxBound, []), seen)
+    Just ((cost, s, p), _) | won s -> ((cost, s:p), seen)
+    Just ((_, s, _), rest) | S.member s seen -> statesToWin' rest seen
     Just ((cost, s, p), rest) ->
       let steps = [(stepCost + cost, s', s:p) | (stepCost, s') <- validMoves s]
           q' = foldl' (flip update') rest steps
-       in statesToWin' q'
+       in statesToWin' q' (S.insert s seen)
