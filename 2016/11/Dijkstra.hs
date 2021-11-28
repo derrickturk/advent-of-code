@@ -8,6 +8,9 @@ import qualified Data.Set as S
 
 import PQ
 
+-- TODO: fancyman fibonacci heap for fast decreaseKey operation
+-- TODO: A* and other search strategies?
+
 update :: (Eq a, Ord a, Ord b) => (b, a) -> PQ (b, a) -> PQ (b, a)
 update (cost, item) q = case takeFirstWhere (\(_, x) -> x == item) q of
   Just ((oldCost, _), q') -> if cost == oldCost
@@ -32,14 +35,16 @@ costToWin :: (Ord a, Num b, Bounded b, Ord b)
           -> (a -> [(b, a)])
           -> (a -> Bool)
           -> b
-costToWin initial validMoves won = costToWin' (fromList [(0, initial)]) where
-  costToWin' q = case takeMin q of
-    Nothing -> maxBound
-    Just ((cost, s), _) | won s -> cost
-    Just ((cost, s), rest) ->
-      let steps = [(stepCost + cost, s') | (stepCost, s') <- validMoves s]
-          q' = foldl' (flip update) rest steps
-       in costToWin' q'
+costToWin initial validMoves won = fst $
+  costToWin' (fromList [(0, initial)]) S.empty where
+    costToWin' q seen = case takeMin q of
+      Nothing -> (maxBound, seen)
+      Just ((cost, s), _) | won s -> (cost, seen)
+      Just ((_, s), rest) | S.member s seen -> costToWin' rest seen
+      Just ((cost, s), rest) ->
+        let steps = [(stepCost + cost, s') | (stepCost, s') <- validMoves s]
+            q' = foldl' (flip update) rest steps
+         in costToWin' q' (S.insert s seen)
 
 statesToWin :: (Ord a, Num b, Bounded b, Ord b)
             => a
