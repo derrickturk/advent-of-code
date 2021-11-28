@@ -150,7 +150,7 @@ fastValidItemMoves (oldFloor, xs) newFloor = (newFloor,) . sort <$>
     replace1 _ _ [] = []
     replace1 x y (z:zs)
       | x == z = y:zs
-      | otherwise = replace1 x y zs
+      | otherwise = z:replace1 x y zs
 
 validMoves :: State -> [State]
 validMoves s = do
