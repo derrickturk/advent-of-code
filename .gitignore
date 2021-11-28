@@ -9,3 +9,4 @@ input.*
 .mypy_cache
 *.swo
 *.idr~
+__pycache__
