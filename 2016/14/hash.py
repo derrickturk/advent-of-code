@@ -2,7 +2,7 @@ import sys
 from hashlib import md5
 from itertools import islice
 
-from typing import Iterable, Optional, NamedTuple, Tuple
+from typing import Callable, Dict, Iterable, Optional, NamedTuple, Tuple
 
 def nth(iterable, n, default=None):
     "Returns the nth item or a default value"
@@ -39,11 +39,31 @@ def has_run(s: str, n: int, of: str) -> bool:
             count = 0
     return False
 
-def keys(salt: str) -> Iterable[Tuple[int, str]]:
+def hash1(s: str) -> str:
+    return md5(s.encode('ascii')).hexdigest()
+
+def hashn(s: str, n: int) -> str:
+    for _ in range(n + 1):
+        s = hash1(s)
+    return s
+
+def cachy_hashn(s: str, n: int) -> str:
+    seen: Dict[str, str] = {}
+    for _ in range(n + 1):
+        if s in seen:
+            s = seen[s]
+        else:
+            h = hash1(s)
+            seen[s] = h
+            s = h
+    return s
+
+def keys(salt: str, hasher: Callable[[str], str] = hash1
+  ) -> Iterable[Tuple[int, str]]:
     ix = 0
     maybe_keys = []
     while True:
-        hash = md5((salt + str(ix)).encode('ascii')).hexdigest()
+        hash = hasher(salt + str(ix))
 
         maybe_keys = [
             m._replace(confirmed = m.confirmed or has_run(hash, 5, m.repeated))
@@ -67,7 +87,8 @@ def keys(salt: str) -> Iterable[Tuple[int, str]]:
 def main(args: list[str]) -> int:
     match args:
         case [_, salt]:
-            print(nth(keys(salt), 63))
+            # print(nth(keys(salt), 63))
+            print(nth(keys(salt, lambda s: cachy_hashn(s, 2016)), 63))
         case [prog, *_]:
             print(f'Usage: {prog} salt', file=sys.stderr)
             return 1
