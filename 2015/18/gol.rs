@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut grid = Grid::parse(&mut stdin).ok_or("couldn't parse grid")?;
     let mut grid2 = grid.clone();
 
-    for _ in 0..4 {
+    for _ in 0..100 {
         grid = grid.update(|gr| {
             let live =
               gr.neighbor_values_diagonal().filter(|&v| v == Cell::On).count();
