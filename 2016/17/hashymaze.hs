@@ -45,9 +45,24 @@ validMoves pass s = do
   guard $ x >= 0 && x <= 3 && y >= 0 && y <= 3
   pure $ State (x, y) path'
 
+maximaybe :: Ord a => [a] -> Maybe a
+maximaybe [] = Nothing
+maximaybe xs = Just $ maximum xs
+
+longestPath :: String -> State -> (Int, Int) -> Maybe Int
+longestPath pass start finish
+  | pos start == finish = Just 0
+  | otherwise = maximaybe $ do
+      next <- validMoves pass start
+      case longestPath pass next finish of
+        Just n -> pure $ 1 + n
+        Nothing -> []
+
 main :: IO ()
 main = do
   [pass] <- getArgs
-  let 
-  putStrLn $ showPath $ path $ last $ snd $ statesToWin
-    (State (0, 0) []) (countingSteps $ validMoves pass) ((== (3, 3)) . pos)
+  let start = State (0, 0) []
+      won = (== (3, 3)) . pos
+  putStrLn $ showPath $ path $ last $ snd $
+    statesToWin start (countingSteps $ validMoves pass) won
+  print $ longestPath pass start (3, 3)
