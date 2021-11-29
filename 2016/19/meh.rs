@@ -28,26 +28,37 @@ fn last_elf_standing(n: usize) -> usize {
 }
 
 fn elf_circlejerk(n: usize) -> usize {
-    let mut curpos: Vec<Option<usize>> = (0..n).map(|i| Some(i)).collect();
-    let mut i = 0;
+    struct Elf {
+        prev: usize,
+        next: usize,
+    }
+
+    let mut elves: Vec<_> = (0..n).map(|i| Elf {
+        prev: if i == 0 { n - 1 } else { i - 1 },
+        next: if i == n - 1 { 0 } else { i + 1 },
+    }).collect();
+
+    let mut elim = n / 2;
     let mut m = n;
+
     loop {
-        if let Some(pos) = curpos[i] {
-            let target_pos = (pos + m / 2) % m;
-            if let Some(j) = curpos.iter().position(|&p| p == Some(target_pos)) {
-                curpos[j] = None;
-                for entry in &mut curpos[j + 1..] {
-                    *entry = entry.map(|k| k - 1);
-                }
-                m -= 1;
-            }
-        }
-
         if m == 1 {
-            return i;
+            return elim;
         }
 
-        i = (i + 1) % n;
+        let next_elim = if m % 2 == 0 {
+            elves[elim].next
+        } else {
+            elves[elves[elim].next].next
+        };
+
+        let prev = elves[elim].prev;
+        let next = elves[elim].next;
+        elves[prev].next = next;
+        elves[next].prev = prev;
+        m -= 1;
+
+        elim = next_elim;
     }
 }
 
