@@ -81,18 +81,27 @@ run a (Move i j) = do
   pure a
 run a (UnRotLtr c) = do
   a' <- run a (RotL 1)
-  go 0 a'
+  go 1 a'
   where
     unrotix i = if i < 6
                   then i - 1
                   else i - 2
     go n arr = do
-      x <- readArray arr (unrotix n)
-      if x == c
+      (0, end) <- getBounds arr
+      let i = unrotix n
+      if i >= end
         then pure arr
         else do
-          arr' <- run arr (RotL 1)
-          go (n + 1) arr'
+          x <- readArray arr i
+          if x == c
+            then pure arr
+            else do
+              arr' <- run arr (RotL 1)
+              if n == 4
+                then do
+                  arr'' <- run arr' (RotL 1)
+                  go 6 arr''
+                else go (n + 1) arr'
 
 scramble :: String -> [Instr] -> String
 scramble pass instrs = elems $ runSTUArray $ do
@@ -124,5 +133,7 @@ main :: IO ()
 main = do
   [pass] <- getArgs
   Just instrs <- parseStdin $ many $ lexeme instr
+  putStr "SCRAMBLE: "
   print $ scramble pass instrs
+  putStr "UNSCRAMBLE: "
   print $ unscramble pass instrs
