@@ -1,0 +1,36 @@
+d = a
+c = 11
+while c > 0 {
+  b = 231
+  while b > 0 {
+    d++
+    b--
+  }
+  c--
+}
+
+while true {
+  a = d
+  while a > 0 {
+    b = a
+    a = 0
+    OUTER: while true {
+      c = 2
+      while c > 0 {
+        if b == 0 { break OUTER; }
+        b--
+        c--
+      }
+      a++
+    }
+
+    b = 2
+    while true {
+      if c == 0 { break; }
+      b--
+      c--
+    }
+
+    out b
+  }
+}
