@@ -1,0 +1,40 @@
+a <- 12
+b <- a
+b--
+d <- a
+a <- 0
+
+LOOP2:
+c <- b
+
+LOOP1:
+a++
+c--
+jnz c LOOP1
+d--
+jnz d LOOP2
+
+b--
+c <- b
+d <- c
+
+LOOP3:
+d--
+c++
+jnz d LOOP3
+
+tgl c
+c <- -16
+jnz 1 c 
+c <- 93
+
+LOOP5:
+d <- 80
+
+LOOP4:
+a++
+d++
+jnz d LOOP4
+
+c++
+jnz c LOOP5

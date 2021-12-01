@@ -24,6 +24,7 @@ data Instr
   | Dec Dst
   | Jnz Src Src
   | Tgl Src
+  | Mul Src Src Dst -- the forbidden instr!
   deriving (Eq, Show)
 
 data CPU
@@ -77,6 +78,7 @@ toggle (Inc dst) = Dec dst
 toggle (Dec dst) = Inc dst
 toggle (Jnz src n) = Cpy src (toDst n)
 toggle (Tgl n) = Inc (toDst n)
+toggle (Mul _ _ _) = error "FORBIDDEN INSTRUCTION may not be TOGGLED!"
 
 step :: CPU -> Maybe CPU
 step cpu =
@@ -96,6 +98,8 @@ step cpu =
                         , code = code cpu A.// [(i, toggle (code cpu A.! i))]
                         }
                else cpu { ip = ip cpu + 1 }
+       Mul s1 s2 dst ->
+         (write cpu dst $ (read cpu s1) * (read cpu s2)) { ip = ip cpu + 1 }
      else Nothing
 
 run :: CPU -> CPU
@@ -127,9 +131,13 @@ instr =  Cpy <$> (lexeme "cpy" *> lexeme srcP) <*> dstP
      <|> Dec <$> (lexeme "dec" *> dstP)
      <|> Jnz <$> (lexeme "jnz" *> lexeme srcP) <*> srcP
      <|> Tgl <$> (lexeme "tgl" *> srcP)
+     <|> Mul <$> (lexeme "mul" *> lexeme srcP)
+             <*> (lexeme srcP)
+             <*> dstP
 
 main :: IO ()
 main = do
   Just instrs <- parseStdin $ many $ lexeme instr
   let cpu = initCPU instrs
   print $ regA $ run cpu { regA = 7 }
+  print $ regA $ run cpu { regA = 12 }

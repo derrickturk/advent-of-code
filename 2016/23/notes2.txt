@@ -1,0 +1,30 @@
+a = 12
+b = 12
+b = 11
+d = 12
+a = 0
+
+while d /= 0
+    c = b
+    while c /= 0
+      a++
+      c--
+    d--
+
+
+^^^^ a = b * d
+clobbers c, d
+c = 0, d = 0
+
+
+so replace with
+cpy 132 a
+cpy 131 b
+cpy 0 c
+cpy 0 d
+
+no, the toggle.
+plan of action:
+  add mul instr
+  insert to replace loop
+  replace -16 with adjusted jump
