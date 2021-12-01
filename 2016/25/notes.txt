@@ -1,0 +1,30 @@
+d <- a
+c <- 11
+LOOP1: b <- 231
+LOOP0: d++
+b--
+jnz b LOOP0
+c--
+jnz c LOOP1
+LOOP7: a <- d
+LOOP6: noop
+b <- a
+a <- 0
+LOOP4: c <- 2
+LOOP3: jnz b SKIP0
+jnz 1 SKIP1
+SKIP0: b--
+c--
+jnz c LOOP3
+a++
+jnz 1 LOOP4
+SKIP1: b <- 2
+LOOP5: jnz c SKIP2
+jnz 1 SKIP3
+SKIP2: b--
+c--
+jnz 1 LOOP5
+SKIP3: noop
+out b
+jnz a LOOP6
+jnz 1 LOOP7
