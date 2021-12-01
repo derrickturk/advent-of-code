@@ -157,10 +157,25 @@ instr =  Cpy <$> (lexeme "cpy" *> lexeme srcP) <*> dstP
              <*> (lexeme srcP)
              <*> dstP
 
+firstSuitable :: Integer
+firstSuitable = head $ filter suitable [0..]
+
+suitable :: Integer -> Bool
+suitable = suitable' False . (+ 2541) where
+  suitable' True 0 = False
+  suitable' False 0 = True
+  suitable' parity n =
+    let (n', r) = n `divMod` 2
+     in (r == 1) == parity && suitable' (not parity) n'
+
 main :: IO ()
 main = do
   Just instrs <- parseStdin $ many $ lexeme instr
   let cpu = initCPU instrs
+  {-
   forM_ [0..15] $ \i -> do
       putStr $ show i <> ": "
       print $ take 15 $ outputs $ cpu { regA = i }
+  -}
+  print firstSuitable
+  print $ take 1000 $ outputs $ cpu { regA = firstSuitable }
