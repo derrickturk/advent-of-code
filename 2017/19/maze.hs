@@ -2,15 +2,9 @@ import Control.Applicative
 import qualified Data.Map.Strict as M
 import Data.Maybe (catMaybes)
 
-data Cell
-  = V
-  | H
-  | X
-  | Ltr Char
-  deriving (Eq, Show, Ord)
-
 data Dir = U | D | L | R deriving (Eq, Show, Ord)
 
+type Cell = Maybe Char
 type Pos = (Int, Int)
 type Maze = M.Map (Int, Int) Cell
 type Racer = (Pos, Dir)
@@ -27,49 +21,26 @@ ccw L = D
 ccw D = R
 ccw R = U
 
-goal :: Cell -> Maybe Char
-goal (Ltr x) = Just x
-goal _ = Nothing
-
-try :: Cell -> Pos -> Dir -> Maze -> Maybe (Racer, Maybe Char)
-try c p d m = do
-  (p', g) <- try' c p d
+try :: Pos -> Dir -> Maze -> Maybe (Racer, Maybe Char)
+try p d m = do
+  (p', g) <- try' p d
   pure ((p', d), g)
   where
-    try' V (x, y) U = do
+    try' (x, y) U = do
       c' <- M.lookup (x, y - 1) m
-      pure ((x, y - 1), goal c')
-    try' V (x, y) D = do
+      pure ((x, y - 1), c')
+    try' (x, y) D = do
       c' <- M.lookup (x, y + 1) m
-      pure ((x, y + 1), goal c')
-    try' V _ _ = Nothing
-    try' H (x, y) L = do
+      pure ((x, y + 1), c')
+    try' (x, y) L = do
       c' <- M.lookup (x - 1, y) m
-      pure ((x - 1, y), goal c')
-    try' H (x, y) R = do
+      pure ((x - 1, y), c')
+    try' (x, y) R = do
       c' <- M.lookup (x + 1, y) m
-      pure ((x + 1, y), goal c')
-    try' H _ _ = Nothing
-    -- treat letter like +
-    try' _ (x, y) U = do
-      c' <- M.lookup (x, y - 1) m
-      pure ((x, y - 1), goal c')
-    try' _ (x, y) D = do
-      c' <- M.lookup (x, y + 1) m
-      pure ((x, y + 1), goal c')
-    try' _ (x, y) L = do
-      c' <- M.lookup (x - 1, y) m
-      pure ((x - 1, y), goal c')
-    try' _ (x, y) R = do
-      c' <- M.lookup (x + 1, y) m
-      pure ((x + 1, y), goal c')
+      pure ((x + 1, y), c')
 
 step :: Racer -> Maze -> Maybe (Racer, Maybe Char)
-step (p, d) m =
-  let c = m M.! p
-   in case c of
-     X -> try c p d m <|> try c p (cw d) m <|> try c p (ccw d) m
-     _ -> try c p d m
+step (p, d) m = try p d m <|> try p (cw d) m <|> try p (ccw d) m
 
 letters :: Racer -> Maze -> [Char]
 letters r m = case step r m of
@@ -85,7 +56,7 @@ path r m = case step r m of
 parseMaze :: [String] -> Maybe (Racer, Maze)
 parseMaze [] = Nothing
 parseMaze (first:rest) = case parseRow 0 first of
-  first'@[(p, V)] ->
+  first'@[(p, Nothing)] ->
     Just ( (p, D)
          , M.fromList $ concat (first':fmap (uncurry parseRow) (zip [1..] rest))
          )
@@ -93,14 +64,14 @@ parseMaze (first:rest) = case parseRow 0 first of
 
 parseRow :: Int -> String -> [(Pos, Cell)]
 parseRow y = catMaybes . fmap parseCell . zip [0..] where
-  parseCell (x, '|') = Just ((x, y), V)
-  parseCell (x, '-') = Just ((x, y), H)
-  parseCell (x, '+') = Just ((x, y), X)
+  parseCell (x, '|') = Just ((x, y), Nothing)
+  parseCell (x, '-') = Just ((x, y), Nothing)
+  parseCell (x, '+') = Just ((x, y), Nothing)
   parseCell (_, ' ') = Nothing
-  parseCell (x, c) = Just ((x, y), Ltr c)
+  parseCell (x, c) = Just ((x, y), Just c)
 
 main :: IO ()
 main = do
   Just (racer, maze) <- parseMaze . lines <$> getContents
-  print $ letters racer maze
-  print $ path racer maze
+  putStrLn $ letters racer maze
+  print $ 1 + (length $ path racer maze)
