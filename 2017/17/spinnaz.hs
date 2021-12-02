@@ -16,3 +16,8 @@ main = do
   let Just n' = readMaybe n
   print $ focus $ rotateR $ spinGame 3 !! 2017
   print $ focus $ rotateR $ spinGame n' !! 2017
+  {-
+  case rotateTo 0 (spinGame n' !! 50000000) of
+    Just c -> print $ focus $ rotateR c
+    Nothing -> putStrLn "hmmm"
+  -}

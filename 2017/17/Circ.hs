@@ -97,4 +97,18 @@ rotateTo :: Eq a => a -> Circ a -> Maybe (Circ a)
 rotateTo _ Empty = Nothing
 rotateTo x c@(Circ y ls rs)
   | x == y = Just c
-rotateTo _ _ = error "not yet implemented!"
+  | Just (pre, post) <- splitOn x (y:rs) = Just $ Circ x (revShift ls pre) post
+  | Just (pre, post) <- splitOn x (y:ls) = Just $ Circ x post (revShift rs pre)
+  | otherwise = Nothing
+
+{-# INLINE splitOn #-}
+splitOn :: Eq a => a -> [a] -> Maybe ([a], [a])
+splitOn _ [] = Nothing
+splitOn x (y:ys)
+  | x == y = Just ([], ys)
+  | otherwise = (\(pre, post) -> (y:pre, post)) <$> splitOn x ys
+
+{-# INLINE revShift #-}
+revShift :: [a] -> [a] -> [a]
+revShift xs [] = xs
+revShift xs (y:ys) = revShift (y:xs) ys
