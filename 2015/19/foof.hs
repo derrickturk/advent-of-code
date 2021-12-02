@@ -2,7 +2,7 @@
 
 import qualified Data.Text as T
 import Data.Ord (comparing)
-import Data.List (find, nub, minimumBy)
+import Data.List (nub, sortBy)
 import Data.Tuple (swap)
 
 import FemtoParsec
@@ -31,22 +31,17 @@ reactionChains :: [Reaction] -> T.Text -> [(Int, [T.Text])]
 reactionChains reactions start =
   zip [0..] $ iterate (concatMap (reactAll reactions)) [start]
 
-greedySeek :: [Reaction] -> T.Text -> T.Text -> Int
-greedySeek rs start target = go 0 start target where
-  go n s t
-    | s == t = n
-    | otherwise = let steps = reactAll rs s
-                      next = minimumBy (comparing T.length) steps
-                   in go (n + 1) next target
+greedySeek :: [Reaction] -> T.Text -> T.Text -> Maybe Int
+greedySeek rs start target
+  | start == target = Just 0
+  | otherwise = let steps = sortBy (comparing T.length) $ reactAll rs start
+                    go [] = Nothing
+                    go (x:xs) = (+ 1) <$> (greedySeek rs x target <|> go xs)
+                 in go steps
 
 main :: IO ()
 main = do
   Just (reactions, initial) <- parseStdin problem
   print $ length $ nub $ reactAll reactions initial
   let backReactions = swap <$> reactions
-  {- TL;DR
-  case find (("e" `elem`) . snd) $ reactionChains backReactions initial of
-    Just (n, _) -> print n
-    Nothing -> putStrLn "couldn't make the e"
-  -}
   print $ greedySeek backReactions initial "e"
