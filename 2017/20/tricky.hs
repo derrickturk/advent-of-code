@@ -8,7 +8,7 @@ import FemtoParsec
 
 type Vec3 = (Integer, Integer, Integer)
 
-infixl +|
+infixl 6 +|
 (+|) :: Vec3 -> Vec3 -> Vec3
 (x0, y0, z0) +| (x1, y1, z1) = (x0 + x1, y0 + y1, z0 + z1)
 
@@ -48,14 +48,14 @@ particle = do
   pure (p, v, a)
 
 step :: Particle -> Particle
-step (p, v, a) = (p +| v, v +| a, a)
+step (p, v, a) = (p +| v +| a, v +| a, a)
 
 collidingStep :: [Particle] -> [Particle]
 collidingStep = dropCollisions . fmap step
 
 dropCollisions :: [Particle] -> [Particle]
-dropCollisions xs =
-  filter (not . (`S.member` twiceSeen (pos <$> xs)) . pos) xs
+dropCollisions xs = filter (not . (`S.member` naughty) . pos) xs where
+  naughty = twiceSeen $ pos <$> xs
 
 twiceSeen :: Ord a => [a] -> S.Set a
 twiceSeen = go S.empty S.empty where
@@ -81,4 +81,4 @@ main = do
   print $ fst $ minimumBy (comparing (manhattan . acc . snd)) $
     zip [0::Int ..] ps
   print $ length $ untilAllExpanding ps
-  print $ length $ iterate collidingStep ps !! 50000
+  print $ length $ (iterate collidingStep ps !! 1000)
