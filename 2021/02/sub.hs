@@ -11,12 +11,12 @@ data Dir
 
 type Cmd = (Dir, Int)
 
-type Pos = (Int, Int)
+type Pos = (Int, Int, Int)
 
 move :: Pos -> Cmd -> Pos
-move (x, y) (Up, n) = (x, y - n)
-move (x, y) (Down, n) = (x, y + n)
-move (x, y) (Forward, n) = (x + n, y)
+move (x, y, aim) (Up, n) = (x, y, aim - n)
+move (x, y, aim) (Down, n) = (x, y, aim + n)
+move (x, y, aim) (Forward, n) = (x + n, y + aim * n, aim)
 
 dir :: Parser Dir
 dir =  Up <$ "up"
@@ -29,5 +29,5 @@ cmd = (,) <$> lexeme dir <*> unsignedIntNum
 main :: IO ()
 main = do
   Just cmds <- parseStdin $ many $ lexeme cmd
-  let (x, y) = foldl' move (0, 0) cmds
+  let (x, y, _) = foldl' move (0, 0, 0) cmds
   print $ x * y
