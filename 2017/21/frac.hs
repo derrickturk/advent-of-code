@@ -38,6 +38,23 @@ compile :: [Rewrite] -> RewriteCompiled
 compile = foldl' f M.empty where
   f m (from, to) = foldl' (\m' g -> M.insert g to m') m $ permutations from
 
+rewrite :: Parser Rewrite
+rewrite = (,) <$> (lexeme grid1d <* lexeme "=>") <*> grid1d
+
+dissolve :: [[Grid]] -> [[Bool]]
+dissolve = concat . fmap dissolveRow where
+  dissolveRow gs = undefined
+
+reChonk :: [[Grid]] -> [[Grid]]
+reChonk gs =
+  let totalSize = sum $ size <$> head gs
+   in if totalSize `mod` 2 == 0
+        then reChonk' 2 gs
+        else reChonk' 3 gs
+
+reChonk' :: Int -> [[Grid]] -> [[Grid]]
+reChonk' = undefined
+
 startPattern :: Grid
 startPattern = fromJust $ parse grid2d
   ".#.\n\
@@ -61,17 +78,6 @@ grid2d = do
   let len = length rs
   guard $ all (== len) $ length <$> rs
   pure $ Grid rs len
-
-rewrite :: Parser Rewrite
-rewrite = (,) <$> (lexeme grid1d <* lexeme "=>") <*> grid1d
-
-reChonk :: [[Grid]] -> [[Grid]]
-reChonk gs =
-  let totalSize = sum $ size <$> head gs
-      reChonk' n gs = undefined
-   in if totalSize `mod` 2 == 0
-        then reChonk' 2 gs
-        else reChonk' 3 gs
 
 main :: IO ()
 main = do
