@@ -5,6 +5,7 @@ import Data.Maybe (fromJust)
 import Data.List (foldl', transpose)
 import qualified Data.Map.Strict as M
 
+import ChunkyWindows
 import FemtoParsec
 
 data Grid
@@ -43,17 +44,19 @@ rewrite = (,) <$> (lexeme grid1d <* lexeme "=>") <*> grid1d
 
 dissolve :: [[Grid]] -> [[Bool]]
 dissolve = concat . fmap dissolveRow where
-  dissolveRow gs = undefined
+  dissolveRow :: [Grid] -> [[Bool]]
+  dissolveRow = fmap concat . transpose . fmap rows
 
 reChonk :: [[Grid]] -> [[Grid]]
 reChonk gs =
   let totalSize = sum $ size <$> head gs
    in if totalSize `mod` 2 == 0
-        then reChonk' 2 gs
-        else reChonk' 3 gs
+        then meld 2 $ dissolve gs
+        else meld 3 $ dissolve gs
 
-reChonk' :: Int -> [[Grid]] -> [[Grid]]
-reChonk' = undefined
+meld :: Int -> [[Bool]] -> [[Grid]]
+meld n = fmap (meldRow n) . chunks' n where
+  meldRow m = fmap (\g -> Grid g m) . transpose . fmap (chunks' m)
 
 startPattern :: Grid
 startPattern = fromJust $ parse grid2d
