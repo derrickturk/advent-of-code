@@ -82,9 +82,23 @@ grid2d = do
   guard $ all (== len) $ length <$> rs
   pure $ Grid rs len
 
+game :: RewriteCompiled -> [[[Grid]]]
+game rules = iterate (reChonk . runRewrites rules) [[startPattern]]
+
+runRewrites :: RewriteCompiled -> [[Grid]] -> [[Grid]]
+runRewrites rules = (fmap . fmap) (rules M.!)
+
+countOn :: Grid -> Int
+countOn = length . filter id . concat . rows
+
+countOn' :: [[Grid]] -> Int
+countOn' = sum . fmap countOn . concat
+
 main :: IO ()
 main = do
   Just rules <- parseStdin $ some $ lexeme rewrite
   let rules' = compile rules
-  print startPattern
-  print rules'
+      steps = game rules'
+  print $ countOn' $ steps !! 2
+  print $ countOn' $ steps !! 5
+  print $ countOn' $ steps !! 18
