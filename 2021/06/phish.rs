@@ -1,6 +1,7 @@
 use std::{
     error::Error,
     io::{self, Read},
+    // time::Instant,
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -18,9 +19,7 @@ impl Fish {
 
     pub fn step(&mut self) {
         let spawners = self.0[0];
-        for i in 0..8 {
-            self.0[i] = self.0[i + 1];
-        }
+        self.0.copy_within(1..9, 0);
         self.0[6] += spawners;
         self.0[8] = spawners;
     }
@@ -47,6 +46,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     println!("{}", fish2.count());
+
+    /*
+    // average 100 runs
+    let time = Instant::now();
+    for _ in 0..100 {
+        for _ in 0..256 {
+            fish2.step();
+        }
+    }
+    let time = time.elapsed() / 100;
+    dbg!(time);
+    */
 
     Ok(())
 }
