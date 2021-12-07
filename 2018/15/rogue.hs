@@ -1,7 +1,7 @@
 import qualified Data.Map.Strict as M
 import Control.Monad (foldM, guard)
 import Data.Ord (comparing)
-import Data.List (find, foldl', minimumBy, sort)
+import Data.List (find, foldl', intercalate, minimumBy, sort)
 import Data.Maybe (isNothing, listToMaybe, maybeToList)
 import Prelude hiding (id, round)
 
@@ -102,7 +102,7 @@ turn w (p, e@(Entity k id _ _))
         else case moveTowardNearest w p (enemy k) of
                Just p' -> attack
                  (w { entities = M.insert p' e $ M.delete p $ entities w })
-                 (p, e)
+                 (p', e)
                Nothing -> attack w (p, e)
 
 attack :: World -> (Pos, Entity) -> World
@@ -154,12 +154,36 @@ parseWorld = fmap (make . concat) . traverse (uncurry parseRow) . zip [0..] wher
    -}
   makeStep (fs, es) (Right e, p) = (M.insert p Floor fs, M.insert p e es)
 
+renderWorld :: World -> [String]
+renderWorld w =
+  let coords = M.keys $ features w
+      minY = minimum $ fst <$> coords
+      maxY = maximum $ fst <$> coords
+      minX = minimum $ snd <$> coords
+      maxX = maximum $ snd <$> coords
+      renderCell p = case entities w M.!? p of
+        Just (Entity Elf _ _ _) -> 'E'
+        Just (Entity Goblin _ _ _) -> 'G'
+        Nothing -> case features w M.!? p of
+          Just Floor -> '.'
+          Just Wall -> '#'
+          Nothing -> ' '
+   in [[renderCell (y, x) | x <- [minX..maxX]] | y <- [minY..maxY]]
+
 main :: IO ()
 main = do
   Just world <- parseWorld . lines <$> getContents
   let (n, world') = game world
       hp = sum ((\(Entity _ _ _ (HP h)) -> h) <$> M.elems (entities world'))
-  print world'
-  print $ n
-  print $ hp
   print $ n * hp
+  {- fun with ASCIIgraphics
+  mapM_ dump $ zip [0::Int ..] $ traceGame world
+  where
+    dump (i, w) = do
+      putStrLn ""
+      putStrLn $ "Round " <> show i
+      mapM_ putStrLn (renderWorld w)
+      putStrLn $ intercalate ", " $ eSumm <$> (M.elems $ entities w)
+    eSumm (Entity Elf _ _ (HP h)) = "E" <> show h
+    eSumm (Entity Goblin _ _ (HP h)) = "G" <> show h
+  -}
