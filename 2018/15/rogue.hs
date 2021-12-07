@@ -169,12 +169,36 @@ renderWorld w =
           Nothing -> ' '
    in [[renderCell (y, x) | x <- [minX..maxX]] | y <- [minY..maxY]]
 
+boostElves :: Int -> World -> World
+boostElves dmg w = w { entities = M.map boost $ entities w } where
+  boost (Entity Elf id (Dmg _) hp) = Entity Elf id (Dmg dmg) hp
+  boost e = e
+
+livingElves :: World -> Int
+livingElves = length . filter (\(_, Entity k _ _ _) -> k == Elf)
+  . M.toList . entities
+
+noDeadElves :: World -> Bool
+noDeadElves w =
+  let n = livingElves w
+      go w' = case round w' of
+        Left final -> livingElves final == n
+        Right w'' -> livingElves w'' == n && go w''
+   in go w
+
+totalHP :: World -> Int
+totalHP = sum . fmap (\(Entity _ _ _ (HP h)) -> h) . M.elems . entities
+
 main :: IO ()
 main = do
   Just world <- parseWorld . lines <$> getContents
   let (n, world') = game world
-      hp = sum ((\(Entity _ _ _ (HP h)) -> h) <$> M.elems (entities world'))
+      hp = totalHP world'
   print $ n * hp
+  let Just dmg = find (\i -> noDeadElves (boostElves i world)) [4..]
+      (n', world'') = game $ boostElves dmg world
+      hp' = totalHP world''
+  print $ n' * hp'
   {- fun with ASCII graphics
   mapM_ dump $ zip [0::Int ..] $ traceGame world
   where
