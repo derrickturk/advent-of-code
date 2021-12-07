@@ -1,6 +1,7 @@
 import qualified Data.Map.Strict as M
 import Control.Monad (foldM, guard)
-import Data.List (find, foldl', sort)
+import Data.Ord (comparing)
+import Data.List (find, foldl', minimumBy, sort)
 import Data.Maybe (isNothing, listToMaybe, maybeToList)
 import Prelude hiding (id, round)
 
@@ -44,6 +45,18 @@ openAdjacent w p = do
   guard $ open w a
   pure a
 
+adjacentKind :: EntityKind -> World -> Pos -> [(Pos, Entity)]
+adjacentKind k w p = do
+  a <- adjacent p
+  e@(Entity k' _ _ _) <- maybeToList $ entities w M.!? a
+  guard $ k == k'
+  pure (a, e)
+
+checkId :: EID -> World -> Pos -> Bool
+checkId id w p = case entities w M.!? p of
+  Just (Entity _ id' _ _) -> id == id'
+  _ -> False
+
 enemy :: EntityKind -> EntityKind
 enemy Elf = Goblin
 enemy Goblin = Elf
@@ -80,22 +93,41 @@ round :: World -> Either World World
 round w = foldM turn w (M.toList $ entities w)
 
 turn :: World -> (Pos, Entity) -> Either World World
-turn w (p, e@(Entity k id dmg hp))
+turn w (p, e@(Entity k id _ _))
   | kindExtinct (enemy k) w = Left w
+  | not (checkId id w p) = Right w
   | otherwise = Right $
-      let w' = if any (kindAtPos (enemy k) w) (adjacent p)
-                 then case moveTowardNearest w p (enemy k) of
-                   Just p' ->
-                     w { entities = M.insert p' e $ M.delete p $ entities w }
-                   Nothing -> w
-                  else w
-       in w' -- TODO!
+      if any (kindAtPos (enemy k) w) (adjacent p)
+        then attack w (p, e)
+        else case moveTowardNearest w p (enemy k) of
+               Just p' -> attack
+                 (w { entities = M.insert p' e $ M.delete p $ entities w })
+                 (p, e)
+               Nothing -> attack w (p, e)
+
+attack :: World -> (Pos, Entity) -> World
+attack w (p, (Entity k _ (Dmg dmg) _)) =
+  case adjacentKind (enemy k) w p of
+    [] -> w
+    es -> let (p', (Entity k' id' dmg' (HP hp'))) =
+                minimumBy (comparing baddieKey) es
+              baddieKey (pk, Entity _ _ _ (HP hpk)) = (hpk, pk)
+              hp'' = hp' - dmg
+              newBaddie = Entity k' id' dmg' (HP hp'')
+           in if hp'' <= 0
+                then w { entities = M.delete p' $ entities w }
+                else w { entities = M.insert p' newBaddie $ entities w }
 
 game :: World -> (Int, World)
 game = go 0 where
   go n w = case round w of
     Left final -> (n, final)
     Right w' -> go (n + 1) w'
+
+traceGame :: World -> [World]
+traceGame w = w:case round w of
+  Left final -> [final]
+  Right w' -> traceGame w'
 
 parseWorld :: [String] -> Maybe World
 parseWorld = fmap (make . concat) . traverse (uncurry parseRow) . zip [0..] where
@@ -126,5 +158,8 @@ main :: IO ()
 main = do
   Just world <- parseWorld . lines <$> getContents
   let (n, world') = game world
-  print $ n * sum ((\(Entity _ _ _ (HP h)) -> h) <$> M.elems (entities world'))
+      hp = sum ((\(Entity _ _ _ (HP h)) -> h) <$> M.elems (entities world'))
   print world'
+  print $ n
+  print $ hp
+  print $ n * hp
