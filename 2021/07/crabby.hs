@@ -7,7 +7,7 @@ import Text.Read (readMaybe)
 type Crabs = [Int]
 
 escalateCost :: Int -> Int
-escalateCost n = sum [1..n]
+escalateCost n = n * (n + 1) `div` 2 -- sum [1..n]
 
 balanceCrabs :: Crabs -> (Int, Int)
 balanceCrabs cs = minimum $ balance <$> [minimum cs..maximum cs] where
