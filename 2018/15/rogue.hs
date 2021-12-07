@@ -5,13 +5,7 @@ import Data.List (find, foldl', intercalate, minimumBy, sort)
 import Data.Maybe (isNothing, listToMaybe, maybeToList)
 import Prelude hiding (id, round)
 
-import AllShortest
-
-{- SO, the thing we need to do is tear out the allShortest nonsense and replace
- -   it with a memoized set of depth-maps from Pos to Pos, which can be used to
- -   pick the (hero-adjacent, victim-adjacent) pair of cells for the
- -   movement calc
- -}
+import Dijkstra
 
 data EntityKind
   = Goblin
@@ -41,9 +35,6 @@ type Pos = (Int, Int)
 data World = World { features :: M.Map Pos Feature
                    , entities :: M.Map Pos Entity
                    } deriving Show
-
-manhattan :: Pos -> Pos -> Int
-manhattan (y0, x0) (y1, x1) = abs (y0 - y1) + abs (x0 - x1)
 
 adjacent :: Pos -> [Pos]
 adjacent (y, x) = [(y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)]
@@ -87,15 +78,14 @@ kindAtPos k w p = case entities w M.!? p of
   Nothing -> False
 
 moveTowardNearest :: World -> Pos -> EntityKind -> Maybe Pos
-moveTowardNearest w p k = fmap snd $ listToMaybe $ sort $ do
+moveTowardNearest w p k = fmap (\(_, _, p') -> p') $ listToMaybe $ sort $ do
+  srcAdj <- openAdjacent w p
   (targetPos, _) <- filter (\(_, Entity k' _ _ _) -> k == k') $
     M.toList $ entities w
   targetAdj <- openAdjacent w targetPos
-  guard $ open w targetAdj
-  let lbls = labelPaths p (openAdjacent w) (== targetAdj)
-  depth <- maybeToList $ lbls M.!? targetAdj
-  (next:_) <- allShortest' lbls p (openAdjacent w) (== targetAdj)
-  pure (depth, next)
+  let dist = costToWin srcAdj (countingSteps $ openAdjacent w) (== targetAdj)
+  guard $ dist /= maxBound
+  pure (dist, targetAdj, srcAdj)
 
 -- Left = battle over, Right = continue
 round :: World -> Either World World
@@ -103,8 +93,8 @@ round w = foldM turn w (M.toList $ entities w)
 
 turn :: World -> (Pos, Entity) -> Either World World
 turn w (p, e@(Entity k id _ _))
-  | kindExtinct (enemy k) w = Left w
   | not (checkId id w p) = Right w
+  | kindExtinct (enemy k) w = Left w
   | otherwise = Right $
       if any (kindAtPos (enemy k) w) (adjacent p)
         then attack w (p, e)
@@ -185,7 +175,7 @@ main = do
   let (n, world') = game world
       hp = sum ((\(Entity _ _ _ (HP h)) -> h) <$> M.elems (entities world'))
   print $ n * hp
-  {- fun with ASCIIgraphics
+  {- fun with ASCII graphics
   mapM_ dump $ zip [0::Int ..] $ traceGame world
   where
     dump (i, w) = do
