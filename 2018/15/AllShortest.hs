@@ -5,6 +5,7 @@
 module AllShortest (
     labelPaths
   , allShortest
+  , allShortest'
 ) where
 
 import Control.Monad (guard)
