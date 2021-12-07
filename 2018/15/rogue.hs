@@ -7,6 +7,12 @@ import Prelude hiding (id, round)
 
 import AllShortest
 
+{- SO, the thing we need to do is tear out the allShortest nonsense and replace
+ -   it with a memoized set of depth-maps from Pos to Pos, which can be used to
+ -   pick the (hero-adjacent, victim-adjacent) pair of cells for the
+ -   movement calc
+ -}
+
 data EntityKind
   = Goblin
   | Elf
@@ -36,8 +42,11 @@ data World = World { features :: M.Map Pos Feature
                    , entities :: M.Map Pos Entity
                    } deriving Show
 
+manhattan :: Pos -> Pos -> Int
+manhattan (y0, x0) (y1, x1) = abs (y0 - y1) + abs (x0 - x1)
+
 adjacent :: Pos -> [Pos]
-adjacent (x, y) = [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]
+adjacent (y, x) = [(y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)]
 
 openAdjacent :: World -> Pos -> [Pos]
 openAdjacent w p = do
