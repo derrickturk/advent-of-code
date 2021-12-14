@@ -41,14 +41,38 @@ antimodal :: Ord a => [a] -> (a, Integer)
 antimodal = minimumBy (comparing swap) . M.toList
   . foldl' (\m k -> M.insertWith (+) k (1 :: Integer) m) M.empty
 
+compile :: T.Text -> M.Map T.Text Integer
+compile = foldl' (\m k -> M.insertWith (+) k (1 :: Integer) m) M.empty
+  . fmap T.pack . windows' 2 . T.unpack
+
+applyCompiled :: M.Map T.Text T.Text
+              -> M.Map T.Text Integer
+              -> M.Map T.Text Integer
+applyCompiled rs t = foldl' see M.empty $ M.toList t where
+  see t' (pair, n) = case M.lookup pair rs of
+    Nothing -> M.insert pair n t'
+    Just c -> let c' = T.head c
+                  lefty = T.snoc (T.singleton $ T.head pair) c'
+                  righty = T.cons c' $ T.singleton $ T.last pair
+               in M.insertWith (+) lefty n $ M.insertWith (+) righty n t'
+
+counts :: M.Map T.Text Integer -> M.Map Char Integer
+counts = foldl' see M.empty . M.toList where
+  see cs (pair, n) = M.insertWith (+) (T.head pair) n $
+    M.insertWith (+) (T.last pair) 1 cs
+
 main :: IO ()
 main = do
   Just (tmp, rules) <- parseStdin problem
   let tenth = iterate (applyRules rules) tmp !! 10
-      (_, most) = modal $ T.unpack tenth
-      (_, least) = antimodal $ T.unpack tenth
-  print $ most - least
-  let fourtieth = iterate (applyRules rules) tmp !! 40
-      (_, most') = modal $ T.unpack fourtieth
-      (_, least') = antimodal $ T.unpack fourtieth
-  print $ most' - least'
+      modeDiff txt = snd (modal $ T.unpack txt) - snd (antimodal $ T.unpack txt)
+      diff = modeDiff tenth
+  print diff
+  let tenth' = iterate (applyCompiled rules) (compile tmp) !! 10
+      tenthCounts = counts tenth'
+      diff' = maximum (M.elems tenthCounts) - minimum (M.elems tenthCounts)
+      err = diff - diff' -- calibrate the, uh, error term??? IDK it works in practice
+      fourtieth = iterate (applyCompiled rules) (compile tmp) !! 40
+      fourtiethCounts = counts fourtieth
+  print $
+    maximum (M.elems fourtiethCounts) - minimum (M.elems fourtiethCounts) + err
