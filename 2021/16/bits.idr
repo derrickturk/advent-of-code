@@ -21,9 +21,9 @@ hex = concatMap hexChar . unpack where
   hexChar 'F' = [True, True, True, True]
   hexChar _ = []
 
-bigEndian : List Bool -> Nat
+bigEndian : List Bool -> Int
 bigEndian = foldl f 0 where
-  f : Nat -> Bool -> Nat
+  f : Int -> Bool -> Int
   f k b = k * 2 + if b then 1 else 0
 
 data Parser a = MkParser (List Bool -> Maybe (a, List Bool))
@@ -59,21 +59,28 @@ replicateM : Applicative f => Nat -> f a -> f (List a)
 replicateM 0 _ = pure []
 replicateM (S n) m = (::) <$> m <*> replicateM n m
 
-some : Alternative f => f a -> f (List a)
-some v = some_v where
-  mutual
-  many_v : f (List a)
-  many_v = some_v <|> pure []
-  some_v : f (List a)
-  some_v = (::) <$> v <*> many_v
+many : Parser a -> Parser (List a)
+many p = MkParser $ \t => case runParser p t of
+  Nothing => Just ([], t)
+  Just (x, t') => case runParser (many p) t' of
+                    Just (xs, t'') => Just (x::xs, t'')
+                    Nothing => Nothing
 
-many : Alternative f => f a -> f (List a)
-many v = many_v where
-  mutual
-  many_v : f (List a)
-  many_v = some_v <|> pure []
-  some_v : f (List a)
-  some_v = (::) <$> v <*> many_v
+some : Parser a -> Parser (List a)
+some p = MkParser $ \t => case runParser p t of
+  Nothing => Nothing
+  Just (x, t') => case runParser (many p) t' of
+                    Just (xs, t'') => Just (x::xs, t'')
+                    Nothing => Nothing
+
+{-
+mutual
+  some : Alternative f => f a -> f (List a)
+  some v = (::) <$> v <*> many v
+
+  many : Alternative f => f a -> f (List a)
+  many v = some v <|> pure []
+  -}
 
 data PacketType
   = Literal
@@ -87,12 +94,12 @@ data PacketType
 
 mutual
   data PacketPayload
-    = Value Nat
+    = Value Int
     | Packed (List Packet)
 
   record Packet where
     constructor MkPacket
-    version : Nat
+    version : Int
     packetType : PacketType
     payload : PacketPayload
 
@@ -109,10 +116,10 @@ bitsN n = MkParser $ \bits =>
        then Nothing
        else Just (pre, post)
 
-bigEndianN : Nat -> Parser Nat
+bigEndianN : Nat -> Parser Int
 bigEndianN n = bigEndian <$> bitsN n
 
-taggedChunks : Parser Nat
+taggedChunks : Parser Int
 taggedChunks = bigEndian . concat <$> taggedChunks' where
   taggedChunks' : Parser (List (List Bool))
   taggedChunks' = do
@@ -145,17 +152,17 @@ packet = do
       lenIsPackets <- bit
       if lenIsPackets
         then do
-          nPackets <- bigEndianN 11
+          nPackets <- cast <$> bigEndianN 11
           replicateM nPackets packet
         else do
-          nBits <- bigEndianN 15
+          nBits <- cast <$> bigEndianN 15
           contained <- bitsN nBits
           case runParser (some packet) contained of
             Just (subpackets, []) => pure subpackets
             _ => empty
   pure $ MkPacket v ty pay
 
-totalVersion : Packet -> Nat
+totalVersion : Packet -> Int
 totalVersion p = version p + case payload p of
   Packed ps => sum $ totalVersion <$> ps
   _ => 0
@@ -163,7 +170,7 @@ totalVersion p = version p + case payload p of
 minimum : Ord a => (l : List a) -> {auto 0 _ : NonEmpty l} -> a
 minimum = foldl1 min
 
-minimum' : List Nat -> Nat
+minimum' : List Int -> Int
 minimum' xs = case xs of
   [] => 0
   (_::_) => minimum xs
@@ -171,12 +178,12 @@ minimum' xs = case xs of
 maximum : Ord a => (l : List a) -> {auto 0 _ : NonEmpty l} -> a
 maximum = foldl1 min
 
-maximum' : List Nat -> Nat
+maximum' : List Int -> Int
 maximum' xs = case xs of
   [] => 0
   (_::_) => maximum xs
 
-eval : Packet -> Nat
+eval : Packet -> Int
 eval (MkPacket _ Literal (Value n)) = n
 eval (MkPacket _ Sum (Packed ps)) = sum $ eval <$> ps
 eval (MkPacket _ Product (Packed ps)) = product $ eval <$> ps
