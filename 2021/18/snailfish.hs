@@ -1,10 +1,10 @@
 {-# LANGUAGE OverloadedStrings, TypeApplications #-}
 
+import Data.List (foldl1')
 import Prelude hiding (Left, Right)
 
 import FemtoParsec
-
-import Debug.Trace
+import Combo
 
 -- this is technically wrong but the other way made life miserable
 data Snailfish
@@ -20,6 +20,9 @@ data Path
 
 newtype Loc = Loc { unLoc :: (Snailfish, Path) }
   deriving Show
+
+focused :: Loc -> Snailfish
+focused (Loc (s, _)) = s
 
 depth :: Path -> Int
 depth Top = 0
@@ -37,6 +40,11 @@ parent (Loc (_, Top)) = Nothing
 parent (Loc (s, Left path right)) = Just $ Loc (Pair s right, path)
 parent (Loc (s, Right path left)) = Just $ Loc (Pair left s, path)
 
+root :: Loc -> Loc
+root l = case parent l of
+  Just l' -> root l'
+  Nothing -> l
+
 leftSibling :: Loc -> Maybe Loc
 leftSibling (Loc (_, Top)) = Nothing
 leftSibling (Loc (_, Left _ _)) = Nothing
@@ -45,7 +53,7 @@ leftSibling (Loc (s, Right path left)) = Just $ Loc (left, Left path s)
 rightSibling :: Loc -> Maybe Loc
 rightSibling (Loc (_, Top)) = Nothing
 rightSibling (Loc (_, Right _ _)) = Nothing
-rightSibling (Loc (s, Left path right)) = Just $ Loc (right, Left path s)
+rightSibling (Loc (s, Left path right)) = Just $ Loc (right, Right path s)
 
 leftChild :: Loc -> Maybe Loc
 leftChild (Loc (Val _, _)) = Nothing
@@ -55,27 +63,25 @@ rightChild :: Loc -> Maybe Loc
 rightChild (Loc (Val _, _)) = Nothing
 rightChild (Loc (Pair l r, path)) = Just $ Loc (r, Right path l)
 
-root :: Snailfish -> Loc
-root s = Loc (s, Top)
+zipper :: Snailfish -> Loc
+zipper s = Loc (s, Top)
 
 leftNum :: Loc -> Maybe Loc
 leftNum (Loc (_, Top)) = Nothing
-leftNum (Loc (s, Right path left@(Val _))) = Just $ Loc (left, Left path s)
-leftNum l = parent l >>= go where
-  go l' = (leftSibling l' >>= leftmost' p) <|> (parent l' >>= go)
+-- TODO: cleanup
+leftNum l = (leftSibling l >>= rightmost' p) <|> (parent l >>= leftNum) where
   p (Loc (Val _, _)) = True
   p _ = False
 
 rightNum :: Loc -> Maybe Loc
 rightNum (Loc (_, Top)) = Nothing
-rightNum (Loc (s, Left path right@(Val _))) = Just $ Loc (right, Right path s)
-rightNum l = parent l >>= go where
-  go l' = (rightSibling l' >>= rightmost' p) <|> (parent l' >>= go)
+-- TODO: cleanup
+rightNum l = (rightSibling l >>= leftmost' p) <|> (parent l >>= rightNum) where
   p (Loc (Val _, _)) = True
   p _ = False
 
 leftmost :: (Loc -> Bool) -> Snailfish -> Maybe Loc
-leftmost predicate s = leftmost' predicate (root s)
+leftmost predicate s = leftmost' predicate (zipper s)
 
 leftmost' :: (Loc -> Bool) -> Loc -> Maybe Loc
 leftmost' predicate loc =  goLeft predicate loc
@@ -87,7 +93,7 @@ leftmost' predicate loc =  goLeft predicate loc
     goRight p l = rightChild l >>= leftmost' p
 
 rightmost :: (Loc -> Bool) -> Snailfish -> Maybe Loc
-rightmost predicate s = rightmost' predicate (root s)
+rightmost predicate s = rightmost' predicate (zipper s)
 
 rightmost' :: (Loc -> Bool) -> Loc -> Maybe Loc
 rightmost' predicate loc =  goRight predicate loc
@@ -103,9 +109,13 @@ leftmost4 = leftmost p where
   p (Loc (Pair _ _, path)) = depth path >= 4
   p _ = False
 
-{-
+leftmost10 :: Snailfish -> Maybe Loc
+leftmost10 = leftmost p where
+  p (Loc (Val n, _)) = n >= 10
+  p _ = False
+
 add :: Snailfish -> Snailfish -> Snailfish
-add lhs rhs = reduce $ Pair (Nest lhs) (Nest rhs)
+add lhs rhs = reduce $ Pair lhs rhs
 
 reduce1 :: Snailfish -> Maybe Snailfish
 reduce1 s = explodeLeftmost4 s <|> splitLeftmost10 s
@@ -115,46 +125,34 @@ reduce s = case reduce1 s of
   Just s' -> reduce s'
   _ -> s
 
+reduction :: Snailfish -> [Snailfish]
+reduction s = s:case reduce1 s of
+  Just s' -> reduction s'
+  Nothing -> []
+
 explodeLeftmost4 :: Snailfish -> Maybe Snailfish
-explodeLeftmost4 pair@(Pair lhs rhs) = do
-  (x, y, path) <- go 1 [L] lhs <|> go 1 [R] rhs
-  let path' = reverse path
-  fixup pair x y path
+explodeLeftmost4 s = do
+  tgt@(Loc (Pair (Val x) (Val y), _)) <- leftmost4 s
+  tgt' <- case leftNum tgt of
+    Just n -> leftmost4 $ focused $ root $ modify n (addVal x)
+    _ -> pure tgt
+  tgt'' <- case rightNum tgt' of
+    Just n -> leftmost4 $ focused $ root $ modify n (addVal y)
+    _ -> pure tgt'
+  let tgt''' = alter tgt'' (Val 0)
+  pure $ focused $ root tgt'''
   where
-    go n p (Nest (Pair (Val x) (Val y)))
-      | n >= 4 = Just (x, y, p)
-      | otherwise = Nothing
-    go _ _ (Val _) = Nothing
-    go n p (Nest (Pair lhs rhs)) =
-      go (n + 1) (L:p) lhs <|> go (n + 1) (R:p) rhs
-
-    fixup pair x y p = pushLeft x p $ pushRight y p $ zero pair p
-
-    zero () [] = Just e
-    update (L:p) (Nest (Pair lhs rhs)) = Nest ( -- who fucking knows
+    addVal x (Val y) = Val $ x + y
+    addVal _ other = other
 
 splitLeftmost10 :: Snailfish -> Maybe Snailfish
-splitLeftmost10 (Pair lhs rhs) =
-  case splitLeftmost10' lhs of
-    Just lhs' -> Just $ Pair lhs' rhs
-    _ -> case splitLeftmost10' rhs of
-      Just rhs' -> Just $ Pair lhs rhs'
+splitLeftmost10 s = do
+  tgt@(Loc (Val x, _)) <- leftmost10 s
+  let tgt' = alter tgt (Pair (Val $ halfDown x) (Val $ halfUp x))
+  pure $ focused $ root tgt'
   where
-    splitLeftmost10' (Val n)
-      | n >= 10 = Just $ Nest (Pair (Val $ halfDown n) (Val $ halfUp n))
-      | otherwise = Nothing
-    splitLeftmost10' (Nest p) = Nest <$> splitLeftmost10 p
-
-    halfDown :: Int -> Int
-    halfDown n = floor $ (fromIntegral @_ @Double n) / 2.0
-
-    halfUp :: Int -> Int
-    halfUp n = ceiling $ (fromIntegral @_ @Double n) / 2.0
-
-explode :: Snailfish -> (Int, Int, Snailfish)
-explode (Pair (Val x) (Val y)) = (x, y, Pair (Val 0) (Val 0))
-explode p = (0, 0, p)
--}
+    halfDown n = n `div` 2
+    halfUp n = n `div` 2 + n `mod` 2
 
 snailfish :: Parser Snailfish
 snailfish = do
@@ -168,9 +166,20 @@ snailfish = do
     snailElem =  Val <$> unsignedIntNum
              <|> snailfish
 
+render :: Snailfish -> String
+render (Val n) = show n
+render (Pair lhs rhs) = "[" <> render lhs <> "," <> render rhs <> "]"
+
+magnitude :: Snailfish -> Int
+magnitude (Val n) = n
+magnitude (Pair lhs rhs) = 3 * magnitude lhs + 2 * magnitude rhs
+
 main :: IO ()
 main = do
   Just fishes <- parseStdin (some $ lexeme snailfish)
-  print $ leftmost4 $ head fishes
-  print $ (leftmost4 $ head fishes) >>= leftNum
-  print $ (leftmost4 $ head fishes) >>= rightNum
+  let total = foldl1' add fishes
+  print $ magnitude total
+  let pairs = do
+        ([x, y], _) <- choose fishes 2
+        [add x y, add y x]
+  print $ maximum $ magnitude <$> pairs
