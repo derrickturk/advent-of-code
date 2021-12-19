@@ -73,35 +73,36 @@ some p = MkParser $ \t => case runParser p t of
                     Just (xs, t'') => Just (x::xs, t'')
                     Nothing => Nothing
 
-{-
-mutual
-  some : Alternative f => f a -> f (List a)
-  some v = (::) <$> v <*> many v
+data PacketKind
+  = Flat
+  | NestMany
+  | NestSome
+  | NestTwo
 
-  many : Alternative f => f a -> f (List a)
-  many v = some v <|> pure []
-  -}
-
-data PacketType
-  = Literal
-  | Sum
-  | Product
-  | Min
-  | Max
-  | Gt
-  | Lt
-  | Eq
+data PacketType : PacketKind -> Type where
+  Literal : PacketType Flat
+  Sum : PacketType NestMany
+  Product : PacketType NestMany
+  Min : PacketType NestSome
+  Max : PacketType NestSome
+  Gt : PacketType NestTwo
+  Lt : PacketType NestTwo
+  Eq : PacketType NestTwo
 
 mutual
-  data PacketPayload
-    = Value Int
-    | Packed (List Packet)
+  data PacketPayload : PacketKind -> Type where
+    Value : Int -> PacketPayload Flat
+    PackMany : List Packet -> PacketPayload NestMany
+    PackSome : (ps: List Packet)
+            -> {auto 0 _ : NonEmpty ps}
+            -> PacketPayload NestSome
+    PackTwo : Packet -> Packet -> PacketPayload NestTwo
 
   record Packet where
     constructor MkPacket
     version : Int
-    packetType : PacketType
-    payload : PacketPayload
+    packetType : PacketType kind
+    payload : PacketPayload kind
 
 bit : Parser Bool
 bit = MkParser $ \bits =>
@@ -128,27 +129,41 @@ taggedChunks = bigEndian . concat <$> taggedChunks' where
       then (::) <$> bitsN 4 <*> taggedChunks'
       else (::) <$> bitsN 4 <*> pure []
 
-packetTypeP : Parser PacketType
+packetTypeP : Parser (kind : PacketKind ** PacketType kind)
 packetTypeP = do
   code <- bigEndianN 3
   case code of
-    0 => pure Sum
-    1 => pure Product
-    2 => pure Min
-    3 => pure Max
-    4 => pure Literal
-    5 => pure Gt
-    6 => pure Lt
-    7 => pure Eq
+    0 => pure (NestMany ** Sum)
+    1 => pure (NestMany ** Product)
+    2 => pure (NestSome ** Min)
+    3 => pure (NestSome ** Max)
+    4 => pure (Flat ** Literal)
+    5 => pure (NestTwo ** Gt)
+    6 => pure (NestTwo ** Lt)
+    7 => pure (NestTwo ** Eq)
     _ => empty
 
 packet : Parser Packet
 packet = do
   v <- bigEndianN 3
-  ty <- packetTypeP
-  pay <- case ty of
-    Literal => Value <$> taggedChunks
-    _ => Packed <$> do
+  (kind ** ty) <- packetTypeP
+  pay <- case kind of
+    Flat => Value <$> taggedChunks
+    NestMany => PackMany <$> packetList
+    NestSome => do
+      nested <- packetList
+      case nested of
+        (_::_) => pure $ PackSome nested
+        _ => empty
+    NestTwo => do
+      nested <- packetList
+      case nested of
+        [p1, p2] => pure $ PackTwo p1 p2
+        _ => empty
+  pure $ MkPacket v ty pay
+  where
+    packetList : Parser (List Packet)
+    packetList = do
       lenIsPackets <- bit
       if lenIsPackets
         then do
@@ -160,12 +175,13 @@ packet = do
           case runParser (some packet) contained of
             Just (subpackets, []) => pure subpackets
             _ => empty
-  pure $ MkPacket v ty pay
 
 totalVersion : Packet -> Int
-totalVersion p = version p + case payload p of
-  Packed ps => sum $ totalVersion <$> ps
-  _ => 0
+totalVersion (MkPacket v _ (PackMany ps)) = v + sum (totalVersion <$> ps)
+totalVersion (MkPacket v _ (PackSome ps)) = v + sum (totalVersion <$> ps)
+totalVersion (MkPacket v _ (PackTwo p1 p2)) =
+  v + totalVersion p1 + totalVersion p2
+totalVersion (MkPacket v _ _) = v
 
 minimum : Ord a => (l : List a) -> {auto 0 _ : NonEmpty l} -> a
 minimum = foldl1 min
@@ -185,14 +201,13 @@ maximum' xs = case xs of
 
 eval : Packet -> Int
 eval (MkPacket _ Literal (Value n)) = n
-eval (MkPacket _ Sum (Packed ps)) = sum $ eval <$> ps
-eval (MkPacket _ Product (Packed ps)) = product $ eval <$> ps
-eval (MkPacket _ Min (Packed ps)) = minimum' $ eval <$> ps
-eval (MkPacket _ Max (Packed ps)) = maximum' $ eval <$> ps
-eval (MkPacket _ Gt (Packed [p1, p2])) = if eval p1 > eval p2 then 1 else 0
-eval (MkPacket _ Lt (Packed [p1, p2])) = if eval p1 < eval p2 then 1 else 0
-eval (MkPacket _ Eq (Packed [p1, p2])) = if eval p1 == eval p2 then 1 else 0
-eval (MkPacket _ _ _) = believe_me "betcha wish ya had gadts"
+eval (MkPacket _ Sum (PackMany ps)) = sum $ eval <$> ps
+eval (MkPacket _ Product (PackMany ps)) = product $ eval <$> ps
+eval (MkPacket _ Min (PackSome ps)) = minimum' $ eval <$> ps
+eval (MkPacket _ Max (PackSome ps)) = maximum' $ eval <$> ps
+eval (MkPacket _ Gt (PackTwo p1 p2)) = if eval p1 > eval p2 then 1 else 0
+eval (MkPacket _ Lt (PackTwo p1 p2)) = if eval p1 < eval p2 then 1 else 0
+eval (MkPacket _ Eq (PackTwo p1 p2)) = if eval p1 == eval p2 then 1 else 0
 
 main : IO ()
 main = do
