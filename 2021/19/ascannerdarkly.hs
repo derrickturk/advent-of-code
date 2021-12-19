@@ -25,30 +25,35 @@ alignTo :: [(Int, Int, Int)] -> (Int, Int, Int) -> S.Set (Int, Int, Int)
 alignTo xs (x, y, z) = S.fromList $
   (\(x', y', z') -> (x' - x, y' - y, z' - z)) <$> xs
 
-canonical :: [(Int, Int, Int)] -> S.Set (Int, Int, Int)
-canonical [] = S.empty
-canonical xs = alignTo xs (minimum xs)
-
 realign :: S.Set (Int, Int, Int) -> (Int, Int, Int) -> S.Set (Int, Int, Int)
 realign s (x, y, z) = S.map (\(x', y', z') -> (x' - x, y' - y, z' - z)) s
 
 unify :: S.Set (Int, Int, Int)
+      -> S.Set (Int, Int, Int)
       -> [[(Int, Int, Int)]]
-      -> Maybe (S.Set (Int, Int, Int), [[(Int, Int, Int)]])
-unify bcns coords = listToMaybe $ do
+      -> Maybe (S.Set (Int, Int, Int), S.Set (Int, Int, Int), [[(Int, Int, Int)]])
+unify bcns scnrs coords = listToMaybe $ do
   (cs, rest) <- leaveOneOut coords
   rotated <- rotationsOf cs
-  bcns' <- realign bcns <$> S.toList bcns
-  rotated' <- alignTo rotated <$> rotated
-  guard $ S.size (S.intersection bcns' rotated') >= 12
-  pure (S.union bcns' rotated', rest)
 
-unifyAll :: [[(Int, Int, Int)]] -> Maybe (S.Set (Int, Int, Int))
-unifyAll [] = Just S.empty
-unifyAll (coords:rest) = go (canonical coords) rest where
-  go bcns coords' = case unify bcns coords' of
-    Just (bcns', []) -> Just bcns'
-    Just (bcns', coords'') -> go bcns' coords''
+  curOriginBcn <- S.toList bcns
+  let bcns' = realign bcns curOriginBcn
+
+  matchOriginBcn <- rotated
+  let rotated' = alignTo rotated matchOriginBcn
+
+  guard $ S.size (S.intersection bcns' rotated') >= 12
+
+  let scnr = diff curOriginBcn matchOriginBcn
+  pure (realign (S.union bcns' rotated') (neg curOriginBcn), S.insert scnr scnrs, rest)
+
+unifyAll :: [[(Int, Int, Int)]]
+         -> Maybe (S.Set (Int, Int, Int), S.Set (Int, Int, Int))
+unifyAll [] = Just (S.empty, S.empty)
+unifyAll (coords:rest) = go (S.fromList coords) (S.singleton (0, 0, 0)) rest where
+  go bcns scnrs coords' = case unify bcns scnrs coords' of
+    Just (bcns', scnrs', []) -> Just (bcns', scnrs')
+    Just (bcns', scnrs', coords'') -> go bcns' scnrs' coords''
     Nothing -> Nothing
 
 scanner :: Parser Scanner
@@ -64,16 +69,22 @@ manhattan :: (Int, Int, Int) -> (Int, Int, Int) -> Int
 manhattan (x0, y0, z0) (x1, y1, z1) =
   abs (x0 - x1) + abs (y0 - y1) + abs (z0 - z1)
 
+neg :: (Int, Int, Int) -> (Int, Int, Int)
+neg (x, y, z) = (-x, -y, -z)
+
+diff :: (Int, Int, Int) -> (Int, Int, Int) -> (Int, Int, Int)
+diff (x0, y0, z0) (x1, y1, z1) = (x1 - x0, y1 - y0, z1 - z0)
+
 main :: IO ()
 main = do
   Just scanners <- parseStdin $ some scanner
-  let Just beacons = (unifyAll $ snd <$> scanners)
+  let Just (beacons, scanners') = (unifyAll $ snd <$> scanners)
   print $ S.size beacons
   print $ maximum $ do
-    let beacons' = S.toList beacons
-    b1 <- beacons'
-    b2 <- beacons'
-    pure $ manhattan b1 b2
+    let scanners'' = S.toList scanners'
+    s1 <- scanners''
+    s2 <- scanners''
+    pure $ manhattan s1 s2
 
 rotations :: [Rotation]
 rotations = 
