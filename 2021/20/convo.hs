@@ -57,3 +57,4 @@ main = do
   Just img <- parseImage . lines <$> getContents
   let imgs = iterate (apply lut) img
   print $ lit $ imgs !! 2
+  print $ lit $ imgs !! 50
