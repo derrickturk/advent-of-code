@@ -1,13 +1,14 @@
-import Data.List (foldl', nub)
+import Data.List (foldl')
 import qualified Data.Array as A
-import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 
 type LUT = A.Array Int Bool
-type Image = (M.Map (Int, Int) Bool, Bool)
+-- set of non-void-color pixels, void color
+type Image = (S.Set (Int, Int), Bool)
 type Pos = (Int, Int)
 
 pixel :: Image -> Pos -> Bool
-pixel (m, space) p = maybe space id $ m M.!? p
+pixel (s, void) p = if S.member p s then not void else void
 
 grid9 :: Pos -> [Pos]
 grid9 (x, y) = [ (i, j) | j <- [y-1..y+1]
@@ -31,24 +32,28 @@ parseLUT = fmap (A.listArray (0, 511)) . traverse parseCell
 parseImage :: [String] -> Maybe Image
 parseImage ls = do
   ls' <- traverse (traverse parseCell) ls
-  Just $ (M.fromList $
-    [ ((x, y), v) | (y, row) <- zip [0..] ls'
-                  , (x, v) <- zip [0..] row
-                  , v
+  Just $ (S.fromList $
+    [ (x, y) | (y, row) <- zip [0..] ls'
+             , (x, v) <- zip [0..] row
+             , v
     ],
     False)
 
+-- a faster nub
+unique :: Ord a => [a] -> [a]
+unique = S.toList . S.fromList
+
 apply :: LUT -> Image -> Image
-apply lut img@(m, space) =
-  let consider = nub $ concat $ grid9 <$> M.keys m
+apply lut img@(s, void) =
+  let consider = unique $ concat $ grid9 <$> S.toList s
       revised = zip consider $ (lut A.!) . grid9Value img <$> consider
-      step m' (p, b) = M.insert p b m'
-      space' = if space then lut A.! 511 else lut A.! 0
-   in (foldl' step m revised, space')
+      void' = if void then lut A.! 511 else lut A.! 0
+      step s' (p, b) = if b /= void' then S.insert p s' else s'
+   in (foldl' step S.empty revised, void')
 
 lit :: Image -> Maybe Int
 lit (_, True) = Nothing
-lit (m, False) = Just $ length $ filter id $ M.elems m
+lit (s, False) = Just $ S.size s
 
 main :: IO ()
 main = do
