@@ -1,13 +1,13 @@
 import Data.List (foldl', nub)
 import qualified Data.Array as A
-import qualified Data.Set as S
+import qualified Data.Map.Strict as M
 
 type LUT = A.Array Int Bool
-type Image = S.Set (Int, Int)
+type Image = (M.Map (Int, Int) Bool, Bool)
 type Pos = (Int, Int)
 
 pixel :: Image -> Pos -> Bool
-pixel img p = S.member p img
+pixel (m, space) p = maybe space id $ m M.!? p
 
 grid9 :: Pos -> [Pos]
 grid9 (x, y) = [ (i, j) | j <- [y-1..y+1]
@@ -31,19 +31,24 @@ parseLUT = fmap (A.listArray (0, 511)) . traverse parseCell
 parseImage :: [String] -> Maybe Image
 parseImage ls = do
   ls' <- traverse (traverse parseCell) ls
-  Just $ S.fromList $ fmap snd $ filter fst $
-    [ (v, (x, y)) | (y, row) <- zip [0..] ls'
+  Just $ (M.fromList $
+    [ ((x, y), v) | (y, row) <- zip [0..] ls'
                   , (x, v) <- zip [0..] row
                   , v
-    ]
+    ],
+    False)
 
 apply :: LUT -> Image -> Image
-apply lut img =
-  let consider = nub $ concat $ grid9 <$> S.toList img
+apply lut img@(m, space) =
+  let consider = nub $ concat $ grid9 <$> M.keys m
       revised = zip consider $ (lut A.!) . grid9Value img <$> consider
-      step s (p, True) = S.insert p s
-      step s (p, False) = S.delete p s
-   in foldl' step img revised
+      step m' (p, b) = M.insert p b m'
+      space' = if space then lut A.! 511 else lut A.! 0
+   in (foldl' step m revised, space')
+
+lit :: Image -> Maybe Int
+lit (_, True) = Nothing
+lit (m, False) = Just $ length $ filter id $ M.elems m
 
 main :: IO ()
 main = do
@@ -51,4 +56,4 @@ main = do
   _ <- getLine
   Just img <- parseImage . lines <$> getContents
   let imgs = iterate (apply lut) img
-  print $ S.size $ imgs !! 2
+  print $ lit $ imgs !! 2
