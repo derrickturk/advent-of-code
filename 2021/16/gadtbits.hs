@@ -128,53 +128,43 @@ taggedChunks = bigEndian . concat <$> taggedChunks' where
       then (:) <$> bitsN 4 <*> taggedChunks'
       else (:) <$> bitsN 4 <*> pure []
 
-newtype ExPacketType = ExPacketType
-  { runExPacketType :: forall (r :: Type)
-                     . (forall (k :: PacketKind) . SPacketKind k -> PacketType k -> r)
-                    -> r
-  }
+data SomePacketType :: Type where
+  SomePacketType :: SPacketKind k -> PacketType k -> SomePacketType
 
-instance Show ExPacketType where
-  show (ExPacketType f) = f (\_ ty -> "ExPacketType " <> show ty)
+deriving instance Show SomePacketType
 
-exPacketType :: SPacketKind k -> PacketType k -> ExPacketType
-exPacketType k ty = ExPacketType $ \f -> f k ty
-
-packetTypeP :: Parser ExPacketType
+packetTypeP :: Parser SomePacketType
 packetTypeP = do
   code <- bigEndianN 3
   case code of
-    0 -> pure $ exPacketType SNestMany Sum
-    1 -> pure $ exPacketType SNestMany Product
-    2 -> pure $ exPacketType SNestSome Min
-    3 -> pure $ exPacketType SNestSome Max
-    4 -> pure $ exPacketType SFlat Literal
-    5 -> pure $ exPacketType SNestTwo Gt
-    6 -> pure $ exPacketType SNestTwo Lt
-    7 -> pure $ exPacketType SNestTwo Eq
+    0 -> pure $ SomePacketType SNestMany Sum
+    1 -> pure $ SomePacketType SNestMany Product
+    2 -> pure $ SomePacketType SNestSome Min
+    3 -> pure $ SomePacketType SNestSome Max
+    4 -> pure $ SomePacketType SFlat Literal
+    5 -> pure $ SomePacketType SNestTwo Gt
+    6 -> pure $ SomePacketType SNestTwo Lt
+    7 -> pure $ SomePacketType SNestTwo Eq
     _ -> empty
 
 packet :: Parser Packet
 packet = do
   v <- bigEndianN 3
   ty <- packetTypeP
-  runExPacketType ty (finishPacket v)
-  where
-    finishPacket :: Int -> SPacketKind k -> PacketType k -> Parser Packet
-    finishPacket v SFlat ty = do
+  case ty of
+    SomePacketType SFlat ty' -> do
       pay <- Value <$> taggedChunks
-      pure $ Packet v ty pay
-    finishPacket v SNestMany ty = do
+      pure $ Packet v ty' pay
+    SomePacketType SNestMany ty' -> do
       pay <- PackMany <$> packetList
-      pure $ Packet v ty pay
-    finishPacket v SNestSome ty = do
+      pure $ Packet v ty' pay
+    SomePacketType SNestSome ty' -> do
       Just pay <- fmap PackSome . nonEmpty <$> packetList
-      pure $ Packet v ty pay
-    finishPacket v SNestTwo ty = do
+      pure $ Packet v ty' pay
+    SomePacketType SNestTwo ty' -> do
       [p1, p2] <- packetList
-      pure $ Packet v ty $ PackTwo p1 p2
-
-    packetList :: Parser [Packet]
+      pure $ Packet v ty' $ PackTwo p1 p2
+  where
     packetList = do
       lenIsPackets <- bit
       if lenIsPackets
