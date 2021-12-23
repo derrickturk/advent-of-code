@@ -3,8 +3,8 @@
 import Control.Monad (guard)
 import Data.Array
 
--- import AStar
-import Dijkstra
+import AStar
+-- import Dijkstra
 import FemtoParsec
 
 data Bug
@@ -56,16 +56,15 @@ validMoves (rms, hall) =
   roomTopToTop <>
   roomBottomToBottom <>
   roomBottomToTop <>
-  hallwayBugToRoomTop <>
   hallwayBugToRoomBottom <>
+  hallwayBugToRoomTop <>
   roomTopBugToHall <>
-  roomBottomBugToHall <>
-  roomTopBugDance <>
-  roomBottomBugDance
+  roomBottomBugToHall
   where
     roomTopToTop = do
       (i, (Just bug, other1)) <- assocs rms
       let j = bugRoom bug
+      guard $ i /= j
       case rms ! j of
         (Nothing, other2) -> do
           guard $ clearBetween hall (roomToHall i) (roomToHall j)
@@ -79,6 +78,7 @@ validMoves (rms, hall) =
     roomTopToBottom = do
       (i, (Just bug, other)) <- assocs rms
       let j = bugRoom bug
+      guard $ i /= j
       case rms ! j of
         (Nothing, Nothing) -> do
           guard $ clearBetween hall (roomToHall i) (roomToHall j)
@@ -91,6 +91,7 @@ validMoves (rms, hall) =
     roomBottomToTop = do
       (i, (Nothing, Just bug)) <- assocs rms
       let j = bugRoom bug
+      guard $ i /= j
       case rms ! j of
         (Nothing, other) -> do
           guard $ clearBetween hall (roomToHall i) (roomToHall j)
@@ -104,6 +105,7 @@ validMoves (rms, hall) =
     roomBottomToBottom = do
       (i, (Nothing, Just bug)) <- assocs rms
       let j = bugRoom bug
+      guard $ i /= j
       case rms ! j of
         (Nothing, Nothing) -> do
           guard $ clearBetween hall (roomToHall i) (roomToHall j)
@@ -112,14 +114,6 @@ validMoves (rms, hall) =
                , (rms // [(i, (Nothing, Nothing)), (j, (Nothing, Just bug))], hall)
                )
         _ -> empty
-
-    roomTopBugDance = do
-      (i, (Just bug, Nothing)) <- assocs rms
-      pure (energy bug, (rms // [(i, (Nothing, Just bug))], hall))
-
-    roomBottomBugDance = do
-      (i, (Nothing, Just bug)) <- assocs rms
-      pure (energy bug, (rms // [(i, (Just bug, Nothing))], hall))
 
     roomTopBugToHall = do
       (i, (Just bug, other)) <- assocs rms
@@ -181,10 +175,10 @@ heuristic (rms, hall) = sum topBugs + sum bottomBugs + sum hallBugs where
 
 won :: World -> Bool
 won (rms, _) =
-  (all (== (Just A)) $ rms ! 0) &&
-  (all (== (Just B)) $ rms ! 1) &&
-  (all (== (Just C)) $ rms ! 2) &&
-  (all (== (Just D)) $ rms ! 3)
+  rms ! 0 == (Just A, Just A) &&
+  rms ! 1 == (Just B, Just B) &&
+  rms ! 2 == (Just C, Just C) &&
+  rms ! 3 == (Just D, Just D)
 
 bugKind :: Parser Bug
 bugKind = A <$ "A" <|> B <$ "B" <|> C <$ "C" <|> D <$ "D"
@@ -220,21 +214,34 @@ rooms = do
 
 main :: IO ()
 main = do
+  {-
   Just initRooms <- parseStdin rooms
   let world = (initRooms, hallway)
-  print $ costToWin world validMoves won
+  print $ costToWin world validMoves heuristic won
+  -}
 
   {-
+  -- 12481 = 12081 + 400
   -- let world = (array (0,3) [(0,(Just B,Just A)),(1,(Just C,Just D)),(2,(Nothing,Just C)),(3,(Just D,Just A))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Just B),(4,Nothing),(5,Nothing),(6,Nothing),(7,Nothing),(8,Nothing),(9,Nothing),(10,Nothing)])
+  -- 12081 = 9081 + 3000
   -- let world = (array (0,3) [(0,(Just B,Just A)),(1,(Nothing,Just D)),(2,(Just C,Just C)),(3,(Just D,Just A))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Just B),(4,Nothing),(5,Nothing),(6,Nothing),(7,Nothing),(8,Nothing),(9,Nothing),(10,Nothing)])
+  -- 9081 = 9051 + 30
   --let world = (array (0,3) [(0,(Just B,Just A)),(1,(Nothing,Nothing)),(2,(Just C,Just C)),(3,(Just D,Just A))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Just B),(4,Nothing),(5,Just D),(6,Nothing),(7,Nothing),(8,Nothing),(9,Nothing),(10,Nothing)])
+  -- 9051 = 9011 + 40
   -- let world = (array (0,3) [(0,(Just B,Just A)),(1,(Nothing,Just B)),(2,(Just C,Just C)),(3,(Just D,Just A))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Just D),(6,Nothing),(7,Nothing),(8,Nothing),(9,Nothing),(10,Nothing)])
+  -- 9011 = 2003 + 7008
   -- let world = (array (0,3) [(0,(Nothing,Just A)),(1,(Just B,Just B)),(2,(Just C,Just C)),(3,(Just D,Just A))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Just D),(6,Nothing),(7,Nothing),(8,Nothing),(9,Nothing),(10,Nothing)])
   -- let world = (array (0,3) [(0,(Nothing,Just A)),(1,(Just B,Just B)),(2,(Just C,Just C)),(3,(Nothing,Just A))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Just D),(6,Nothing),(7,Just D),(8,Nothing),(9,Nothing),(10,Nothing)])
+  -- 7008 = 7000 + 8
   -- let world = (array (0,3) [(0,(Nothing,Just A)),(1,(Just B,Just B)),(2,(Just C,Just C)),(3,(Nothing,Nothing))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Just D),(6,Nothing),(7,Just D),(8,Nothing),(9,Just A),(10,Nothing)])
   -- let world = (array (0,3) [(0,(Nothing,Just A)),(1,(Just B,Just B)),(2,(Just C,Just C)),(3,(Nothing,Just D))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Just D),(6,Nothing),(7,Nothing),(8,Nothing),(9,Just A),(10,Nothing)])
+  -- 8
   -- let world = (array (0,3) [(0,(Nothing,Just A)),(1,(Just B,Just B)),(2,(Just C,Just C)),(3,(Just D,Just D))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Nothing),(6,Nothing),(7,Nothing),(8,Nothing),(9,Just A),(10,Nothing)])
-  let world = (array (0,3) [(0,(Just A,Just A)),(1,(Just B,Just B)),(2,(Just C,Just C)),(3,(Just D,Just D))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Nothing),(6,Nothing),(7,Nothing),(8,Nothing),(9,Nothing),(10,Nothing)])
+  -- let world = (array (0,3) [(0,(Just A,Just A)),(1,(Just B,Just B)),(2,(Just C,Just C)),(3,(Just D,Just D))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Nothing),(6,Nothing),(7,Nothing),(8,Nothing),(9,Nothing),(10,Nothing)])
   print $ validMoves world
   print $ won world
   -}
+
+  let world = (array (0,3) [(0,(Just B,Just A)),(1,(Just C,Just D)),(2,(Just B,Just C)),(3,(Just D,Just A))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Nothing),(6,Nothing),(7,Nothing),(8,Nothing),(9,Nothing),(10,Nothing)])
+  print $ validMoves world
+  print $ costToWin world validMoves heuristic won
