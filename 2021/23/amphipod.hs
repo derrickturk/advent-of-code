@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Control.Monad (guard)
+import Data.Maybe (isJust)
 import Data.Array
 
 import AStar
@@ -31,15 +32,33 @@ bugRoom D = 3
 hallway :: Hallway
 hallway = listArray (0, 10) $ repeat Nothing
 
-isFoyer :: Int -> Bool
-isFoyer 2 = True
-isFoyer 4 = True
-isFoyer 6 = True
-isFoyer 8 = True
-isFoyer _ = False
-
 roomToHall :: Int -> Int
 roomToHall = (* 2) . (+ 1)
+
+hallToRoom :: Int -> Maybe Int
+hallToRoom 2 = Just 0
+hallToRoom 4 = Just 1
+hallToRoom 6 = Just 2
+hallToRoom 8 = Just 3
+hallToRoom _ = Nothing
+
+isFoyer :: Int -> Bool
+isFoyer = isJust . hallToRoom
+
+hallTargets :: Hallway -> Int -> [Int]
+hallTargets hall i =
+  let i' = roomToHall i
+      goDown j
+        | j < 0 || j > 10 || isJust (hall ! j) = []
+        | isFoyer j = goDown (j - 1)
+        | otherwise = j:goDown (j - 1)
+      goUp j
+        | j < 0 || j > 10 || isJust (hall ! j) = []
+        | isFoyer j = goUp (j + 1)
+        | otherwise = j:goUp (j + 1)
+   in if isJust (hall ! i')
+     then []
+     else goDown (i' - 1) <> goUp (i' + 1)
 
 clearBetween :: Hallway -> Int -> Int -> Bool
 clearBetween hall i j = all ((== Nothing) . (hall !)) $
@@ -118,9 +137,7 @@ validMoves (rms, hall) =
     roomTopBugToHall = do
       (i, (Just bug, other)) <- assocs rms
       guard $ i /= bugRoom bug || other /= Just bug
-      (j, Nothing) <- assocs hall
-      guard $ not $ isFoyer j
-      guard $ clearBetween hall (roomToHall i) j
+      j <- hallTargets hall i
       let steps = 1 + abs (roomToHall i - j)
       pure ( energy bug * steps
            , (rms // [(i, (Nothing, other))], hall // [(j, Just bug)])
@@ -129,9 +146,7 @@ validMoves (rms, hall) =
     roomBottomBugToHall = do
       (i, (Nothing, Just bug)) <- assocs rms
       guard $ i /= bugRoom bug
-      (j, Nothing) <- assocs hall
-      guard $ not $ isFoyer j
-      guard $ clearBetween hall (roomToHall i) j
+      j <- hallTargets hall i
       let steps = 2 + abs (roomToHall i - j)
       pure ( energy bug * steps
            , (rms // [(i, (Nothing, Nothing))], hall // [(j, Just bug)])
