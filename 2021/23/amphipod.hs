@@ -117,6 +117,7 @@ validMoves (rms, hall) =
 
     roomTopBugToHall = do
       (i, (Just bug, other)) <- assocs rms
+      guard $ i /= bugRoom bug || other /= Just bug
       (j, Nothing) <- assocs hall
       guard $ not $ isFoyer j
       guard $ clearBetween hall (roomToHall i) j
@@ -128,6 +129,7 @@ validMoves (rms, hall) =
     roomBottomBugToHall = do
       (i, (Nothing, Just bug)) <- assocs rms
       (j, Nothing) <- assocs hall
+      guard $ i /= bugRoom bug
       guard $ not $ isFoyer j
       guard $ clearBetween hall (roomToHall i) j
       let steps = 2 + abs (roomToHall i - j)
@@ -214,11 +216,9 @@ rooms = do
 
 main :: IO ()
 main = do
-  {-
   Just initRooms <- parseStdin rooms
   let world = (initRooms, hallway)
   print $ costToWin world validMoves heuristic won
-  -}
 
   {-
   -- 12481 = 12081 + 400
@@ -242,6 +242,9 @@ main = do
   print $ won world
   -}
 
+  {-
   let world = (array (0,3) [(0,(Just B,Just A)),(1,(Just C,Just D)),(2,(Just B,Just C)),(3,(Just D,Just A))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Nothing),(6,Nothing),(7,Nothing),(8,Nothing),(9,Nothing),(10,Nothing)])
   print $ validMoves world
+  print $ heuristic world
   print $ costToWin world validMoves heuristic won
+  -}
