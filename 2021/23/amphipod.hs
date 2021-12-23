@@ -128,8 +128,8 @@ validMoves (rms, hall) =
 
     roomBottomBugToHall = do
       (i, (Nothing, Just bug)) <- assocs rms
-      (j, Nothing) <- assocs hall
       guard $ i /= bugRoom bug
+      (j, Nothing) <- assocs hall
       guard $ not $ isFoyer j
       guard $ clearBetween hall (roomToHall i) j
       let steps = 2 + abs (roomToHall i - j)
@@ -138,25 +138,29 @@ validMoves (rms, hall) =
            )
 
     hallwayBugToRoomTop = do
-      (i, (Nothing, other)) <- assocs rms
       (j, Just bug) <- assocs hall
-      guard $ i == bugRoom bug
-      guard $ clearBetween1 hall j (roomToHall i)
-      guard $ other == Just bug || other == Nothing -- must not be different bug
-      let steps = 1 + abs (roomToHall i - j)
-      pure ( energy bug * steps
-           , (rms // [(i, (Just bug, other))], hall // [(j, Nothing)])
-           )
+      let i = bugRoom bug
+      case rms ! i of
+        (Nothing, other) -> do
+          guard $ clearBetween1 hall j (roomToHall i)
+          guard $ other == Just bug || other == Nothing -- must not be different bug
+          let steps = 1 + abs (roomToHall i - j)
+          pure ( energy bug * steps
+               , (rms // [(i, (Just bug, other))], hall // [(j, Nothing)])
+               )
+        _ -> empty
 
     hallwayBugToRoomBottom = do
-      (i, (Nothing, Nothing)) <- assocs rms
       (j, Just bug) <- assocs hall
-      guard $ i == bugRoom bug
-      guard $ clearBetween1 hall j (roomToHall i)
-      let steps = 2 + abs (roomToHall i - j)
-      pure ( energy bug * steps
-           , (rms // [(i, (Nothing, Just bug))], hall // [(j, Nothing)])
-           )
+      let i = bugRoom bug
+      case rms ! i of
+        (Nothing, Nothing) -> do
+          guard $ clearBetween1 hall j (roomToHall i)
+          let steps = 2 + abs (roomToHall i - j)
+          pure ( energy bug * steps
+               , (rms // [(i, (Nothing, Just bug))], hall // [(j, Nothing)])
+               )
+        _ -> empty
 
 heuristic :: World -> Int
 heuristic (rms, hall) = sum topBugs + sum bottomBugs + sum hallBugs where
