@@ -22,8 +22,8 @@ main :: IO ()
 main = do
   Just prog <- parseStdin program
   [num] <- getArgs
-  let Just input = readMaybe num
-      accepted n = case run prog (State boot $ toDigits n) of
+  let Just input = readMaybe @Int num
+      accepted n = case run @Int @[Int] prog (State boot $ toDigits n) of
         Just (State c []) -> z c == 0
         _ -> False
   print $ accepted input

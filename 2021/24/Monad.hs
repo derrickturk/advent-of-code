@@ -1,4 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FunctionalDependencies, MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances, OverloadedStrings #-}
 
 module Monad (
     Var(..)
@@ -27,11 +28,11 @@ data Src
   | Lit Int
   deriving (Eq, Show)
 
-data CPU
-  = CPU { w :: Int
-        , x :: Int
-        , y :: Int
-        , z :: Int
+data CPU a
+  = CPU { w :: a
+        , x :: a
+        , y :: a
+        , z :: a
         } deriving (Eq, Show)
 
 data Instr
@@ -43,41 +44,48 @@ data Instr
   | Eql Var Src
   deriving (Eq, Show)
 
-data State = State CPU [Int]
+data State a input = State (CPU a) input
   deriving (Eq, Show)
 
-boot :: CPU
-boot = CPU 0 0 0 0
+class Compute a input | a -> input where
+  boot :: CPU a
+  liftConst :: Int -> a
+  step :: Instr -> State a input -> Maybe (State a input)
 
-read :: Src -> CPU -> Int
+read :: Compute a input => Src -> CPU a -> a
 read (Mem W) = w
 read (Mem X) = x
 read (Mem Y) = y
 read (Mem Z) = z
-read (Lit n) = const n
+read (Lit n) = const (liftConst n)
 
-write :: Int -> Var -> CPU -> CPU
+write :: a -> Var -> CPU a -> CPU a
 write n W c = c { w = n }
 write n X c = c { x = n }
 write n Y c = c { y = n }
 write n Z c = c { z = n }
 
-binOp :: (Int -> Int -> Int) -> Var -> Src -> State -> State
-binOp f v o (State c is) =
+binOp :: Compute a input => (a -> a -> a) -> Var -> Src -> CPU a -> CPU a
+binOp f v o c =
   let val = f (read (Mem v) c) (read o c)
-   in State (write val v c) is
+   in write val v c
 
-step :: Instr -> State -> Maybe State 
-step (Input v) (State c (i:is)) = Just $ State (write i v c) is
-step (Input _) (State _ []) = Nothing
-step (Add v o) s = Just $ binOp (+) v o s
-step (Mul v o) s = Just $ binOp (*) v o s
-step (Div v o) s = Just $ binOp div v o s
-step (Mod v o) s = Just $ binOp mod v o s
-step (Eql v o) s = Just $ binOp (\a b -> if a == b then 1 else 0) v o s
-
-run :: [Instr] -> State -> Maybe State
+run :: Compute a input => [Instr] -> State a input -> Maybe (State a input)
 run is s = foldM (flip step) s is
+
+instance Compute Int [Int] where
+  boot = CPU 0 0 0 0
+
+  liftConst n = n
+
+  step (Input v) (State c (i:is)) = Just $ State (write i v c) is
+  step (Input _) (State _ []) = Nothing
+  step (Add v o) (State c is) = Just $ State (binOp (+) v o c) is
+  step (Mul v o) (State c is) = Just $ State (binOp (*) v o c) is
+  step (Div v o) (State c is) = Just $ State (binOp div v o c) is
+  step (Mod v o) (State c is) = Just $ State (binOp mod v o c) is
+  step (Eql v o) (State c is) = Just $
+    State (binOp (\a b -> if a == b then 1 else 0) v o c) is
 
 var :: Parser Var
 var =  W <$ char 'w'
