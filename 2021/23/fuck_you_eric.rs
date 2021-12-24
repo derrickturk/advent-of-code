@@ -198,14 +198,17 @@ fn hall_targets(hall: &Hallway, i: usize) -> Vec<usize> {
         Some(_) => { },
         None => {
             let mut j = i - 1;
-            while j > 0 && j < hall.len() && hall[j].is_none() {
+            loop {
+                if hall[j].is_some() { break; }
                 if !is_foyer(j) {
                     result.push(j);
                 }
+                if j == 0 { break; }
                 j -= 1;
             }
+
             let mut j = i + 1;
-            while j > 0 && j < hall.len() && hall[j].is_none() {
+            while j < hall.len() && hall[j].is_none() {
                 if !is_foyer(j) {
                     result.push(j);
                 }
@@ -367,7 +370,6 @@ fn solve_cost(world: &World) -> Option<u64> {
     let mut seen = HashSet::new();
     while let Some(s) = q.pop() {
         if won(&s.world) {
-            dbg!(s.length);
             return Some(s.cost)
         }
 
@@ -474,9 +476,14 @@ fn print((rooms, hall): &World) {
 fn main() -> Result<(), Box<dyn Error>> {
     let world = read_world()?;
 
+    /*
     println!("START");
     print(&world);
+    */
 
+    dbg!(solve_cost(&world));
+
+    /*
     println!("TRACK");
     dbg!(solve_cost(&world));
     if let Some(trace) = solve_steps(&world) {
@@ -491,6 +498,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("{} (est {})", c, c + heuristic(&w));
         print(&w);
     }
+    */
 
     Ok(())
 }
