@@ -91,15 +91,38 @@ simplify (SEql s1 s2) = case (simplify s1, simplify s2) of
 
 simplify s = s
 
+pprint :: Sym -> String
+pprint = pprint' (0::Int) where
+  pprint' _ (SInput n) = "input[" <> show n <> "]"
+  pprint' _ (SLit n) = show n
+  pprint' prec (SAdd s1 s2)
+    | prec > 1 = "(" <> pprint' 1 s1 <> " + " <> pprint' 1 s2 <> ")"
+    | otherwise = pprint' 1 s1 <> " + " <> pprint' 1 s2
+  pprint' prec (SMul s1 s2)
+    | prec > 2 = "(" <> pprint' 2 s1 <> " * " <> pprint' 2 s2 <> ")"
+    | otherwise = pprint' 2 s1 <> " * " <> pprint' 2 s2
+  pprint' prec (SDiv s1 s2)
+    | prec > 2 = "(" <> pprint' 2 s1 <> " / " <> pprint' 2 s2 <> ")"
+    | otherwise = pprint' 2 s1 <> " / " <> pprint' 2 s2
+  pprint' prec (SMod s1 s2)
+    | prec > 2 = "(" <> pprint' 2 s1 <> " % " <> pprint' 2 s2 <> ")"
+    | otherwise = pprint' 2 s1 <> " % " <> pprint' 2 s2
+  pprint' prec (SEql s1 s2)
+    | prec > 3 = "(" <> pprint' 3 s1 <> " == " <> pprint' 3 s2 <> ")"
+    | otherwise = pprint' 3 s1 <> " == " <> pprint' 3 s2
+  pprint' prec (SNotEql s1 s2)
+    | prec > 3 = "(" <> pprint' 3 s1 <> " /= " <> pprint' 3 s2 <> ")"
+    | otherwise = pprint' 3 s1 <> " /= " <> pprint' 3 s2
+
 main :: IO ()
 main = do
   Just prog <- parseStdin program
   let Just (State c _) = run @Sym @Int prog (State boot 0)
   putStr "w = "
-  print $ simplify $ w c
+  putStrLn $ pprint $ simplify $ w c
   putStr "x = "
-  print $ simplify $ x c
+  putStrLn $ pprint $ simplify $ x c
   putStr "y = "
-  print $ simplify $ y c
+  putStrLn $ pprint $ simplify $ y c
   putStr "z = "
-  print $ simplify $ z c
+  putStrLn $ pprint $ simplify $ z c
