@@ -7,10 +7,10 @@ module Monad (
   , CPU(..)
   , Instr(..)
   , State(..)
-  , boot
+  , Compute(..)
   , read
   , write
-  , step
+  , binOp
   , run
   , program
 ) where
