@@ -1,5 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+module Monad (
+    Var(..)
+  , Src(..)
+  , CPU(..)
+  , Instr(..)
+  , State(..)
+  , boot
+  , read
+  , write
+  , step
+  , run
+  , program
+) where
+
 import Prelude hiding (read)
 import Control.Monad (foldM)
 
@@ -85,8 +99,3 @@ instr =  Input <$> (lexeme "inp" *> var)
 
 program :: Parser [Instr]
 program = some $ lexeme instr
-
-main :: IO ()
-main = do
-  Just prog <- parseStdin program
-  print $ run prog (State boot [7])
