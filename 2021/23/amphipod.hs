@@ -1,13 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Control.Monad (guard)
-import Data.List (find)
+import Data.List (find, transpose)
 import Data.Maybe (isJust, maybeToList)
 import Data.Array
 
 import AStar
--- import Dijkstra
-import FemtoParsec
 
 data Bug
   = A | B | C | D
@@ -29,9 +27,6 @@ bugRoom A = 0
 bugRoom B = 1
 bugRoom C = 2
 bugRoom D = 3
-
-hallway :: Hallway
-hallway = listArray (0, 10) $ repeat Nothing
 
 roomToHall :: Int -> Int
 roomToHall = (* 2) . (+ 1)
@@ -96,7 +91,13 @@ roomSources rms = do
 roomTargets :: Bug -> Rooms -> [(Int, Int)]
 roomTargets b rms = do
   let i = bugRoom b
-  j <- maybeToList $ bottomEmpty $ rms ! i
+      rm = rms ! i
+      (_, btm) = bounds rm
+      wrongBug k = case rm ! k of
+        Just b' -> b /= b'
+        Nothing -> False
+  j <- maybeToList $ bottomEmpty rm
+  guard $ not $ any wrongBug [j + 1..btm]
   pure (i, j)
 
 validMoves :: World -> [(Int, World)]
@@ -110,7 +111,7 @@ validMoves (rms, hall) =
       (i', j') <- roomTargets bug rms
       guard $ i /= i'
       guard $ clearBetween hall (roomToHall i) (roomToHall i')
-      let steps = 2 + j + j' + abs (roomToHall i' - roomToHall j')
+      let steps = 2 + j + j' + abs (roomToHall i' - roomToHall i)
           src' = rms ! i // [(j, Nothing)]
           dst' = rms ! i' // [(j', Just bug)]
           rms' = rms // [(i, src'), (i', dst')]
@@ -157,77 +158,36 @@ won (rms, _) =
   all (== Just C) (rms ! 2) &&
   all (== Just D) (rms ! 3)
 
-bugKind :: Parser Bug
-bugKind = A <$ "A" <|> B <$ "B" <|> C <$ "C" <|> D <$ "D"
+parseWorld :: [String] -> Maybe World
+parseWorld (_:(_:hall):rooms) =
+  (,) <$> parseRooms rooms <*> pure (listArray (0, 10) $ parseBug <$> init hall)
+  where
+    parseRooms :: [String] -> Maybe Rooms
+    parseRooms = fmap (toArrays . transpose) . traverse parseRoom . init
 
-rooms :: Parser Rooms
-rooms = do
-  _ <- lexeme "#############"
-  _ <- lexeme "#...........#"
-  _ <- "###"
-  pod0 <- bugKind
-  _ <- "#"
-  pod1 <- bugKind
-  _ <- "#"
-  pod2 <- bugKind
-  _ <- "#"
-  pod3 <- bugKind
-  _ <- lexeme "###"
-  _ <- "#"
-  pod4 <- bugKind
-  _ <- "#"
-  pod5 <- bugKind
-  _ <- "#"
-  pod6 <- bugKind
-  _ <- "#"
-  pod7 <- bugKind
-  _ <- lexeme "#"
-  _ <- lexeme "#########"
-  pure $ listArray (0, 3) [ listArray (0, 1) [Just pod0, Just pod4]
-                          , listArray (0, 1) [Just pod1, Just pod5]
-                          , listArray (0, 1) [Just pod2, Just pod6]
-                          , listArray (0, 1) [Just pod3, Just pod7]
-                          ]
+    parseRoom :: [Char] -> Maybe [Maybe Bug]
+    parseRoom (_:_:_:a:_:b:_:c:_:d:_) =
+      Just [parseBug a, parseBug b, parseBug c, parseBug d]
+    parseRoom _ = Nothing
 
-expandWorld :: World -> World
-expandWorld (rms, hall) =
-  let rms' = listArray (0, 3)
-        [ listArray (0, 3) [(rms ! 0) ! 0, Just D, Just D, (rms ! 0) ! 1]
-        , listArray (0, 3) [(rms ! 1) ! 0, Just C, Just B, (rms ! 1) ! 1]
-        , listArray (0, 3) [(rms ! 2) ! 0, Just B, Just A, (rms ! 2) ! 1]
-        , listArray (0, 3) [(rms ! 3) ! 0, Just A, Just C, (rms ! 3) ! 1]
-        ]
-   in (rms', hall)
+    parseBug :: Char -> Maybe Bug
+    parseBug 'A' = Just A
+    parseBug 'B' = Just B
+    parseBug 'C' = Just C
+    parseBug 'D' = Just D
+    parseBug _ = Nothing
+
+    toArrays :: [[Maybe Bug]] -> Rooms
+    toArrays cols = listArray (0, 3) $ toRoom <$> cols
+
+    toRoom :: [Maybe Bug] -> Room
+    toRoom col = listArray (0, length col - 1) col
+parseWorld _ = Nothing
 
 main :: IO ()
 main = do
-  Just initRooms <- parseStdin rooms
-  let world = (initRooms, hallway)
-      world' = expandWorld world
-  -- print $ costToWin world validMoves heuristic won
-  print $ costToWin world' validMoves heuristic won
-
-  {-
-  -- 12481 = 12081 + 400
-  -- let world = (array (0,3) [(0,(Just B,Just A)),(1,(Just C,Just D)),(2,(Nothing,Just C)),(3,(Just D,Just A))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Just B),(4,Nothing),(5,Nothing),(6,Nothing),(7,Nothing),(8,Nothing),(9,Nothing),(10,Nothing)])
-  -- 12081 = 9081 + 3000
-  -- let world = (array (0,3) [(0,(Just B,Just A)),(1,(Nothing,Just D)),(2,(Just C,Just C)),(3,(Just D,Just A))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Just B),(4,Nothing),(5,Nothing),(6,Nothing),(7,Nothing),(8,Nothing),(9,Nothing),(10,Nothing)])
-  -- 9081 = 9051 + 30
-  --let world = (array (0,3) [(0,(Just B,Just A)),(1,(Nothing,Nothing)),(2,(Just C,Just C)),(3,(Just D,Just A))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Just B),(4,Nothing),(5,Just D),(6,Nothing),(7,Nothing),(8,Nothing),(9,Nothing),(10,Nothing)])
-  -- 9051 = 9011 + 40
-  -- let world = (array (0,3) [(0,(Just B,Just A)),(1,(Nothing,Just B)),(2,(Just C,Just C)),(3,(Just D,Just A))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Just D),(6,Nothing),(7,Nothing),(8,Nothing),(9,Nothing),(10,Nothing)])
-  -- 9011 = 2003 + 7008
-  -- let world = (array (0,3) [(0,(Nothing,Just A)),(1,(Just B,Just B)),(2,(Just C,Just C)),(3,(Just D,Just A))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Just D),(6,Nothing),(7,Nothing),(8,Nothing),(9,Nothing),(10,Nothing)])
-  -- let world = (array (0,3) [(0,(Nothing,Just A)),(1,(Just B,Just B)),(2,(Just C,Just C)),(3,(Nothing,Just A))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Just D),(6,Nothing),(7,Just D),(8,Nothing),(9,Nothing),(10,Nothing)])
-  -- 7008 = 7000 + 8
-  -- let world = (array (0,3) [(0,(Nothing,Just A)),(1,(Just B,Just B)),(2,(Just C,Just C)),(3,(Nothing,Nothing))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Just D),(6,Nothing),(7,Just D),(8,Nothing),(9,Just A),(10,Nothing)])
-  -- let world = (array (0,3) [(0,(Nothing,Just A)),(1,(Just B,Just B)),(2,(Just C,Just C)),(3,(Nothing,Just D))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Just D),(6,Nothing),(7,Nothing),(8,Nothing),(9,Just A),(10,Nothing)])
-  -- 8
-  -- let world = (array (0,3) [(0,(Nothing,Just A)),(1,(Just B,Just B)),(2,(Just C,Just C)),(3,(Just D,Just D))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Nothing),(6,Nothing),(7,Nothing),(8,Nothing),(9,Just A),(10,Nothing)])
-  -- let world = (array (0,3) [(0,(Just A,Just A)),(1,(Just B,Just B)),(2,(Just C,Just C)),(3,(Just D,Just D))],array (0,10) [(0,Nothing),(1,Nothing),(2,Nothing),(3,Nothing),(4,Nothing),(5,Nothing),(6,Nothing),(7,Nothing),(8,Nothing),(9,Nothing),(10,Nothing)])
-  print $ validMoves world
-  print $ won world
-  -}
+  Just world <- parseWorld . lines <$> getContents
+  print $ costToWin world validMoves heuristic won
 
   {-
   let unfuck (rms, hall) = (fmap unfuck' rms, hall)
