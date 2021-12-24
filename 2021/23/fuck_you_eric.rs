@@ -1,22 +1,32 @@
 use std::{
     cmp::Ordering,
-    collections::BinaryHeap,
+    collections::{BinaryHeap, HashSet},
     error::Error,
     io::{BufRead, self},
 };
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 enum Bug { A, B, C, D }
 type Room = Vec<Option<Bug>>;
 type Rooms = [Room; 4];
 type Hallway = [Option<Bug>; 11];
 type World = (Rooms, Hallway);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 struct State {
     estimate: u64,
     cost: u64,
+    length: usize,
     world: World,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+struct TraceState {
+    estimate: u64,
+    cost: u64,
+    length: usize,
+    world: World,
+    trace: Vec<(u64, u64, World)>,
 }
 
 impl Bug {
@@ -57,6 +67,15 @@ impl Bug {
             Bug::D => 3,
         }
     }
+
+    fn to_char(&self) -> char {
+        match self {
+            Bug::A => 'A',
+            Bug::B => 'B',
+            Bug::C => 'C',
+            Bug::D => 'D',
+        }
+    }
 }
 
 impl Ord for State {
@@ -68,6 +87,20 @@ impl Ord for State {
 }
 
 impl PartialOrd for State {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for TraceState {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.estimate.cmp(&self.estimate)
+          .then_with(|| other.cost.cmp(&self.cost))
+          .then_with(|| self.world.cmp(&other.world))
+    }
+}
+
+impl PartialOrd for TraceState {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
@@ -203,13 +236,13 @@ fn is_foyer(i: usize) -> bool {
 
 fn clear_between(i: usize, j: usize, hall: &Hallway) -> bool {
     if i < j {
-        for k in i..j {
+        for k in i..=j {
             if let Some(_) = hall[k] {
                 return false;
             }
         }
     } else {
-        for k in j..i {
+        for k in j..=i {
             if let Some(_) = hall[k] {
                 return false;
             }
@@ -220,13 +253,13 @@ fn clear_between(i: usize, j: usize, hall: &Hallway) -> bool {
 
 fn clear_between1(i: usize, j: usize, hall: &Hallway) -> bool {
     if i < j {
-        for k in i + 1..j {
+        for k in i + 1..=j {
             if let Some(_) = hall[k] {
                 return false;
             }
         }
     } else {
-        for k in j..i - 1 {
+        for k in j..=i - 1 {
             if let Some(_) = hall[k] {
                 return false;
             }
@@ -327,20 +360,30 @@ fn solve_cost(world: &World) -> Option<u64> {
     q.push(State {
         estimate: 0,
         cost: 0,
+        length: 0,
         world: world.clone(),
     });
 
+    let mut seen = HashSet::new();
     while let Some(s) = q.pop() {
         if won(&s.world) {
+            dbg!(s.length);
             return Some(s.cost)
         }
 
+        seen.insert(s.world.clone());
+
         let next = valid_moves(&s.world);
-        for (cost, new_s) in next {
+        for (cost, new_w) in next {
+            if seen.contains(&new_w) {
+                continue;
+            }
+
             q.push(State {
-                estimate: cost + s.cost + heuristic(&new_s),
+                estimate: cost + s.cost + heuristic(&new_w),
                 cost: cost + s.cost,
-                world: new_s,
+                length: s.length + 1,
+                world: new_w,
             });
         }
     }
@@ -348,9 +391,106 @@ fn solve_cost(world: &World) -> Option<u64> {
     None
 }
 
+fn solve_steps(world: &World) -> Option<Vec<(u64, u64, World)>> {
+    let mut q = BinaryHeap::new();
+    q.push(TraceState {
+        estimate: 0,
+        cost: 0,
+        length: 0,
+        world: world.clone(),
+        trace: vec![],
+    });
+
+    let mut seen = HashSet::new();
+    while let Some(s) = q.pop() {
+        if won(&s.world) {
+            dbg!(s.length);
+            return Some(s.trace)
+        }
+
+        seen.insert(s.world.clone());
+
+        let next = valid_moves(&s.world);
+        for (cost, new_w) in next {
+            if seen.contains(&new_w) {
+                continue;
+            }
+
+            let mut trace = s.trace.clone();
+            let estimate = cost + s.cost + heuristic(&new_w);
+            let cost = cost + s.cost;
+            trace.push((estimate, cost, new_w.clone()));
+
+            q.push(TraceState {
+                estimate,
+                cost,
+                length: s.length + 1,
+                world: new_w,
+                trace,
+            });
+        }
+    }
+
+    None
+}
+
+fn print((rooms, hall): &World) {
+    println!("#############");
+    print!("#");
+    for b in hall {
+        match b {
+            Some(b) => print!("{}", b.to_char()),
+            None => print!("."),
+        };
+    }
+    println!("#");
+
+    for i in 0..rooms[0].len() {
+        if i == 0 {
+            print!("###");
+        } else {
+            print!("  #");
+        }
+
+        for j in 0..4 {
+            match rooms[j][i] {
+                Some(b) => print!("{}", b.to_char()),
+                None => print!("."),
+            };
+            print!("#");
+        }
+
+        if i == 0 {
+            println!("##");
+        } else {
+            println!("  ");
+        }
+    }
+
+    println!("  #########  ");
+    println!();
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let world = read_world()?;
-    dbg!(valid_moves(&world));
+
+    println!("START");
+    print(&world);
+
+    println!("TRACK");
     dbg!(solve_cost(&world));
+    if let Some(trace) = solve_steps(&world) {
+        for (h, c, w) in trace {
+            println!("{} (est {})", c, h);
+            print(&w);
+        }
+    }
+
+    println!("AVAILABLE");
+    for (c, w) in valid_moves(&world) {
+        println!("{} (est {})", c, c + heuristic(&w));
+        print(&w);
+    }
+
     Ok(())
 }

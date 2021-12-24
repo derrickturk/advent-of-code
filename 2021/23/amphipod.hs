@@ -89,8 +89,8 @@ roomSources rms = do
   let (_, btm) = bounds rm
       allowsLeaving k = case rm ! k of
         Nothing -> True
-        Just bug' -> bugRoom bug' /= j
-  guard $ bugRoom bug /= j || any allowsLeaving [j + 1..btm]
+        Just bug' -> bugRoom bug' /= i
+  guard $ bugRoom bug /= i || any allowsLeaving [j + 1..btm]
   pure (i, j, bug)
 
 roomTargets :: Bug -> Rooms -> [(Int, Int)]
@@ -189,11 +189,23 @@ rooms = do
                           , listArray (0, 1) [Just pod3, Just pod7]
                           ]
 
+expandWorld :: World -> World
+expandWorld (rms, hall) =
+  let rms' = listArray (0, 3)
+        [ listArray (0, 3) [(rms ! 0) ! 0, Just D, Just D, (rms ! 0) ! 1]
+        , listArray (0, 3) [(rms ! 1) ! 0, Just C, Just B, (rms ! 1) ! 1]
+        , listArray (0, 3) [(rms ! 2) ! 0, Just B, Just A, (rms ! 2) ! 1]
+        , listArray (0, 3) [(rms ! 3) ! 0, Just A, Just C, (rms ! 3) ! 1]
+        ]
+   in (rms', hall)
+
 main :: IO ()
 main = do
   Just initRooms <- parseStdin rooms
   let world = (initRooms, hallway)
-  print $ costToWin world validMoves heuristic won
+      world' = expandWorld world
+  -- print $ costToWin world validMoves heuristic won
+  print $ costToWin world' validMoves heuristic won
 
   {-
   -- 12481 = 12081 + 400
