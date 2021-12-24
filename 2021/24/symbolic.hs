@@ -5,6 +5,8 @@ import Prelude hiding (read)
 import Monad
 import FemtoParsec
 
+import Debug.Trace
+
 data Sym
   = SInput Int
   | SAdd Sym Sym
@@ -14,6 +16,7 @@ data Sym
   | SEql Sym Sym
   | SNotEql Sym Sym
   | SLit Int
+  | SPrevZ Int
   deriving (Eq, Show)
 
 instance Compute Sym Int where
@@ -22,7 +25,13 @@ instance Compute Sym Int where
   liftConst = SLit
 
   step instr s = Just $ step' instr s where
-    step' (Input v) (State c i) = State (write (SInput i) v c) (i + 1)
+    step' (Input v) (State c i) =
+      let prevZ = read (Mem Z) c
+          c' = (write (SInput i) v c)
+       in if i == 0
+            then State c' (i + 1)
+            else trace ("prevZ[" <> show (i - 1) <> "] = " <> pprint prevZ) $
+              State (write (SPrevZ $ i - 1) Z c') (i + 1)
     step' (Add v o) (State c i) = State (binOp' SAdd v o c) i
     step' (Mul v o) (State c i) = State (binOp' SMul v o c) i
     step' (Div v o) (State c i) = State (binOp' SDiv v o c) i
@@ -113,6 +122,7 @@ pprint = pprint' (0::Int) where
   pprint' prec (SNotEql s1 s2)
     | prec > 3 = "(" <> pprint' 3 s1 <> " /= " <> pprint' 3 s2 <> ")"
     | otherwise = pprint' 3 s1 <> " /= " <> pprint' 3 s2
+  pprint' _ (SPrevZ n) = "prevZ[" <> show n <> "]"
 
 main :: IO ()
 main = do
