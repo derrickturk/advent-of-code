@@ -1,11 +1,10 @@
-{-# LANGUAGE MultiParamTypeClasses, TypeApplications #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, TypeApplications #-}
 
 import Prelude hiding (read)
+import Control.Monad (forM_)
 
 import Monad
 import FemtoParsec
-
-import Debug.Trace
 
 data Sym
   = SInput Int
@@ -19,19 +18,18 @@ data Sym
   | SPrevZ Int
   deriving (Eq, Show)
 
-instance Compute Sym Int where
+instance Compute Sym (Int, [Sym]) where
   boot = CPU (SLit 0) (SLit 0) (SLit 0) (SLit 0)
 
   liftConst = SLit
 
   step instr s = Just $ step' instr s where
-    step' (Input v) (State c i) =
+    step' (Input v) (State c (i, defs)) =
       let prevZ = read (Mem Z) c
           c' = (write (SInput i) v c)
        in if i == 0
-            then State c' (i + 1)
-            else trace ("prevZ[" <> show (i - 1) <> "] = " <> pprint prevZ) $
-              State (write (SPrevZ $ i - 1) Z c') (i + 1)
+            then State c' (i + 1, defs)
+            else State (write (SPrevZ $ i - 1) Z c') (i + 1, defs <> [prevZ])
     step' (Add v o) (State c i) = State (binOp' SAdd v o c) i
     step' (Mul v o) (State c i) = State (binOp' SMul v o c) i
     step' (Div v o) (State c i) = State (binOp' SDiv v o c) i
@@ -127,7 +125,10 @@ pprint = pprint' (0::Int) where
 main :: IO ()
 main = do
   Just prog <- parseStdin program
-  let Just (State c _) = run @Sym @Int prog (State boot 0)
+  let Just (State c (_, defs)) = run @Sym @_ prog (State boot (0, []))
+  forM_ (zip [(0::Int)..] defs) $ \(i, d) -> do
+    putStr $ "prevZ[" <> show i <> "] = "
+    putStrLn $ pprint d
   putStr "w = "
   putStrLn $ pprint $ simplify $ w c
   putStr "x = "
