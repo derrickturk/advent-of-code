@@ -99,28 +99,24 @@ simplify (SEql s1 s2) = case (simplify s1, simplify s2) of
 simplify s = s
 
 pprint :: Sym -> String
-pprint = pprint' (0::Int) where
-  pprint' _ (SInput n) = "input[" <> show n <> "]"
-  pprint' _ (SLit n) = show n
-  pprint' prec (SAdd s1 s2)
-    | prec > 1 = "(" <> pprint' 1 s1 <> " + " <> pprint' 1 s2 <> ")"
-    | otherwise = pprint' 1 s1 <> " + " <> pprint' 1 s2
-  pprint' prec (SMul s1 s2)
-    | prec > 2 = "(" <> pprint' 2 s1 <> " * " <> pprint' 2 s2 <> ")"
-    | otherwise = pprint' 2 s1 <> " * " <> pprint' 2 s2
-  pprint' prec (SDiv s1 s2)
-    | prec > 2 = "(" <> pprint' 2 s1 <> " / " <> pprint' 2 s2 <> ")"
-    | otherwise = pprint' 2 s1 <> " / " <> pprint' 2 s2
-  pprint' prec (SMod s1 s2)
-    | prec > 2 = "(" <> pprint' 2 s1 <> " % " <> pprint' 2 s2 <> ")"
-    | otherwise = pprint' 2 s1 <> " % " <> pprint' 2 s2
-  pprint' prec (SEql s1 s2)
-    | prec > 0 = "(" <> pprint' 0 s1 <> " == " <> pprint' 0 s2 <> ")"
-    | otherwise = pprint' 0 s1 <> " == " <> pprint' 0 s2
-  pprint' prec (SNotEql s1 s2)
-    | prec > 0 = "(" <> pprint' 0 s1 <> " /= " <> pprint' 0 s2 <> ")"
-    | otherwise = pprint' 0 s1 <> " /= " <> pprint' 0 s2
-  pprint' _ (SPrevZ n) = "prevZ[" <> show n <> "]"
+pprint s = pprint' (0::Int) s "" where
+  pprint' _ (SInput n) =
+    showString "input[" . showString (show n) . showString "]"
+  pprint' _ (SLit n) = showString $ show n
+  pprint' prec (SAdd s1 s2) = showParen (prec > 1) $
+    pprint' 1 s1 . showString " + " . pprint' 2 s2
+  pprint' prec (SMul s1 s2) = showParen (prec > 2) $
+    pprint' 2 s1 . showString " * " . pprint' 3 s2
+  pprint' prec (SDiv s1 s2) = showParen (prec > 2) $
+    pprint' 2 s1 . showString " / " . pprint' 3 s2
+  pprint' prec (SMod s1 s2) = showParen (prec > 2) $
+    pprint' 2 s1 . showString " % " . pprint' 3 s2
+  pprint' prec (SEql s1 s2) = showParen (prec > 0) $
+    pprint' 0 s1 . showString " == " . pprint' 1 s2
+  pprint' prec (SNotEql s1 s2) = showParen (prec > 0) $
+    pprint' 0 s1 . showString " != " . pprint' 1 s2
+  pprint' _ (SPrevZ n) =
+    showString "prevZ[" . showString (show n) . showString "]"
 
 main :: IO ()
 main = do
