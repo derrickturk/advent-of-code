@@ -2,6 +2,8 @@
 *.exe
 *.o
 *.hi
+*.cmi
+*.cmx
 *.txt
 input.*
 .stack-work
