@@ -1,13 +1,13 @@
 open Intcaml
-open Intcaml.Intcode
 open Intcaml.Intcode_loader
-open Intcaml.Io
+
+module M = Machine.Make (Io.Channels)
 
 let () =
-  let io = { input = In_channel.stdin; output = Out_channel.stdout } in
+  let io: Io.Channels.t = { input = In_channel.stdin; output = Out_channel.stdout } in
   let prog = In_channel.input_line stdin in
   match Option.bind prog cpu_of_string_opt with
-    | Some cpu -> begin match run cpu io with
+    | Some cpu -> begin match M.run cpu io with
         | Ok () -> ()
         | Error e -> print_endline (Error.show e)
       end

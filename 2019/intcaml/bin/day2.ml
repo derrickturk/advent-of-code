@@ -1,17 +1,14 @@
 open Intcaml
 open Intcaml.Cpu
-open Intcaml.Intcode
 open Intcaml.Intcode_loader
-open Intcaml.Io
 
-(* eventually we can use a dummy-io module and just use () here *)
-let dummy_io = { input = In_channel.stdin; output = Out_channel.stdout }
+module M = Machine.Make (Io.Null)
 
 let part1 input =
   let cpu = cpu_of_string_exn input in
   cpu.mem.(1) <- 12;
   cpu.mem.(2) <- 2;
-  match run cpu dummy_io with
+  match M.run cpu () with
     | Ok () -> print_endline (string_of_int (cpu.mem.(0)))
     | Error e -> print_endline (Error.show e)
 
@@ -25,7 +22,7 @@ let part2 input =
         let cpu = { ip = 0; mem = Array.copy mem } in
         cpu.mem.(1) <- x;
         cpu.mem.(2) <- y;
-        match run cpu dummy_io with
+        match M.run cpu () with
           | Ok () -> if cpu.mem.(0) = 19690720
             then raise (Done (x, y))
           | _ -> ()
