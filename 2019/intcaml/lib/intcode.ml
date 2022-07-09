@@ -1,35 +1,10 @@
-type dst =
-  | Mem of int
-  [@@deriving show]
-
-type src =
-  | Dst of dst
-  | Imm of int
-  [@@deriving show]
-
-type instr =
-  | Add of src * src * dst
-  | Mul of src * src * dst
-  | Inp of dst
-  | Out of src
-  | Jnz of src * src
-  | Jz of src * src
-  | Lt of src * src * dst
-  | Eq of src * src * dst
-  | Hlt
-  [@@deriving show]
+open Instruction
+open Error
 
 type cpu = { mutable ip: int; mem: int array }
   [@@deriving show]
 
 type io = { input: in_channel; output: out_channel }
-
-type error =
-  | InvalidOpcode of int
-  | InvalidAddress of int
-  | MalformedInstruction of int (* position of bad/failed word *)
-  | IOError of [`Input | `Output]
-  [@@deriving show]
 
 let read { mem; _ } = function
   | Dst (Mem ptr) -> begin try
@@ -44,11 +19,6 @@ let write { mem; _ } word = function
       Ok (mem.(ptr) <- word)
     with
       _ -> Error (InvalidAddress ptr)
-
-module Result_monad = struct
-  let (let*) m f = Result.bind m f
-  let return x = Ok x
-end
 
 type mode = Pos | Imm
 

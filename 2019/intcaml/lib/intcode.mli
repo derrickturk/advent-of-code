@@ -1,37 +1,9 @@
-type dst =
-  | Mem of int
-  [@@deriving show]
-
-type src =
-  | Dst of dst
-  | Imm of int
-  [@@deriving show]
-
-type instr =
-  | Add of src * src * dst
-  | Mul of src * src * dst
-  | Inp of dst
-  | Out of src
-  | Jnz of src * src
-  | Jz of src * src
-  | Lt of src * src * dst
-  | Eq of src * src * dst
-  | Hlt
-  [@@deriving show]
-
 type cpu = { mutable ip: int; mem: int array }
   [@@deriving show]
 
 type io = { input: in_channel; output: out_channel }
 
-type error =
-  | InvalidOpcode of int
-  | InvalidAddress of int
-  | MalformedInstruction of int (* position of bad/failed word *)
-  | IOError of [`Input | `Output]
-  [@@deriving show]
-
-val read: cpu -> src -> (int, error) result
-val write: cpu -> int -> dst -> (unit, error) result
-val exec: cpu -> io -> instr -> (unit, error) result
-val run: cpu -> io -> (unit, error) result
+val read: cpu -> Instruction.src -> (int, Error.t) result
+val write: cpu -> int -> Instruction.dst -> (unit, Error.t) result
+val exec: cpu -> io -> Instruction.t -> (unit, Error.t) result
+val run: cpu -> io -> (unit, Error.t) result

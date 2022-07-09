@@ -1,3 +1,4 @@
+open Intcaml
 open Intcaml.Intcode
 open Intcaml.Intcode_loader
 
@@ -10,7 +11,7 @@ let part1 input =
   cpu.mem.(2) <- 2;
   match run cpu dummy_io with
     | Ok () -> print_endline (string_of_int (cpu.mem.(0)))
-    | Error e -> print_endline (show_error e)
+    | Error e -> print_endline (Error.show e)
 
 exception Done of int * int
 
