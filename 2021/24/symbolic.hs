@@ -18,6 +18,11 @@ data Sym
   | SPrevZ Int
   deriving (Eq, Show)
 
+data Constraint
+  = CEql Sym Int
+  | CGtr Sym
+  | Not Constraint
+
 instance Compute Sym (Int, [Sym]) where
   boot = CPU (SLit 0) (SLit 0) (SLit 0) (SLit 0)
 
