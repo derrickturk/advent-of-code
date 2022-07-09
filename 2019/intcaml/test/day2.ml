@@ -1,5 +1,6 @@
 open Intcaml.Intcode
 open Intcaml.Intcode_loader
+open Intcaml.Io
 
 (* eventually we can use a dummy-io module and just use () here *)
 let dummy_io = { input = In_channel.stdin; output = Out_channel.stdout }

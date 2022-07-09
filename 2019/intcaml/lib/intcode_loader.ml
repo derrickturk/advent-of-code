@@ -1,4 +1,4 @@
-open Intcode
+open Cpu
 
 let mem_of_string_exn words = words
   |> String.split_on_char ','

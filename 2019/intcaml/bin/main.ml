@@ -1,6 +1,7 @@
 open Intcaml
 open Intcaml.Intcode
 open Intcaml.Intcode_loader
+open Intcaml.Io
 
 let () =
   let io = { input = In_channel.stdin; output = Out_channel.stdout } in
