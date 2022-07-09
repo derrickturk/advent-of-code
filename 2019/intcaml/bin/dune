@@ -1,4 +1,4 @@
-(executable
- (public_name intcaml)
- (name main)
+(executables
+ (names main day2)
+ (public_names intcaml -)
  (libraries intcaml))
