@@ -3,3 +3,7 @@
 *.map
 *.pr
 __pycache__
+_build
+intcaml/.opam_switch/**
+intcaml/_build/**
+intcaml/_opam/**

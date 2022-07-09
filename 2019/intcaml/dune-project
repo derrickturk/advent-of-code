@@ -1,0 +1,22 @@
+(lang dune 3.3)
+
+(name intcaml)
+
+(generate_opam_files true)
+
+(source
+ (github derrickturk/advent-of-code))
+
+(authors "Derrick W. Turk")
+
+(maintainers "Derrick W. Turk")
+
+(license GPL-3.0-only)
+
+(package
+ (name intcaml)
+ (synopsis "An OCaml Intcode VM")
+ (description "It's a VM for Intcode, in OCaml")
+ (depends ocaml dune))
+
+; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

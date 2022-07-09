@@ -1,0 +1,4 @@
+(executable
+ (public_name intcaml)
+ (name main)
+ (libraries intcaml))
