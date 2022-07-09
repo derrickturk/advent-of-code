@@ -12,6 +12,10 @@ type instr =
   | Mul of src * src * dst
   | Inp of dst
   | Out of src
+  | Jnz of src * src
+  | Jz of src * src
+  | Lt of src * src * dst
+  | Eq of src * src * dst
   | Hlt
   [@@deriving show]
 

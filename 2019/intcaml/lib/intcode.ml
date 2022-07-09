@@ -12,6 +12,10 @@ type instr =
   | Mul of src * src * dst
   | Inp of dst
   | Out of src
+  | Jnz of src * src
+  | Jz of src * src
+  | Lt of src * src * dst
+  | Eq of src * src * dst
   | Hlt
   [@@deriving show]
 
@@ -104,6 +108,24 @@ let decode { ip; mem } =
     | 4 ->
         let* src = decode_src (ip + 1) mode1 in
         return (Out src)
+    | 5 ->
+        let* src1 = decode_src (ip + 1) mode1 in
+        let* src2 = decode_src (ip + 2) mode2 in
+        return (Jnz (src1, src2))
+    | 6 ->
+        let* src1 = decode_src (ip + 1) mode1 in
+        let* src2 = decode_src (ip + 2) mode2 in
+        return (Jz (src1, src2))
+    | 7 ->
+        let* src1 = decode_src (ip + 1) mode1 in
+        let* src2 = decode_src (ip + 2) mode2 in
+        let* dst = decode_dst (ip + 3) mode3 in
+        return (Lt (src1, src2, dst))
+    | 8 ->
+        let* src1 = decode_src (ip + 1) mode1 in
+        let* src2 = decode_src (ip + 2) mode2 in
+        let* dst = decode_dst (ip + 3) mode3 in
+        return (Eq (src1, src2, dst))
     | 99 -> return Hlt
     | word -> Error (InvalidOpcode word)
     | exception _ -> Error (InvalidAddress ip)
@@ -141,6 +163,30 @@ let exec ({ ip; _ } as cpu) io =
       let* word = read cpu src in
       let* () = io_put word io in
       return (cpu.ip <- ip + 2)
+  | Jnz (cond, tgt) ->
+      let* cond = read cpu cond in
+      let* tgt = read cpu tgt in
+      return begin if cond <> 0
+        then cpu.ip <- tgt
+        else cpu.ip <- ip + 3
+      end
+  | Jz (cond, tgt) ->
+      let* cond = read cpu cond in
+      let* tgt = read cpu tgt in
+      return begin if cond = 0
+        then cpu.ip <- tgt
+        else cpu.ip <- ip + 3
+      end
+  | Lt (src1, src2, dst) ->
+      let* x = read cpu src1 in
+      let* y = read cpu src2 in
+      let* () = write cpu (if x < y then 1 else 0) dst in
+      return (cpu.ip <- ip + 4)
+  | Eq (src1, src2, dst) ->
+      let* x = read cpu src1 in
+      let* y = read cpu src2 in
+      let* () = write cpu (if x = y then 1 else 0) dst in
+      return (cpu.ip <- ip + 4)
   | Hlt -> return ()
 
 let rec run cpu io =
