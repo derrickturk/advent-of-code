@@ -1,4 +1,4 @@
 (executables
- (names main day2)
- (public_names intcaml -)
- (libraries intcaml))
+ (names main day2 day7)
+ (public_names intcaml - -)
+ (libraries intcaml lwt))

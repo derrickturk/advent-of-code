@@ -1,3 +1,4 @@
 (library
  (name intcaml)
+ (libraries lwt lwt.unix)
  (preprocess (pps ppx_deriving.show)))

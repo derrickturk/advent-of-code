@@ -30,3 +30,9 @@ module Channels: sig
   type 'a m = 'a
   include S with type t := t with type 'a m := 'a m
 end
+
+module Lwt_mvar: sig
+  type t = { input: int Lwt_mvar.t; output: int Lwt_mvar.t }
+  type 'a m = 'a Lwt.t
+  include S with type t := t with type 'a m := 'a m
+end

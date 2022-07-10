@@ -60,3 +60,17 @@ module Channels = struct
     with
       _ -> None
 end
+
+module Lwt_mvar = struct
+  open Lwt.Infix
+
+  type t = { input: int Lwt_mvar.t; output: int Lwt_mvar.t }
+  type 'a m = 'a Lwt.t
+
+  let bind = Lwt.bind
+  let return = Lwt.return
+  let lift = Lwt_result.lift
+
+  let get { input; _ } = Lwt_mvar.take input >|= Option.some
+  let put word { output; _ } = Lwt_mvar.put output word >|= Option.some
+end
