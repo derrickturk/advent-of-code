@@ -78,6 +78,11 @@ module Make (M: Io.S): S with type io = M.t with type 'a m = 'a M.m = struct
         let* () = write cpu (if x = y then 1 else 0) dst in
         return (cpu.ip <- ip + 4)
       end
+    | Arb src -> M.lift begin
+        let* offset = read cpu src in
+        cpu.rb <- cpu.rb + offset;
+        return (cpu.ip <- cpu.ip + 2)
+      end
     | Hlt -> Io_monad.return ()
 
   let rec run cpu io =

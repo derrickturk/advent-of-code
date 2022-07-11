@@ -1,4 +1,4 @@
-type t = { mutable ip: int; mem: Memory.t }
+type t = { mutable ip: int; mutable rb: int; mem: Memory.t }
 
 val init: Memory.t -> t
 val init_from_list: int list -> t

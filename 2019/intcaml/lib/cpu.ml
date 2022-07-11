@@ -2,36 +2,42 @@ open Error
 open Instruction
 open Memory
 
-type t = { mutable ip: int; mem: Memory.t }
+type t = { mutable ip: int; mutable rb: int; mem: Memory.t }
 
-let init mem = { ip = 0; mem }
+let init mem = { ip = 0; rb = 0; mem }
 
 let init_from_list image = init (Memory.init image)
 
-let copy { ip; mem } = { ip; mem = Memory.copy mem }
+let copy { ip; rb; mem } = { ip; rb; mem = Memory.copy mem }
 
-let read { mem; _ } = function
-  | Dst (Mem ptr) -> begin try
-      Ok mem.%(ptr)
-    with
-      _ -> Error (InvalidAddress ptr)
-    end
+let read { rb; mem; _ } = function
   | Imm word -> Ok word
-
-let write { mem; _ } word = function
-  | Mem ptr -> try
-      Ok (mem.%(ptr) <- word)
+  | Dst dst -> let ptr = match dst with
+      | Mem ptr -> ptr
+      | Rel offset -> rb + offset
+    in try
+      Ok (mem.%(ptr))
     with
       _ -> Error (InvalidAddress ptr)
 
-type mode = Pos | Imm
+let write { rb; mem; _ } word dst =
+  let ptr = match dst with
+    | Mem ptr -> ptr
+    | Rel offset -> rb + offset
+  in try
+    Ok (mem.%(ptr) <- word)
+  with
+    _ -> Error (InvalidAddress ptr)
 
-let decode { ip; mem } =
+type mode = Pos | Imm | Rel
+
+let decode { ip; mem; _ } =
   let open Result_monad in
 
   let decode_mode = function
     | 0 -> Ok Pos
     | 1 -> Ok Imm
+    | 2 -> Ok Rel
     | _ -> Error (MalformedInstruction ip)
   in
 
@@ -39,6 +45,7 @@ let decode { ip; mem } =
     let word = mem.%(pos) in
     match mode with
       | Pos -> Ok (Mem word)
+      | Rel -> Ok (Rel word)
       | _ -> Error (MalformedInstruction ip)
   with
     _ -> Error (InvalidAddress pos)
@@ -48,6 +55,7 @@ let decode { ip; mem } =
     let word = mem.%(pos) in
     match mode with
       | Pos -> Ok (Dst (Mem word))
+      | Rel -> Ok (Dst (Rel word))
       | Imm -> Ok (Imm word)
   with
     _ -> Error (InvalidAddress pos)
@@ -100,6 +108,9 @@ let decode { ip; mem } =
         let* src2 = decode_src (ip + 2) mode2 in
         let* dst = decode_dst (ip + 3) mode3 in
         return (Eq (src1, src2, dst))
+    | 9 ->
+        let* src = decode_src (ip + 1) mode1 in
+        return (Arb src)
     | 99 -> return Hlt
     | word -> Error (InvalidOpcode word)
     | exception _ -> Error (InvalidAddress ip)

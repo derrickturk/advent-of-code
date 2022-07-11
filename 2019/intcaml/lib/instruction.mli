@@ -1,5 +1,6 @@
 type dst =
   | Mem of int
+  | Rel of int
   [@@deriving show]
 
 type src =
@@ -16,5 +17,6 @@ type t =
   | Jz of src * src
   | Lt of src * src * dst
   | Eq of src * src * dst
+  | Arb of src
   | Hlt
   [@@deriving show]

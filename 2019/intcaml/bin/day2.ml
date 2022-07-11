@@ -20,7 +20,7 @@ let part2 input =
     for x = 0 to 100 do
       for y = 0 to 100 do
         let open Memory in
-        let cpu = { ip = 0; mem = copy mem } in
+        let cpu = Cpu.init (copy mem) in
         cpu.mem.%(1) <- x;
         cpu.mem.%(2) <- y;
         match M.run cpu () with
