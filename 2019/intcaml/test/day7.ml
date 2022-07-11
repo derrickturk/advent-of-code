@@ -1,6 +1,4 @@
 open Intcaml
-open Intcaml.Cpu
-open Intcaml.Intcode_loader
 
 module M = Machine.Make (Io.Lwt_mvar)
 
@@ -21,7 +19,7 @@ let thrust (p0, p1, p2, p3, p4) mem =
   let m4_io = { input = m4_in; output = m4_out } in
   let run io = let open Lwt_result in
     get_exn (map_error (fun e -> Intcode_error e)
-      (M.run { ip = 0; mem = Array.copy mem } io))
+      (M.run (Cpu.init (Memory.copy mem)) io))
   in
   let m_all = [ run m0_io
               ; run m1_io
@@ -48,8 +46,8 @@ let test_cases =
   ]
 
 let do_test (init, mem, result) =
-  let mem = mem_of_string_exn mem in
-  Lwt.map (fun x -> x = result) (thrust init mem)
+  let mem = Memory.of_string_exn mem in
+  Lwt.map ((=) result) (thrust init mem)
 
 let () =
   assert (List.for_all Fun.id

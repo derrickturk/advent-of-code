@@ -1,12 +1,18 @@
-open Instruction
 open Error
+open Instruction
+open Memory
 
-type t = { mutable ip: int; mem: int array }
-  [@@deriving show]
+type t = { mutable ip: int; mem: Memory.t }
+
+let init mem = { ip = 0; mem }
+
+let init_from_list image = init (Memory.init image)
+
+let copy { ip; mem } = { ip; mem = Memory.copy mem }
 
 let read { mem; _ } = function
   | Dst (Mem ptr) -> begin try
-      Ok mem.(ptr)
+      Ok mem.%(ptr)
     with
       _ -> Error (InvalidAddress ptr)
     end
@@ -14,7 +20,7 @@ let read { mem; _ } = function
 
 let write { mem; _ } word = function
   | Mem ptr -> try
-      Ok (mem.(ptr) <- word)
+      Ok (mem.%(ptr) <- word)
     with
       _ -> Error (InvalidAddress ptr)
 
@@ -30,7 +36,7 @@ let decode { ip; mem } =
   in
 
   let decode_dst pos mode = try
-    let word = mem.(pos) in
+    let word = mem.%(pos) in
     match mode with
       | Pos -> Ok (Mem word)
       | _ -> Error (MalformedInstruction ip)
@@ -39,7 +45,7 @@ let decode { ip; mem } =
   in
 
   let decode_src pos mode = try
-    let word = mem.(pos) in
+    let word = mem.%(pos) in
     match mode with
       | Pos -> Ok (Dst (Mem word))
       | Imm -> Ok (Imm word)
@@ -49,7 +55,7 @@ let decode { ip; mem } =
 
   let* (op, mode1, mode2, mode3) =
     try
-      let word = mem.(ip) in
+      let word = mem.%(ip) in
       let op = word mod 100 in
       let* mode1 = decode_mode ((word / 100) mod 10) in
       let* mode2 = decode_mode ((word / 1000) mod 10) in
@@ -97,3 +103,12 @@ let decode { ip; mem } =
     | 99 -> return Hlt
     | word -> Error (InvalidOpcode word)
     | exception _ -> Error (InvalidAddress ip)
+
+let equal t1 t2 = t1.ip = t2.ip && Memory.equal t1.mem t2.mem
+
+let of_string_exn words = init (Memory.of_string_exn words)
+
+let of_string_opt words = try
+  Some (of_string_exn words)
+with
+  _ -> None

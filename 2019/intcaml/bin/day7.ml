@@ -1,5 +1,4 @@
 open Intcaml
-open Intcode_loader
 
 module M = Machine.Make (Io.Lwt_mvar)
 
@@ -30,7 +29,7 @@ let thrust_part1 (p0, p1, p2, p3, p4) mem =
   let m4_io = { input = m4_in; output = m4_out } in
   let run io = let open Lwt_result in
     get_exn (map_error (fun e -> Intcode_error e)
-      (M.run { ip = 0; mem = Array.copy mem } io))
+      (M.run (Cpu.init (Memory.copy mem)) io))
   in
   let m_all = [ run m0_io
               ; run m1_io
@@ -55,7 +54,7 @@ let thrust_part2 (p0, p1, p2, p3, p4) mem =
   let m4_io = { input = m4_in; output = loop } in
   let run io = let open Lwt_result in
     get_exn (map_error (fun e -> Intcode_error e)
-      (M.run { ip = 0; mem = Array.copy mem } io))
+      (M.run (Cpu.init (Memory.copy mem)) io))
   in
   let m_all = [ run m0_io
               ; run m1_io
@@ -76,7 +75,7 @@ let max_thrust f settings mem =
 
 let () =
   let input = In_channel.(input_all stdin) in
-  let mem = mem_of_string_exn input in
+  let mem = Memory.of_string_exn input in
   let (t1, t2) = Lwt_main.run @@
     Lwt.both 
       (max_thrust thrust_part1 [0; 1; 2; 3; 4] mem)
