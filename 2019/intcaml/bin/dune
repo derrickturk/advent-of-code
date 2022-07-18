@@ -1,4 +1,12 @@
 (executables
- (names main day2 day7)
- (public_names intcaml - -)
- (libraries intcaml lwt))
+ (names main day2)
+ (public_names intcaml -)
+ (libraries intcaml lwt)
+ (modules (:standard \ day7))
+ (modes js exe))
+
+(executable
+ (name day7)
+ (libraries intcaml lwt lwt.unix)
+ (modules day7)
+ (modes exe))
