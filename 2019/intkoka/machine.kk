@@ -1,5 +1,6 @@
-import memory
 import instruction
+import error
+import memory
 
 pub struct machine<h>
   ip: int
@@ -9,10 +10,6 @@ pub struct machine<h>
 effect intcode-io
   ctl input(): int
   ctl output(word: int): ()
-
-extend type exception-info
-  InvalidOpcode(op: int)
-  MalformedInstruction(ip: int)
 
 type mode
   MPos
@@ -51,11 +48,14 @@ pub fun exec(cpu: machine<h>, instr: instruction)
     Eql(src1, src2, dst) ->
       cpu.write(dst, if cpu.read(src1) == cpu.read(src2) then 1 else 0)
       cpu(ip = cpu.ip + 4)
+    Arb(src) ->
+      cpu(ip = cpu.ip + 2, rb = cpu.rb + cpu.read(src))
     Hlt -> cpu
 
 pub fun run(cpu: machine<h>)
     : <div, exn, intcode-io, read<h>, write<h>> machine<h>
-  match cpu.decode()
+  val i = cpu.decode()
+  match i
     Hlt -> cpu
     instr ->
       cpu.exec(instr).run
@@ -101,7 +101,10 @@ pub fun decode(cpu: machine<h>): <read<h>, write<h>, exn> instruction
       val src2 = decode-src(cpu.mem[cpu.ip + 2], mode2, cpu.ip)
       val dst = decode-dst(cpu.mem[cpu.ip + 3], mode3, cpu.ip)
       Eql(src1, src2, dst)
-    9 -> Hlt
+    9 ->
+      val src = decode-src(cpu.mem[cpu.ip + 1], mode1, cpu.ip)
+      Arb(src)
+    99 -> Hlt
     _ -> throw("Unknown opcode", InvalidOpcode(op))
 
 pub fun read(cpu: machine<h>, src: src): <exn, read<h>> int
@@ -124,7 +127,7 @@ fun decode-mode(digit: int, ip: int): exn mode
     0 -> MPos
     1 -> MImm
     2 -> MRel
-    _ -> throw("Bad mode digit", MalformedInstruction(ip))
+    _ -> throw("Bad mode digit " ++ digit.show, MalformedInstruction(ip))
 
 fun decode-dst(word: int, mode: mode, ip: int): exn dst
   match mode
