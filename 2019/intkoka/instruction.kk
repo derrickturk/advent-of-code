@@ -13,7 +13,7 @@ type instruction
   Out(src: src)
   Jnz(cmp: src, tgt: src)
   Jz(cmp: src, tgt: src)
-  Lt(src1: src, src2: src, dst: dst)
-  Eq(src1: src, src2: src, dst: dst)
+  Less(src1: src, src2: src, dst: dst)
+  Eql(src1: src, src2: src, dst: dst)
   Arb(offset: src)
   Hlt
