@@ -55,6 +55,7 @@ pub fun exec(cpu: machine<h>, instr: instruction)
 pub fun run(cpu: machine<h>)
     : <div, exn, intcode-io, read<h>, write<h>> machine<h>
   val i = cpu.decode()
+  trace("decoded: " ++ i.show)
   match i
     Hlt -> cpu
     instr ->
@@ -62,6 +63,7 @@ pub fun run(cpu: machine<h>)
 
 pub fun decode(cpu: machine<h>): <read<h>, write<h>, exn> instruction
   val word = cpu.mem[cpu.ip]
+  trace("decode " ++ word.show ++ " @ " ++ cpu.ip.show)
   val op = word % 100
   val mode1 = decode-mode((word / 100) % 10, cpu.ip)
   val mode2 = decode-mode((word / 1000) % 10, cpu.ip)
@@ -82,7 +84,19 @@ pub fun decode(cpu: machine<h>): <read<h>, write<h>, exn> instruction
       Inp(dst)
     4 ->
       val src = decode-src(cpu.mem[cpu.ip + 1], mode1, cpu.ip)
-      Out(src)
+      trace("decoded: " ++ src.show)
+      match src
+        Imm(n) -> Out(Imm(n))
+        Dst(Mem(ptr)) ->
+          trace("out from mem, ptr = " ++ ptr.show)
+          val mem_ptr = Mem(ptr)
+          trace("mem_ptr = " ++ mem_ptr.show)
+          val dst_mem_ptr = Dst(mem_ptr)
+          trace("dst_mem_ptr = " ++ dst_mem_ptr.show)
+          val ret = Out(dst_mem_ptr)
+          trace("ret = " ++ ret.show)
+          ret
+        Dst(Rel(offset)) -> Out(Dst(Rel(offset)))
     5 ->
       val src1 = decode-src(cpu.mem[cpu.ip + 1], mode1, cpu.ip)
       val src2 = decode-src(cpu.mem[cpu.ip + 2], mode2, cpu.ip)
@@ -136,6 +150,7 @@ fun decode-dst(word: int, mode: mode, ip: int): exn dst
     _ -> throw("Invalid mode", MalformedInstruction(ip))
 
 fun decode-src(word: int, mode: mode, ip: int): src
+  trace("decode src: " ++ word.show)
   match mode
     MPos -> Dst(Mem(word))
     MRel -> Dst(Rel(word))

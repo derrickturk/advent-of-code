@@ -7,7 +7,7 @@ pub fun show(dst: dst): string
     Mem(ptr) -> "Mem(" ++ ptr.show ++ ")"
     Rel(offset) -> "Rel(" ++ offset.show ++ ")"
 
-type src
+pub type src
   Dst(dst: dst)
   Imm(num: int)
 
@@ -16,7 +16,7 @@ pub fun show(src: src): string
     Dst(dst) -> "Dst(" ++ dst.show ++ ")"
     Imm(num) -> "Imm(" ++ num.show ++ ")"
 
-type instruction
+pub type instruction
   Add(src1: src, src2: src, dst: dst)
   Mul(src1: src, src2: src, dst: dst)
   Inp(dst: dst)
