@@ -1,9 +1,8 @@
-module type S = sig
-  type io
-  type 'a m
+open Effect
 
-  val exec: Cpu.t -> io -> Instruction.t -> (unit, Error.t) result m
-  val run: Cpu.t -> io -> (unit, Error.t) result m
-end
+type _ Effect.t +=
+  | Input: (int, Error.t) result t
+  | Output: int -> (unit, Error.t) result t
 
-module Make (M: Io.S): S with type io = M.t with type 'a m = 'a M.m
+val exec: Cpu.t -> Instruction.t -> (unit, Error.t) result
+val run: Cpu.t -> (unit, Error.t) result

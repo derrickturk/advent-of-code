@@ -1,48 +1,27 @@
-module type S = sig
-  type t
-  type 'a m
+open Effect
+open Effect.Deep
 
-  val bind: 'a m -> ('a -> 'b m) -> 'b m
-  val return: 'a -> 'a m
-  val lift: ('a, Error.t) result -> ('a, Error.t) result m
+type channels = { input: in_channel; output: out_channel }
 
-  val get: t -> int option m
-  val put: int -> t -> unit option m
-end
+let with_null_io f init = try_with f init
+  { effc = fun (type a) (eff: a t) -> match eff with
+      | Machine.Input -> Some (
+          fun (k: (a, _) continuation) ->
+            continue k (Error (Error.IOError `Input))
+        )
+      | Machine.Output _ -> Some (
+          fun (k: (a, _) continuation) ->
+            continue k (Error (Error.IOError `Output))
+        )
+      | _ -> None
+  }
 
-module type Monad_intf = sig
-  type 'a t
-  val (let*): 'a t -> ('a -> 'b t) -> 'b t
-  val return: 'a -> 'a t
-end
+let with_channel_io _ _ _ = failwith "TODO"
 
-module Monad (M: S) = struct
-  type 'a t = ('a, Error.t) result M.m
-
-  let (let*) m f = M.bind m begin function
-    | Ok x -> f x
-    | Error _ as e -> M.return e
-  end
-
-  let return x = M.return (Ok x)
-end
-
-module Null = struct
-  type t = unit
-  type 'a m = 'a
-
-  let bind m f = f m
-  let return x = x
-  let lift x = x
-
-  let get () = None
-  let put _ () = None
-end
-
+(*
 module Channels = struct
   type t = { input: in_channel; output: out_channel }
   type 'a m = 'a
-
   let bind m f = f m
   let return x = x
   let lift x = x
@@ -60,3 +39,4 @@ module Channels = struct
     with
       _ -> None
 end
+*)

@@ -1,3 +1,4 @@
+(*
 open Intcaml5
 
 module type SyncIo = sig
@@ -134,3 +135,6 @@ let () =
     | Ascii ->
         let io = Ascii.make In_channel.stdin Out_channel.stdout in
         main (module Ascii) io prog
+*)
+
+let () = print_endline "TODO"

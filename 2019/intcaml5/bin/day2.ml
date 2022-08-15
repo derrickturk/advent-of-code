@@ -1,14 +1,14 @@
 open Intcaml5
 open Intcaml5.Cpu
-
-module M = Machine.Make (Io.Null)
+open Intcaml5.Machine
+open Intcaml5.Io
 
 let part1 input =
   let cpu = Cpu.of_string_exn input in
   let open Memory in
   cpu.mem.%(1) <- 12;
   cpu.mem.%(2) <- 2;
-  match M.run cpu () with
+  match with_null_io run cpu with
     | Ok () -> print_endline (string_of_int (cpu.mem.%(0)))
     | Error e -> print_endline (Error.show e)
 
@@ -23,7 +23,7 @@ let part2 input =
         let cpu = Cpu.init (copy mem) in
         cpu.mem.%(1) <- x;
         cpu.mem.%(2) <- y;
-        match M.run cpu () with
+        match with_null_io run cpu with
           | Ok () -> if cpu.mem.%(0) = 19690720
             then raise (Done (x, y))
           | _ -> ()

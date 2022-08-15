@@ -1,7 +1,7 @@
 open Intcaml5
 open Intcaml5.Cpu
-
-module M = Machine.Make (Io.Null)
+open Intcaml5.Machine
+open Intcaml5.Io
 
 let () =
   let str = "1,9,10,3,2,3,11,0,99,30,40,50" in
@@ -12,7 +12,7 @@ let () =
 let should_run_to s0 s1 =
   let cpu = Cpu.of_string_exn s0 in
   let final_mem = Memory.of_string_exn s1 in
-  assert (M.run cpu () = Ok ());
+  assert (with_null_io run cpu = Ok ());
   assert (Memory.equal cpu.mem final_mem)
 
 let () =
