@@ -17,22 +17,16 @@ pub fun show(src: src): string
     Imm(num) -> "Imm(" ++ num.show ++ ")"
 
 pub type instruction
-  Inp(dst: dst)
   Out(src: src)
   Jz(cmp: src, tgt: src)
-  Arb(offset: src)
-  Hlt
 
 pub fun show(instr: instruction): string
   match instr
-    Inp(dst) -> "Inp(" ++ dst.show ++ ")"
     Out(src) -> "Out(" ++ src.show ++ ")"
     Jz(cmp, tgt) ->
       "Jz(" ++ cmp.show ++ ", " ++ tgt.show ++ ")"
-    Arb(src) -> "Arb(" ++ src.show ++ ")"
-    Hlt -> "Hlt"
 
-pub val fucked = Out(Dst(Mem(224)))
+pub val busted = Out(Dst(Mem(224)))
 
 pub fun main()
-  println(fucked.show)
+  println(busted.show)

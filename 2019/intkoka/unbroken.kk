@@ -29,7 +29,7 @@ pub fun show(instr: instruction): string
     Arb(src) -> "Arb(" ++ src.show ++ ")"
     Hlt -> "Hlt"
 
-pub val fucked = Out(Dst(Mem(224)))
+pub val not-busted = Out(Dst(Mem(224)))
 
 pub fun main()
-  println(fucked.show)
+  println(not-busted.show)
