@@ -7,3 +7,6 @@ _build
 intcaml/.opam_switch/**
 intcaml/_build/**
 intcaml/_opam/**
+intcaml5/.opam_switch/**
+intcaml5/_build/**
+intcaml5/_opam/**

@@ -1,0 +1,3 @@
+(library
+ (name intcaml5)
+ (preprocess (pps ppx_deriving.show)))

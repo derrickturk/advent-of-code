@@ -1,0 +1,20 @@
+(lang dune 3.3)
+
+(name intcaml5)
+
+(generate_opam_files true)
+
+(source
+ (github derrickturk/advent-of-code))
+
+(authors "Derrick W. Turk")
+
+(maintainers "Derrick W. Turk")
+
+(license GPL-3.0-only)
+
+(package
+ (name intcaml5)
+ (synopsis "An OCaml 5 Intcode VM")
+ (description "It's a VM for Intcode, in OCaml 5, with effects")
+ (depends ocaml dune))

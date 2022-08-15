@@ -1,0 +1,3 @@
+(tests
+ (names day2 day7)
+ (libraries intcaml5))

@@ -1,0 +1,4 @@
+(executables
+ (names main day2 day7)
+ (public_names intcaml5 - -)
+ (libraries intcaml5))
