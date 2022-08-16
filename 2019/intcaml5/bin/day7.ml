@@ -1,9 +1,6 @@
-(*
 open Intcaml5
 
-module M = Machine.Make (Io.Lwt_mvar)
-
-exception Intcode_error of Intcaml.Error.t
+exception Intcode_error of Error.t
 
 let rec leaveOuts = function
   | [] -> []
@@ -16,74 +13,84 @@ let rec permute = function
 and permute1 (hd, xs) = List.map (fun xs -> hd::xs) (permute xs)
 
 let thrust_part1 (p0, p1, p2, p3, p4) mem =
-  let m0_in = Lwt_mvar.create p0 in
-  let m1_in = Lwt_mvar.create p1 in
-  let m2_in = Lwt_mvar.create p2 in
-  let m3_in = Lwt_mvar.create p3 in
-  let m4_in = Lwt_mvar.create p4 in
-  let m4_out = Lwt_mvar.create_empty () in
-  let open Io.Lwt_mvar in
+  let open Aio in
+  let m0_in = create_xport ~contents:p0 () in
+  let m1_in = create_xport ~contents:p1 () in
+  let m2_in = create_xport ~contents:p2 () in
+  let m3_in = create_xport ~contents:p3 () in
+  let m4_in = create_xport ~contents:p4 () in
+  let m4_out = create_xport () in
   let m0_io = { input = m0_in; output = m1_in } in
   let m1_io = { input = m1_in; output = m2_in } in
   let m2_io = { input = m2_in; output = m3_in } in
   let m3_io = { input = m3_in; output = m4_in } in
   let m4_io = { input = m4_in; output = m4_out } in
-  let run io = let open Lwt_result in
-    get_exn (map_error (fun e -> Intcode_error e)
-      (M.run (Cpu.init (Memory.copy mem)) io))
-  in
+  let manual = { input = m0_in; output = m0_in } in
+  let run io = (io, fun () ->
+    match Machine.run (Cpu.init (Memory.copy mem)) with
+      | Ok () -> ()
+      | Error e -> raise (Intcode_error e)
+  ) in
   let m_all = [ run m0_io
               ; run m1_io
               ; run m2_io
               ; run m3_io
               ; run m4_io
-              ; Lwt_mvar.put m0_in 0
+              ; (manual, fun () ->
+                  match write 0 with
+                    | Ok () -> ()
+                    | Error e -> raise (Intcode_error e)
+                )
               ]
-  in Lwt.bind (Lwt.join m_all) (fun _ -> Lwt_mvar.take m4_out)
+  in
+  with_xport_io m_all;
+  Option.get (read_xport m4_out)
 
 let thrust_part2 (p0, p1, p2, p3, p4) mem =
-  let loop = Lwt_mvar.create p0 in
-  let m1_in = Lwt_mvar.create p1 in
-  let m2_in = Lwt_mvar.create p2 in
-  let m3_in = Lwt_mvar.create p3 in
-  let m4_in = Lwt_mvar.create p4 in
-  let open Io.Lwt_mvar in
+  let open Aio in
+  let loop = create_xport ~contents:p0 () in
+  let m1_in = create_xport ~contents:p1 () in
+  let m2_in = create_xport ~contents:p2 () in
+  let m3_in = create_xport ~contents:p3 () in
+  let m4_in = create_xport ~contents:p4 () in
   let m0_io = { input = loop; output = m1_in } in
   let m1_io = { input = m1_in; output = m2_in } in
   let m2_io = { input = m2_in; output = m3_in } in
   let m3_io = { input = m3_in; output = m4_in } in
   let m4_io = { input = m4_in; output = loop } in
-  let run io = let open Lwt_result in
-    get_exn (map_error (fun e -> Intcode_error e)
-      (M.run (Cpu.init (Memory.copy mem)) io))
-  in
+  let run io = (io, fun () ->
+    match Machine.run (Cpu.init (Memory.copy mem)) with
+      | Ok () -> ()
+      | Error e -> raise (Intcode_error e)
+  ) in
   let m_all = [ run m0_io
               ; run m1_io
               ; run m2_io
               ; run m3_io
               ; run m4_io
-              ; Lwt_mvar.put loop 0
+              ; (m4_io, fun () ->
+                  match write 0 with
+                    | Ok () -> ()
+                    | Error e -> raise (Intcode_error e)
+                )
               ]
-  in Lwt.bind (Lwt.join m_all) (fun _ -> Lwt_mvar.take loop)
+  in
+  with_xport_io m_all;
+  Option.get (read_xport loop)
 
 let max_thrust f settings mem =
-  let max_thrust t = function
+  let visit t = function
     | [p0; p1; p2; p3; p4] ->
-        Lwt.map (fun t' -> max t t') (f (p0, p1, p2, p3, p4) mem)
+        let t' = f (p0, p1, p2, p3, p4) mem in
+        max t t'
     | _ -> raise (Invalid_argument "programmer error")
   in
-  Lwt_list.fold_left_s max_thrust 0 (permute settings)
+  List.fold_left visit 0 (permute settings)
 
 let () =
   let input = In_channel.(input_all stdin) in
   let mem = Memory.of_string_exn input in
-  let (t1, t2) = Lwt_main.run @@
-    Lwt.both 
-      (max_thrust thrust_part1 [0; 1; 2; 3; 4] mem)
-      (max_thrust thrust_part2 [5; 6; 7; 8; 9] mem)
-  in
+  let t1 = max_thrust thrust_part1 [0; 1; 2; 3; 4] mem in
+  let t2 = max_thrust thrust_part2 [5; 6; 7; 8; 9] mem in
   print_endline (string_of_int t1);
   print_endline (string_of_int t2)
-*)
-
-let () = print_endline "not yet implemented"
