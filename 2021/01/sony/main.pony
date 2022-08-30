@@ -69,5 +69,8 @@ actor Main
     end
 
     // amusingly, sometimes Part 2 finishes before Part 1
-    part1.query({(total: U64) => env.out.print("Part 1: " + total.string())})
-    part2.query({(total: U64) => env.out.print("Part 2: " + total.string())})
+    part1.query({(total: U64) =>
+      env.out.print("Part 1: " + total.string())
+      part2.query({(total: U64) =>
+        env.out.print("Part 2: " + total.string())})
+    })
