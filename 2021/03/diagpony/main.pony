@@ -31,7 +31,22 @@ actor BitTally
 
     _lines = _lines + 1
 
-  be query(fn: {(U32, U32)} val) =>
+  be with_most_popular(fn: {(Array[Bool] box)} val) =>
+    fn(most_popular())
+
+  be with_least_popular(fn: {(Array[Bool] box)} val) =>
+    fn(least_popular())
+
+  /* how the fuck do I write this
+  be with_values(fn: {(U32, U32)} val) =>
+    with_most_popular({(most: Array[Bool])(self: BitTally tag = this, fn) =>
+      self.with_least_popular({(least: Array[Bool])(most: Array[Bool] iso = most) =>
+        fn(FromBinary(consume most), FromBinary(least))
+      })
+    })
+  */
+
+  be with_values(fn: {(U32, U32)} val) =>
     fn(FromBinary(most_popular()), FromBinary(least_popular()))
 
   fun most_popular(): Array[Bool] ref^ =>
@@ -73,8 +88,8 @@ actor Main
           end
 
         fun ref dispose() =>
-          let o = env.out
-          tally.query({(most: U32, least: U32) =>
+          let o = env.out // hMMMM
+          tally.with_values({(most: U32, least: U32) =>
             o.print((most * least).string())
             /*
             gc.query({(x: I64, y: I64, aim: I64) =>
