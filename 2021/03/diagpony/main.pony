@@ -2,7 +2,7 @@ use "buffered"
 use "itertools"
 
 primitive FromBinary
-  fun apply(arr: Array[Bool] val): U32 =>
+  fun apply(arr: Array[Bool] box): U32 =>
     var ret: U32 = 0
     for b in arr.values() do
       ret = ret << 1
@@ -32,10 +32,10 @@ actor BitTally
     _lines = _lines + 1
 
   be query(fn: {(U32, U32)} val) =>
-    fn(most_popular(), least_popular())
+    fn(FromBinary(most_popular()), FromBinary(least_popular()))
 
-  fun most_popular(): U32 =>
-    let ret: Array[Bool] iso = Array[Bool].init(false, _count_ones.size())
+  fun most_popular(): Array[Bool] ref^ =>
+    let ret = Array[Bool].init(false, _count_ones.size())
     for (i, count) in _count_ones.pairs() do
       if count >= (_lines / 2) then
         try
@@ -43,10 +43,10 @@ actor BitTally
         end
       end
     end
-    FromBinary(consume ret)
+    ret
 
-  fun least_popular(): U32 =>
-    let ret: Array[Bool] iso = Array[Bool].init(false, _count_ones.size())
+  fun least_popular(): Array[Bool] ref^ =>
+    let ret = Array[Bool].init(false, _count_ones.size())
     for (i, count) in _count_ones.pairs() do
       if count < (_lines / 2) then
         try
@@ -54,7 +54,7 @@ actor BitTally
         end
       end
     end
-    FromBinary(consume ret)
+    ret
 
 actor Main
   new create(env: Env) =>
