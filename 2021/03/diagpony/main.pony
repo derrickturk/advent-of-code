@@ -71,6 +71,26 @@ actor BitTally
     end
     ret
 
+actor O2Tally
+  var _lines: Array[String] = Array[String]
+
+  be see(line: String val) =>
+    _lines.push(line)
+
+  // yeah, turns out the actor model is totally fucked for this problem
+  /*
+  be done() =>
+    var i = 0
+    while _lines.size() > 1 do
+      let tally = BitTally
+      for l in lines do
+        tally.see(l)
+      end
+      tally.with_most_popular({(most: Array[Bool]) =>
+        _lines = _lines.filter( // no that's not a thing...
+    end
+  */
+
 actor Main
   new create(env: Env) =>
     let tally = BitTally
