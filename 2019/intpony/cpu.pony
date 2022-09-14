@@ -3,6 +3,10 @@ use "collections"
 interface Sendable
   fun tag send(word: I64)
 
+interface OnCompletion
+  fun ref halted()
+  fun ref illegal_instruction()
+
 primitive Running
 primitive Blocked
 primitive Halted
@@ -17,6 +21,7 @@ actor Cpu is Sendable
   var _input: Array[I64] = Array[I64]
   var _status: Status = Running
   var _subscribers: SetIs[Sendable tag] = SetIs[Sendable tag]
+  var _on_completion: (OnCompletion ref | None) = None
   var _running: Bool = false
 
   new create(image: ReadSeq[I64] val) =>
@@ -27,6 +32,9 @@ actor Cpu is Sendable
 
   be unsubscribe(rcvr: Sendable tag) =>
     _subscribers.unset(rcvr)
+
+  be on_completion(notify: OnCompletion iso) =>
+    _on_completion = consume notify
 
   be step() =>
     if not (_status is Running) then
@@ -81,9 +89,19 @@ actor Cpu is Sendable
       | Hlt =>
           _status = Halted
           _ip = ip'
+          match _on_completion
+          | let oc: OnCompletion => oc.halted()
+          else
+            None
+          end
       end
     else
       _status = IllegalInstruction
+      match _on_completion
+      | let oc: OnCompletion => oc.illegal_instruction()
+      else
+        None
+      end
     end
 
   be run() =>
