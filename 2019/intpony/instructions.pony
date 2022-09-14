@@ -28,3 +28,8 @@ type Instruction is (
   | (Arb, Src)
   | Hlt
 )
+
+/*
+primitive Decoder
+  fun apply(
+*/
