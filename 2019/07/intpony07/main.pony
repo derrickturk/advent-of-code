@@ -110,42 +110,37 @@ actor Main
       cpu.run()
     end
 
-    /* you'd fuckin' think
-    var outputs = Array[I64]
+    let lk = LastKeeper
     try
       cpus(cpus.size() - 1)?.subscribe(cpus(0)?)
-      cpus(cpus.size() - 1)?.subscribe(object
-        be send(word: I64) =>
-          _push(word)
-
-        fun _push(word: I64) =>
-          outputs.push(word)
-      end)
-
+      cpus(cpus.size() - 1)?.subscribe(lk)
       cpus(cpus.size() - 1)?.on_completion(object iso
+        let env: Env = env
+
         fun ref halted() =>
-          try
-            env.out.print(outputs(outputs.size() - 1).string())
-          end
+          lk.query({(word: (I64 | None)) =>
+            match word
+            | let word': I64 => env.out.print("part 2: " + word'.string())
+            else
+              None
+            end
+          })
 
         fun ref illegal_instruction() =>
           env.exitcode(1)
-          env.err.print("cpu " + (cpus.size() - 1).string() + " crashed")
-      end)
-    end
-    */
-
-    try
-      cpus(cpus.size() - 1)?.subscribe(cpus(0)?)
-      cpus(cpus.size() - 1)?.subscribe(object
-        be send(word: I64) =>
-          _print(word)
-
-        fun _print(word: I64) =>
-          env.out.print(word.string())
+          env.err.print("last machine crashed")
       end)
     end
 
     try
       cpus(0)?.send(0)
     end
+
+actor LastKeeper
+  var _last: (I64 | None) = None
+
+  be send(word: I64) =>
+    _last = word
+
+  be query(fn: {((I64 | None))} val) =>
+    fn(_last)
