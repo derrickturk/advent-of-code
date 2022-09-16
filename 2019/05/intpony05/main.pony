@@ -57,9 +57,7 @@ actor Main
       let env: Env = env
 
       fun ref halted() =>
-        cpu1.query_memory(0, {(word: I64) =>
-          None
-        })
+        None
 
       fun ref illegal_instruction() =>
         env.exitcode(1)
@@ -67,3 +65,31 @@ actor Main
     end)
 
     cpu1.run()
+
+    let mem2: Memory iso = Memory(code')
+    let cpu2 = Cpu(consume mem2)
+
+    cpu2.subscribe(object
+      let env: Env = env
+
+      be send(word: I64) =>
+        _print(word)
+
+      fun _print(word: I64) =>
+        env.out.print(word.string())
+    end)
+
+    cpu2.send(5)
+
+    cpu2.on_completion(object iso
+      let env: Env = env
+
+      fun ref halted() =>
+        None
+
+      fun ref illegal_instruction() =>
+        env.exitcode(2)
+        env.err.print("illegal instruction")
+    end)
+
+    cpu2.run()
