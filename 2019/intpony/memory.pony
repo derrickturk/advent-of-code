@@ -3,11 +3,27 @@ use "itertools"
 type _Mode is (Mem | Rel | Imm)
 
 class Memory
-  var _memory: Array[I64]
+  var _memory: Array[I64 val]
 
-  new create(image: ReadSeq[I64] box) =>
-    _memory = Array[I64].create(image.size())
+  new create(image: ReadSeq[I64 val] box) =>
+    _memory = Array[I64 val].create(image.size())
     _memory.append(image)
+
+  new from_lines(lines: Iterator[String iso^] ref)? =>
+    _memory = Array[I64 val]
+    for line in lines do
+      for word in line.split(",").values() do
+        try
+          _memory.push(word.i64()?)
+        else
+          error
+        end
+      end
+    end
+
+  new clone(other: Memory val) =>
+    _memory = Array[I64 val].create(other._memory.size())
+    _memory.append(other._memory)
 
   fun box apply(i: USize val): I64 =>
     try

@@ -18,7 +18,7 @@ actor Cpu is Sendable
   var _memory: Memory
   var _ip: USize = 0
   var _rb: I64 = 0
-  var _input: Array[I64] = Array[I64]
+  var _input: Array[I64 val] = Array[I64 val]
   var _status: Status = Running
   var _subscribers: SetIs[Sendable tag] = SetIs[Sendable tag]
   var _on_completion: (OnCompletion ref | None) = None
