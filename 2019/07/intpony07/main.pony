@@ -21,9 +21,6 @@ actor Main
       return
     end
 
-    /* so much FUCKING BULLSHIT to fill a fucking array
-     *   and send a const* to a constructor
-     */
     let code: Array[I64] trn = Array[I64]
     for line in file do
       for word in line.split(",").values() do
@@ -58,7 +55,11 @@ actor Main
           env.err.print("cpu " + i.string() + " crashed")
       end)
 
+      cpu.send(phase.i64())
+
       cpus.push(cpu)
+
+      cpu.run()
     end
 
     try
@@ -73,9 +74,4 @@ actor Main
 
     try
       cpus(0)?.send(0)
-    end
-
-    for (i, cpu) in cpus.pairs() do
-      env.out.print("launching cpu")
-      cpu.run()
     end
