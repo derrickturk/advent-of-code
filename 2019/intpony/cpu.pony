@@ -24,8 +24,8 @@ actor Cpu is Sendable
   var _on_completion: (OnCompletion ref | None) = None
   var _running: Bool = false
 
-  new create(image: ReadSeq[I64] val) =>
-    _memory = Memory.create(image)
+  new create(memory: Memory iso) =>
+    _memory = consume memory
 
   be subscribe(rcvr: Sendable tag) =>
     _subscribers.set(rcvr)
@@ -104,9 +104,13 @@ actor Cpu is Sendable
       end
     end
 
+    if _running and (_status is Running) then
+      step()
+    end
+
   be run() =>
-    _running = true
-    while _status is Running do
+    if _status is Running then
+      _running = true
       step()
     end
 
@@ -116,7 +120,7 @@ actor Cpu is Sendable
     if _status is Blocked then
       _status = Running
       if _running then
-        run()
+        step()
       end
     end
 

@@ -5,7 +5,7 @@ type _Mode is (Mem | Rel | Imm)
 class Memory
   var _memory: Array[I64]
 
-  new create(image: ReadSeq[I64] val) =>
+  new create(image: ReadSeq[I64] box) =>
     _memory = Array[I64].create(image.size())
     _memory.append(image)
 
@@ -32,44 +32,44 @@ class Memory
     let mode2 = _DecodeMode((word / 1000) % 10)?
     let mode3 = _DecodeMode((word / 10000) % 10)?
     match op
-    | 0 => ((Add,
+    | 1 => ((Add,
         _decode_src(ip + 1, mode1),
         _decode_src(ip + 2, mode2),
         _decode_dst(ip + 3, mode3)?
       ), ip + 4)
-    | 1 => ((Mul,
+    | 2 => ((Mul,
         _decode_src(ip + 1, mode1),
         _decode_src(ip + 2, mode2),
         _decode_dst(ip + 3, mode3)?
       ), ip + 4)
-    | 2 => ((Inp,
+    | 3 => ((Inp,
         _decode_dst(ip + 1, mode1)?
       ), ip + 2)
-    | 3 => ((Out,
+    | 4 => ((Out,
         _decode_src(ip + 1, mode1)
       ), ip + 2)
-    | 4 => ((Jnz,
+    | 5 => ((Jnz,
         _decode_src(ip + 1, mode1),
         _decode_src(ip + 2, mode2)
       ), ip + 3)
-    | 5 => ((Jz,
+    | 6 => ((Jz,
         _decode_src(ip + 1, mode1),
         _decode_src(ip + 2, mode2)
       ), ip + 3)
-    | 6 => ((Lt,
+    | 7 => ((Lt,
         _decode_src(ip + 1, mode1),
         _decode_src(ip + 2, mode2),
         _decode_dst(ip + 3, mode3)?
       ), ip + 4)
-    | 7 => ((Eq,
+    | 8 => ((Eq,
         _decode_src(ip + 1, mode1),
         _decode_src(ip + 2, mode2),
         _decode_dst(ip + 3, mode3)?
       ), ip + 4)
-    | 8 => ((Arb,
+    | 9 => ((Arb,
         _decode_src(ip + 1, mode1)
       ), ip + 2)
-    | 9 => (Hlt, ip + 1)
+    | 99 => (Hlt, ip + 1)
     else
       error
     end
