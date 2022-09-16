@@ -21,7 +21,7 @@ class Memory
       end
     end
 
-  new clone(other: Memory val) =>
+  new iso clone(other: Memory val) =>
     _memory = Array[I64 val].create(other._memory.size())
     _memory.append(other._memory)
 
