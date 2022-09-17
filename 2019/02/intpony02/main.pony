@@ -21,10 +21,7 @@ actor Main
       return
     end
 
-    /* so much FUCKING BULLSHIT to fill a fucking array
-     *   and send a const* to a constructor
-     */
-    let code: Array[I64] trn = Array[I64]
+    let code = recover Array[I64] end
     for line in file do
       for word in line.split(",").values() do
         try
@@ -36,9 +33,9 @@ actor Main
         end
       end
     end
-    let code': Array[I64] val = consume code
+    let mem = recover val Memory(consume code) end
 
-    let mem1: Memory iso = Memory(code')
+    let mem1 = mem.clone()
     mem1(1) = 12
     mem1(2) = 2
     let cpu1 = Cpu(consume mem1)
@@ -60,7 +57,7 @@ actor Main
     while i < 100 do
       var j: I64 = 0
       while j < 100 do
-        let mem2: Memory iso = Memory(code')
+        let mem2 = mem.clone()
         mem2(1) = i
         mem2(2) = j
         let cpu2 = Cpu(consume mem2)

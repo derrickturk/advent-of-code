@@ -21,7 +21,7 @@ actor Main
       return
     end
 
-    let code: Array[I64] trn = Array[I64]
+    let code = recover Array[I64] end
     for line in file do
       for word in line.split(",").values() do
         try
@@ -33,17 +33,17 @@ actor Main
         end
       end
     end
-    let code': Array[I64] val = consume code
+    let mem = recover val Memory(consume code) end
 
-    problem1(code', env)
-    problem2(code', env)
+    problem1(mem, env)
+    problem2(mem, env)
 
-  fun problem1(code: Array[I64] val, env: Env) =>
+  fun problem1(mem: Memory val, env: Env) =>
     // TODO: permutations (LOL)
     var cpus = Array[Cpu]
     for (i, phase) in [as U8: 0; 1; 2; 3; 4].pairs() do
-      let mem: Memory iso = Memory(code)
-      let cpu = Cpu(consume mem)
+      let mem' = mem.clone()
+      let cpu = Cpu(consume mem')
 
       if i > 0 then
         try
@@ -81,12 +81,12 @@ actor Main
       cpus(0)?.send(0)
     end
 
-  fun problem2(code: Array[I64] val, env: Env) =>
+  fun problem2(mem: Memory val, env: Env) =>
     // TODO: permutations (LOL)
     var cpus = Array[Cpu]
     for (i, phase) in [as U8: 5; 6; 7; 8; 9].pairs() do
-      let mem: Memory iso = Memory(code)
-      let cpu = Cpu(consume mem)
+      let mem' = mem.clone()
+      let cpu = Cpu(consume mem')
 
       if i > 0 then
         try

@@ -21,10 +21,7 @@ actor Main
       return
     end
 
-    /* so much FUCKING BULLSHIT to fill a fucking array
-     *   and send a const* to a constructor
-     */
-    let code: Array[I64] trn = Array[I64]
+    let code = recover Array[I64] end
     for line in file do
       for word in line.split(",").values() do
         try
@@ -36,9 +33,9 @@ actor Main
         end
       end
     end
-    let code': Array[I64] val = consume code
+    let mem = recover val Memory(consume code) end
 
-    let mem1: Memory iso = Memory(code')
+    let mem1 = mem.clone()
     let cpu1 = Cpu(consume mem1)
 
     cpu1.subscribe(object
@@ -66,7 +63,7 @@ actor Main
 
     cpu1.run()
 
-    let mem2: Memory iso = Memory(code')
+    let mem2 = mem.clone()
     let cpu2 = Cpu(consume mem2)
 
     cpu2.subscribe(object

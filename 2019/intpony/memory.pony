@@ -3,14 +3,23 @@ use "itertools"
 type _Mode is (Mem | Rel | Imm)
 
 class Memory
-  var _memory: Array[I64 val]
+  var _memory: Array[I64]
 
-  new create(image: ReadSeq[I64 val] box) =>
-    _memory = Array[I64 val].create(image.size())
-    _memory.append(image)
+  new create(image: Array[I64]) =>
+    _memory = image
 
+  /* because Pony doesn't do any sort of escape analysis, this ctor is pretty
+   *   useless. why?
+   *   - we have to pass a ref because of the definition of Iterator
+   *   - but Pony doesn't know that we don't hang onto that ref anywhere
+   *   - we COULD pass in a iso by consuming it, then recover the result to
+   *       iso or val, but
+   *   - to use it with FileLines, we need to get a FileLines iso, the FileLines
+   *       ctor returns FileLines ref^ and takes File ref, which means that we
+   *       can't recover a FileLines iso from that
+   */
   new from_lines(lines: Iterator[String iso^] ref)? =>
-    _memory = Array[I64 val]
+    _memory = Array[I64]
     for line in lines do
       for word in line.split(",").values() do
         try
@@ -21,9 +30,17 @@ class Memory
       end
     end
 
-  new iso clone(other: Memory val) =>
-    _memory = Array[I64 val].create(other._memory.size())
-    _memory.append(other._memory)
+  /* I had to print a cheat-sheet to write this,
+   *   and Array.clone's limitations make it worse than useless for this:
+   *   it's an attractive nuisance.
+   */
+  fun box clone(): Memory iso^ =>
+    let sz = _memory.size()
+    let memory' = recover Array[I64](sz) end
+    for m in _memory.values() do
+      memory'.push(m)
+    end
+    recover Memory(consume memory') end
 
   fun box apply(i: USize val): I64 =>
     try
