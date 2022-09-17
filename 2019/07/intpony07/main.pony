@@ -51,14 +51,10 @@ actor Main
         end
       end
 
-      cpu.on_completion(object iso
-        fun ref halted() =>
-          None
-
-        fun ref illegal_instruction() =>
-          env.exitcode(1)
-          env.err.print("cpu " + i.string() + " crashed")
-      end)
+      cpu.subscribe_crash({() =>
+        env.exitcode(1)
+        env.err.print("cpu " + i.string() + " crashed")
+      })
 
       cpu.send(phase.i64())
 
@@ -94,14 +90,10 @@ actor Main
         end
       end
 
-      cpu.on_completion(object iso
-        fun ref halted() =>
-          None
-
-        fun ref illegal_instruction() =>
-          env.exitcode(1)
-          env.err.print("cpu " + i.string() + " crashed")
-      end)
+      cpu.subscribe_crash({() =>
+        env.exitcode(1)
+        env.err.print("cpu " + i.string() + " crashed")
+      })
 
       cpu.send(phase.i64())
 
@@ -114,22 +106,15 @@ actor Main
     try
       cpus(cpus.size() - 1)?.subscribe(cpus(0)?)
       cpus(cpus.size() - 1)?.subscribe(lk)
-      cpus(cpus.size() - 1)?.on_completion(object iso
-        let env: Env = env
-
-        fun ref halted() =>
-          lk.query({(word: (I64 | None)) =>
-            match word
-            | let word': I64 => env.out.print("part 2: " + word'.string())
-            else
-              None
-            end
-          })
-
-        fun ref illegal_instruction() =>
-          env.exitcode(1)
-          env.err.print("last machine crashed")
-      end)
+      cpus(cpus.size() - 1)?.subscribe_halt({()(env) =>
+        lk.query({(word: (I64 | None)) =>
+          match word
+          | let word': I64 => env.out.print("part 2: " + word'.string())
+          else
+            None
+          end
+        })
+      })
     end
 
     try

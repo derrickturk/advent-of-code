@@ -50,16 +50,10 @@ actor Main
 
     cpu1.send(1)
 
-    cpu1.on_completion(object iso
-      let env: Env = env
-
-      fun ref halted() =>
-        None
-
-      fun ref illegal_instruction() =>
-        env.exitcode(1)
-        env.err.print("illegal instruction")
-    end)
+    cpu1.subscribe_crash({() =>
+      env.exitcode(1)
+      env.err.print("illegal instruction")
+    })
 
     cpu1.run()
 
@@ -78,15 +72,9 @@ actor Main
 
     cpu2.send(5)
 
-    cpu2.on_completion(object iso
-      let env: Env = env
-
-      fun ref halted() =>
-        None
-
-      fun ref illegal_instruction() =>
-        env.exitcode(2)
-        env.err.print("illegal instruction")
-    end)
+    cpu2.subscribe_crash({() =>
+      env.exitcode(2)
+      env.err.print("illegal instruction")
+    })
 
     cpu2.run()

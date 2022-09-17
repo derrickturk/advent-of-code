@@ -3,10 +3,6 @@ use "collections"
 interface Sendable
   fun tag send(word: I64)
 
-interface OnCompletion
-  fun ref halted()
-  fun ref illegal_instruction()
-
 primitive Running
 primitive Blocked
 primitive Halted
@@ -21,7 +17,8 @@ actor Cpu is Sendable
   var _input: Array[I64 val] = Array[I64 val]
   var _status: Status = Running
   var _subscribers: SetIs[Sendable tag] = SetIs[Sendable tag]
-  var _on_completion: (OnCompletion ref | None) = None
+  var _on_halt: SetIs[{ref ()} iso] = SetIs[{ref ()} iso]
+  var _on_crash: SetIs[{ref ()} iso] = SetIs[{ref ()} iso]
   var _running: Bool = false
 
   new create(memory: Memory iso) =>
@@ -33,8 +30,17 @@ actor Cpu is Sendable
   be unsubscribe(rcvr: Sendable tag) =>
     _subscribers.unset(rcvr)
 
-  be on_completion(notify: OnCompletion iso) =>
-    _on_completion = consume notify
+  be subscribe_halt(notify: {ref ()} iso) =>
+    _on_halt.set(consume notify)
+
+  be unsubscribe_halt(notify: {ref ()} tag) =>
+    _on_halt.unset(notify)
+
+  be subscribe_crash(notify: {ref ()} iso) =>
+    _on_crash.set(consume notify)
+
+  be unsubscribe_crash(notify: {ref ()} tag) =>
+    _on_crash.unset(notify)
 
   be step() =>
     if not (_status is Running) then
@@ -89,18 +95,14 @@ actor Cpu is Sendable
       | Hlt =>
           _status = Halted
           _ip = ip'
-          match _on_completion
-          | let oc: OnCompletion => oc.halted()
-          else
-            None
+          for notify in _on_halt.values() do
+            notify()
           end
       end
     else
       _status = IllegalInstruction
-      match _on_completion
-      | let oc: OnCompletion => oc.illegal_instruction()
-      else
-        None
+      for notify in _on_crash.values() do
+        notify()
       end
     end
 

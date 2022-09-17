@@ -39,18 +39,16 @@ actor Main
     mem1(1) = 12
     mem1(2) = 2
     let cpu1 = Cpu(consume mem1)
-    cpu1.on_completion(object iso
-      let env: Env = env
+    cpu1.subscribe_halt({()(env) =>
+      cpu1.query_memory(0, {(word: I64) =>
+        env.out.print(word.string())
+      })
+    })
 
-      fun ref halted() =>
-        cpu1.query_memory(0, {(word: I64) =>
-          env.out.print(word.string())
-        })
-
-      fun ref illegal_instruction() =>
-        env.exitcode(1)
-        env.err.print("illegal instruction")
-    end)
+    cpu1.subscribe_crash({() =>
+      env.exitcode(1)
+      env.err.print("illegal instruction")
+    })
     cpu1.run()
 
     var i: I64 = 0
@@ -61,20 +59,13 @@ actor Main
         mem2(1) = i
         mem2(2) = j
         let cpu2 = Cpu(consume mem2)
-        cpu2.on_completion(object iso
-          let env: Env = env
-          let i: I64 = i
-          let j: I64 = j
-
-          fun ref halted() =>
-            cpu2.query_memory(0, {(word: I64) =>
-              if word == 19690720 then
-                env.out.print("found " + ((100 * i) + j).string())
-              end
-            })
-
-          fun ref illegal_instruction() => None
-        end)
+        cpu2.subscribe_halt({()(env, i, j) =>
+          cpu2.query_memory(0, {(word: I64) =>
+            if word == 19690720 then
+              env.out.print("found " + ((100 * i) + j).string())
+            end
+          })
+        })
         cpu2.run()
 
         j = j + 1
