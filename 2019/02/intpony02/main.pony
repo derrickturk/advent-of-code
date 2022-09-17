@@ -1,3 +1,4 @@
+use "collections"
 use "files"
 
 use "intpony"
@@ -51,10 +52,8 @@ actor Main
     })
     cpu1.run()
 
-    var i: I64 = 0
-    while i < 100 do
-      var j: I64 = 0
-      while j < 100 do
+    for i in Range[I64](0, 100) do
+      for j in Range[I64](0, 100) do
         let mem2 = mem.clone()
         mem2(1) = i
         mem2(2) = j
@@ -67,8 +66,5 @@ actor Main
           })
         })
         cpu2.run()
-
-        j = j + 1
       end
-      i = i + 1
     end
