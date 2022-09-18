@@ -1,5 +1,6 @@
 use "collections"
 use "files"
+use "promises"
 
 use "time"
 use "debug"
@@ -39,15 +40,24 @@ actor Main
     end
     let mem = recover val Memory(consume code) end
 
-    problem1(mem, env)
-    problem2(mem, env)
+    let p1 = problem1(mem, env)
+    let p2 = problem2(mem, env)
+    p1.next[None]({(max: I64)(env) =>
+      env.out.print("Problem 1: " + max.string())
+      p2.next[None]({(max: I64)(env) =>
+        env.out.print("Problem 2: " + max.string())
+      } iso)
+    } iso)
 
-  fun problem1(mem: Memory val, env: Env) =>
+  fun problem1(mem: Memory val, env: Env): Promise[I64] =>
     let mk = MaxKeeper
-    let waiter = CpuWaiter({()(env) =>
+    let p = Promise[I64]
+    let waiter = CpuWaiter({()(p) =>
       mk.query({(max: (I64 | None)) =>
         match max
-        | let m: I64 => env.out.print("problem 1: " + max.string())
+        | let m: I64 => p(m)
+        else
+          p.reject()
         end
       })
     })
@@ -84,17 +94,22 @@ actor Main
       end
 
       for cpu in cpus.values() do
+        Debug("RUN")
         cpu.run()
       end
     })
     waiter.start_waiting()
+    p
 
-  fun problem2(mem: Memory val, env: Env) =>
+  fun problem2(mem: Memory val, env: Env): Promise[I64] =>
     let mk = MaxKeeper
-    let waiter = CpuWaiter({()(env) =>
+    let p = Promise[I64]
+    let waiter = CpuWaiter({()(p) =>
       mk.query({(max: (I64 | None)) =>
         match max
-        | let m: I64 => env.out.print("problem 2: " + max.string())
+        | let m: I64 => p(m)
+        else
+          p.reject()
         end
       })
     })
@@ -140,10 +155,12 @@ actor Main
       end
 
       for cpu in cpus.values() do
+        Debug("RUN")
         cpu.run()
       end
     })
     waiter.start_waiting()
+    p
 
 actor LastKeeper
   var _last: (I64 | None) = None
@@ -187,12 +204,14 @@ actor CpuWaiter
   be start_waiting() =>
     _wait = true
     if _waiting.size() == 0 then
+      Debug("already done, triggering")
       _when_done()
     end
 
   be _done(cpu: Cpu tag) =>
     _waiting.unset(cpu)
     if _wait and (_waiting.size() == 0) then
+      Debug("done, triggering")
       _when_done()
     end
 
