@@ -53,16 +53,6 @@ actor Main
     })
 
     Permuter[U8]([0; 1; 2; 3; 4]).for_each({(phases: Array[U8])(env) =>
-      try
-        Debug("phases: [" +
-          phases(0)?.string() + ", " +
-          phases(1)?.string() + ", " +
-          phases(2)?.string() + ", " +
-          phases(3)?.string() + ", " +
-          phases(4)?.string() + "]"
-        )
-      end
-
       var cpus = Array[Cpu]
       for (i, phase) in phases.pairs() do
         let mem' = mem.clone()
@@ -82,8 +72,6 @@ actor Main
         cpu.send(phase.i64())
 
         cpus.push(cpu)
-
-        cpu.run()
       end
 
       try
@@ -93,6 +81,10 @@ actor Main
 
       try
         cpus(0)?.send(0)
+      end
+
+      for cpu in cpus.values() do
+        cpu.run()
       end
     })
     waiter.start_waiting()
@@ -108,16 +100,6 @@ actor Main
     })
 
     Permuter[U8]([5; 6; 7; 8; 9]).for_each({(phases: Array[U8])(env, mk) =>
-      try
-        Debug("phases: [" +
-          phases(0)?.string() + ", " +
-          phases(1)?.string() + ", " +
-          phases(2)?.string() + ", " +
-          phases(3)?.string() + ", " +
-          phases(4)?.string() + "]"
-        )
-      end
-
       var cpus = Array[Cpu]
       for (i, phase) in phases.pairs() do
         let mem' = mem.clone()
@@ -137,8 +119,6 @@ actor Main
         cpu.send(phase.i64())
 
         cpus.push(cpu)
-
-        cpu.run()
       end
 
       let lk = LastKeeper
@@ -157,6 +137,10 @@ actor Main
 
       try
         cpus(0)?.send(0)
+      end
+
+      for cpu in cpus.values() do
+        cpu.run()
       end
     })
     waiter.start_waiting()
@@ -184,7 +168,7 @@ actor MaxKeeper
     fn(_max)
 
 actor CpuWaiter
-  var _count: USize = 0
+  var _waiting: SetIs[Cpu tag] = SetIs[Cpu tag]
   var _wait: Bool = false
   let _when_done: {()} val
 
@@ -192,26 +176,23 @@ actor CpuWaiter
     _when_done = when_done
 
   be wait(cpu: Cpu tag) =>
-    _count = _count + 1
-    Debug("wait -> " + _count.string())
+    _waiting.set(cpu)
     cpu.subscribe_halt({()(self = recover tag this end) =>
-      self._done()
+      self._done(cpu)
     })
     cpu.subscribe_crash({()(self = recover tag this end) =>
-      self._done()
+      self._done(cpu)
     })
 
   be start_waiting() =>
     _wait = true
-    if _count == 0 then
+    if _waiting.size() == 0 then
       _when_done()
     end
 
-  be _done() =>
-    _count = _count - 1
-    Debug("_done -> " + _count.string())
-    if _wait and (_count == 0) then
-      Debug("doin' it")
+  be _done(cpu: Cpu tag) =>
+    _waiting.unset(cpu)
+    if _wait and (_waiting.size() == 0) then
       _when_done()
     end
 
