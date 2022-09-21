@@ -1,0 +1,1 @@
+-record(vm, {ip = 0, rb = 0, mem = array:new({default, 0})}).
