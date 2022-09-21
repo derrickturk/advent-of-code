@@ -7,6 +7,7 @@
     poke/3,
     decode/1,
     step/1,
+    listen/1,
     run/1
 ]).
 -include("erlic.hrl").
@@ -91,7 +92,10 @@ decode(Vm = #vm{ip=Ip}) ->
         99 -> {hlt}
     end.
 
-step(Vm = #vm{ip=Ip, rb=Rb}) ->
+step(Vm) ->
+    step(Vm, []).
+
+step(Vm = #vm{ip=Ip, rb=Rb}, Subs) ->
     case decode(Vm) of
         {add, Lhs, Rhs, Dst} ->
             NewVm = write_mode(
@@ -107,12 +111,15 @@ step(Vm = #vm{ip=Ip, rb=Rb}) ->
               Vm
             ),
             NewVm#vm{ip = Ip + 4};
-        {inp, Src} ->
-            io:format("input here"),
-            Vm#vm{ip = Ip + 2};
+        {inp, Dst} ->
+            Cont = fun(Word) ->
+                NewVm = write_mode(Dst, Word, Vm),
+                NewVm#vm{ip = Ip + 2}
+            end,
+            {Cont, wait};
         {out, Src} ->
-            io:format("output here"),
-            Vm#vm{ip = Ip + 2};
+            lists:foreach(fun(S) -> S ! read_mode(Src, Vm) end, Subs),
+            Vm#vm{ip = Ip = 2};
         {jnz, Cnd, Tgt} ->
             Cnd = read_mode(Cnd, Vm),
             Tgt = read_mode(Tgt, Vm),
@@ -153,15 +160,97 @@ step(Vm = #vm{ip=Ip, rb=Rb}) ->
             NewVm#vm{ip = Ip + 4};
         {arb, off} ->
             Vm#vm{ip = Ip + 2, rb = Rb + read_mode(off, Vm)};
-        {hlt} -> {Vm, hlt}
+        {hlt} -> {Vm, halt}
     end.
 
-run({Vm}) ->
-    run(step(Vm));
-run({Vm, hlt}) ->
-    Vm;
+listen(Vm) ->
+    listen(Vm, [], break).
+
+listen(Vm, Subs) ->
+    listen(Vm, Subs, break).
+
+listen(Vm, Subs, break) ->
+    receive
+        run ->
+            listen(Vm, Subs, run);
+        break ->
+            listen(Vm, Subs, break);
+        {subscribe, Sub} ->
+            listen(Vm, [Sub | Subs], break);
+        {unsubscribe, Sub} ->
+            NewSubs = lists:filter(fun(S) -> S /= Sub end, Subs),
+            listen(Vm, NewSubs, break);
+        {send, Word} ->
+            self() ! {send, Word},
+            listen(Vm, break);
+        {query, Whom} ->
+            Whom ! {Vm, break},
+            listen(Vm, break)
+    end;
+listen(Vm, Subs, {wait, Cont}) ->
+    receive
+        run ->
+            listen(Vm, Subs, {wait, Cont});
+        break ->
+            listen(Vm, Subs, break);
+        {subscribe, Sub} ->
+            listen(Vm, [Sub | Subs], {wait, Cont});
+        {unsubscribe, Sub} ->
+            NewSubs = lists:filter(fun(S) -> S /= Sub end, Subs),
+            listen(Vm, NewSubs, {wait, Cont});
+        {send, Word} ->
+            listen(Cont(Word), run);
+        {query, Whom} ->
+            Whom ! {Vm, wait},
+            listen(Vm, Subs, {wait, Cont})
+    end;
+listen(Vm, Subs, run) ->
+    case step(Vm, Subs) of
+        {Cont, wait} ->
+            listen(Vm, Subs, {wait, Cont});
+        {NewVm, halt} ->
+            lists:foreach(fun(S) -> S ! halt end, Subs),
+            listen(NewVm, [], halt);
+        NewVm ->
+            listen(NewVm, Subs, run)
+    end;
+listen(Vm, _, halt) ->
+    receive
+        run ->
+            listen(Vm, [], halt);
+        break ->
+            listen(Vm, [], halt);
+        {subscribe, _} ->
+            listen(Vm, [], halt);
+        {unsubscribe, _} ->
+            listen(Vm, [], halt);
+        {send, _} ->
+            listen(Vm, [], halt);
+        {query, Whom} ->
+            Whom ! {Vm, halt},
+            listen(Vm, [], halt)
+    end.
+
 run(Vm) ->
-    run({Vm}).
+    run(Vm, []).
+
+run(Vm, Inputs) ->
+    VmPID = spawn(vm, listen, [Vm]),
+    lists:foreach(fun(W) -> VmPID ! {send, W} end, Inputs),
+    VmPID ! {subscribe, self()},
+    VmPID ! run,
+    vm_wait(VmPID, []).
+
+vm_wait(VmPID, Outputs) ->
+    receive
+        halt ->
+            VmPID ! {query, self()},
+            receive
+                {Vm, halt} -> {Vm, lists:reverse(Outputs)}
+            end;
+        {send, Word} ->
+            vm_wait(VmPID, [Word | Outputs])
+    end.
 
 decode_mode(0) ->
     mem;
