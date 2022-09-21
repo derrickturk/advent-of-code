@@ -4,8 +4,9 @@
 
 main(Input) ->
     Vm = from_file(Input),
-    problem1(Vm),
-    problem2(Vm).
+    P1 = problem1(Vm),
+    P2 = problem2(Vm),
+    io:format("problem1: ~w~nproblem2: ~w~n", [P1, P2]).
 
 problem1(Vm) ->
     lists:max(
@@ -14,7 +15,10 @@ problem1(Vm) ->
         permutations([0, 1, 2, 3, 4]))).
 
 problem2(Vm) ->
-    io:format("problem 2: ~w~n", [permutations([5,6,7,8,9])]).
+    lists:max(
+      lists:map(
+        fun(Ps) -> thrust2(Vm, Ps) end,
+        permutations([5, 6, 7, 8, 9]))).
 
 thrust1(Vm, Phases) ->
     Vms = [First | _] = spawn_cpus(Vm, Phases),
@@ -23,6 +27,21 @@ thrust1(Vm, Phases) ->
     Listener = spawn(fun() -> listen_last(Self) end),
     Last ! {subscribe, Listener},
     First ! {send, 0},
+    lists:foreach(fun(V) -> V ! run end, Vms),
+    receive
+        Word ->
+            lists:foreach(fun(V) -> V ! stop end, Vms),
+            Word
+    end.
+
+thrust2(Vm, Phases) ->
+    Vms = [First | _] = spawn_cpus(Vm, Phases),
+    Last = plumb_cpus_linear(Vms),
+    Self = self(),
+    Listener = spawn(fun() -> listen_last(Self) end),
+    First ! {send, 0},
+    Last ! {subscribe, First},
+    Last ! {subscribe, Listener},
     lists:foreach(fun(V) -> V ! run end, Vms),
     receive
         Word ->
