@@ -10,7 +10,7 @@
     listen/1,
     run/1
 ]).
--include("erlic.hrl").
+-include("erlich.hrl").
 
 new() ->
     #vm{}.
