@@ -116,6 +116,8 @@ step(Vm = #vm{ip=Ip, rb=Rb}, Subs) ->
             NewVm#vm{ip = Ip + 4};
         {inp, Dst} ->
             Cont = fun(Word) ->
+                % delete this io:format to DIE INSTANTLY
+                io:format("write ~w to ~w~n", [Word, Dst]),
                 NewVm = write_mode(Dst, Word, Vm),
                 NewVm#vm{ip = Ip + 2}
             end,
