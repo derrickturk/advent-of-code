@@ -8,7 +8,10 @@
     decode/1,
     step/1,
     listen/1,
-    run/1
+    listen/2,
+    listen/3,
+    run/1,
+    run/2
 ]).
 -include("erlich.hrl").
 
@@ -118,21 +121,21 @@ step(Vm = #vm{ip=Ip, rb=Rb}, Subs) ->
             end,
             {Cont, wait};
         {out, Src} ->
-            lists:foreach(fun(S) -> S ! read_mode(Src, Vm) end, Subs),
-            Vm#vm{ip = Ip = 2};
+            lists:foreach(fun(S) -> S ! {send, read_mode(Src, Vm)} end, Subs),
+            Vm#vm{ip = Ip + 2};
         {jnz, Cnd, Tgt} ->
-            Cnd = read_mode(Cnd, Vm),
-            Tgt = read_mode(Tgt, Vm),
+            CndW = read_mode(Cnd, Vm),
+            TgtW = read_mode(Tgt, Vm),
             NewIp = if
-                Cnd /= 0 -> Tgt;
+                CndW /= 0 -> TgtW;
                 true -> Ip + 3
             end,
             Vm#vm{ip = NewIp};
         {jz, Cnd, Tgt} ->
-            Cnd = read_mode(Cnd, Vm),
-            Tgt = read_mode(Tgt, Vm),
+            CndW = read_mode(Cnd, Vm),
+            TgtW = read_mode(Tgt, Vm),
             NewIp = if
-                Cnd == 0 -> Tgt;
+                CndW == 0 -> TgtW;
                 true -> Ip + 3
             end,
             Vm#vm{ip = NewIp};
@@ -182,10 +185,10 @@ listen(Vm, Subs, break) ->
             listen(Vm, NewSubs, break);
         {send, Word} ->
             self() ! {send, Word},
-            listen(Vm, break);
+            listen(Vm, Subs, break);
         {query, Whom} ->
             Whom ! {Vm, break},
-            listen(Vm, break)
+            listen(Vm, Subs, break)
     end;
 listen(Vm, Subs, {wait, Cont}) ->
     receive
@@ -199,7 +202,7 @@ listen(Vm, Subs, {wait, Cont}) ->
             NewSubs = lists:filter(fun(S) -> S /= Sub end, Subs),
             listen(Vm, NewSubs, {wait, Cont});
         {send, Word} ->
-            listen(Cont(Word), run);
+            listen(Cont(Word), Subs, run);
         {query, Whom} ->
             Whom ! {Vm, wait},
             listen(Vm, Subs, {wait, Cont})
@@ -230,6 +233,8 @@ listen(Vm, _, halt) ->
             Whom ! {Vm, halt},
             listen(Vm, [], halt)
     end.
+
+% TODO: catch errors or whatever
 
 run(Vm) ->
     run(Vm, []).
