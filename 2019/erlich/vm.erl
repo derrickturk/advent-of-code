@@ -117,7 +117,7 @@ step(Vm = #vm{ip=Ip, rb=Rb}, Subs) ->
         {inp, Dst} ->
             Cont = fun(Word) ->
                 % delete this io:format to DIE INSTANTLY
-                io:format("write ~w to ~w~n", [Word, Dst]),
+                % io:format("write ~w to ~w~n", [Word, Dst]),
                 NewVm = write_mode(Dst, Word, Vm),
                 NewVm#vm{ip = Ip + 2}
             end,
@@ -185,12 +185,11 @@ listen(Vm, Subs, break) ->
         {unsubscribe, Sub} ->
             NewSubs = lists:filter(fun(S) -> S /= Sub end, Subs),
             listen(Vm, NewSubs, break);
-        {send, Word} ->
-            self() ! {send, Word},
-            listen(Vm, Subs, break);
         {query, Whom} ->
             Whom ! {Vm, break},
-            listen(Vm, Subs, break)
+            listen(Vm, Subs, break);
+        stop ->
+            ok
     end;
 listen(Vm, Subs, {wait, Cont}) ->
     receive
@@ -207,7 +206,9 @@ listen(Vm, Subs, {wait, Cont}) ->
             listen(Cont(Word), Subs, run);
         {query, Whom} ->
             Whom ! {Vm, wait},
-            listen(Vm, Subs, {wait, Cont})
+            listen(Vm, Subs, {wait, Cont});
+        stop ->
+            ok
     end;
 listen(Vm, Subs, run) ->
     case step(Vm, Subs) of
@@ -233,7 +234,9 @@ listen(Vm, _, halt) ->
             listen(Vm, [], halt);
         {query, Whom} ->
             Whom ! {Vm, halt},
-            listen(Vm, [], halt)
+            listen(Vm, [], halt);
+        stop ->
+            ok
     end.
 
 % TODO: catch errors or whatever
@@ -253,7 +256,8 @@ vm_wait(VmPID, Outputs) ->
         halt ->
             VmPID ! {query, self()},
             receive
-                {Vm, halt} -> {Vm, lists:reverse(Outputs)}
+                {Vm, halt} ->
+                    {Vm, lists:reverse(Outputs)}
             end;
         {send, Word} ->
             vm_wait(VmPID, [Word | Outputs])

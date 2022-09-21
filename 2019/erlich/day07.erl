@@ -11,7 +11,7 @@ problem1(Vm) ->
     lists:max(
       lists:map(
         fun(Ps) -> thrust1(Vm, Ps) end,
-        permutations([1, 2, 3, 4, 5]))).
+        permutations([0, 1, 2, 3, 4]))).
 
 problem2(Vm) ->
     io:format("problem 2: ~w~n", [permutations([5,6,7,8,9])]).
@@ -25,7 +25,9 @@ thrust1(Vm, Phases) ->
     First ! {send, 0},
     lists:foreach(fun(V) -> V ! run end, Vms),
     receive
-        Word -> Word
+        Word ->
+            lists:foreach(fun(V) -> V ! stop end, Vms),
+            Word
     end.
 
 listen_last(Tell) ->
