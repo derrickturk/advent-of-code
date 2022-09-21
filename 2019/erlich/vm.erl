@@ -161,8 +161,8 @@ step(Vm = #vm{ip=Ip, rb=Rb}, Subs) ->
               Vm
             ),
             NewVm#vm{ip = Ip + 4};
-        {arb, off} ->
-            Vm#vm{ip = Ip + 2, rb = Rb + read_mode(off, Vm)};
+        {arb, Off} ->
+            Vm#vm{ip = Ip + 2, rb = Rb + read_mode(Off, Vm)};
         {hlt} -> {Vm, halt}
     end.
 
