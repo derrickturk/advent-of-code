@@ -15,13 +15,12 @@ mightZeroZ :: [Instr] -> CPU Interval -> Bool
 mightZeroZ is c = let (State c' ()) = run is (State c ())
                    in z c' `contains` 0
 
-zeroingZ :: [Instr] -> [[Int]]
-zeroingZ = go (State boot []) where
-  -- go :: State Int [Int] -> [Int] -> [Instr] -> [[Int]]
+zeroingZ :: [Int] -> [Instr] -> [[Int]]
+zeroingZ inputs = go (State boot []) where
   go s@(State c _) is =
     case is of
       (Input v):rest -> do
-        val <- [9, 8..1]
+        val <- inputs
         let c' = write val v c
             c'' = intervalize c'
         guard (mightZeroZ rest c'')
@@ -35,5 +34,7 @@ zeroingZ = go (State boot []) where
 main :: IO ()
 main = do
   Just prog <- parseStdin program
-  let valid = zeroingZ prog
-  print $ take 10 valid
+  let biggest = take 1 $ zeroingZ [9, 8..1] prog
+      smallest = take 1 $ zeroingZ [1..9] prog
+  print $ biggest
+  print $ smallest
