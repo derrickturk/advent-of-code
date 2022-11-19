@@ -16,7 +16,9 @@ module Monad (
 ) where
 
 import Prelude hiding (read)
-import Control.Monad (foldM)
+import Data.List (foldl')
+
+import Interval
 
 import FemtoParsec
 
@@ -50,7 +52,7 @@ data State a input = State (CPU a) input
 class Compute a input | a -> input where
   boot :: CPU a
   liftConst :: Int -> a
-  step :: Instr -> State a input -> Maybe (State a input)
+  step :: Instr -> State a input -> State a input
 
 read :: Compute a input => Src -> CPU a -> a
 read (Mem W) = w
@@ -70,22 +72,34 @@ binOp f v o c =
   let val = f (read (Mem v) c) (read o c)
    in write val v c
 
-run :: Compute a input => [Instr] -> State a input -> Maybe (State a input)
-run is s = foldM (flip step) s is
+run :: Compute a input => [Instr] -> State a input -> State a input
+run is s = foldl' (flip step) s is
 
 instance Compute Int [Int] where
   boot = CPU 0 0 0 0
 
   liftConst n = n
 
-  step (Input v) (State c (i:is)) = Just $ State (write i v c) is
-  step (Input _) (State _ []) = Nothing
-  step (Add v o) (State c is) = Just $ State (binOp (+) v o c) is
-  step (Mul v o) (State c is) = Just $ State (binOp (*) v o c) is
-  step (Div v o) (State c is) = Just $ State (binOp div v o c) is
-  step (Mod v o) (State c is) = Just $ State (binOp mod v o c) is
-  step (Eql v o) (State c is) = Just $
+  step (Input v) (State c (i:is)) = State (write i v c) is
+  step (Input _) (State c []) = State c []
+  step (Add v o) (State c is) = State (binOp (+) v o c) is
+  step (Mul v o) (State c is) = State (binOp (*) v o c) is
+  step (Div v o) (State c is) = State (binOp div v o c) is
+  step (Mod v o) (State c is) = State (binOp mod v o c) is
+  step (Eql v o) (State c is) =
     State (binOp (\a b -> if a == b then 1 else 0) v o c) is
+
+instance Compute Interval () where
+  boot = CPU 0 0 0 0
+
+  liftConst = singleton
+
+  step (Input v) (State c ()) = State (write (interval 1 9) v c) ()
+  step (Add v o) (State c ()) = State (binOp (+) v o c) ()
+  step (Mul v o) (State c ()) = State (binOp (*) v o c) ()
+  step (Div v o) (State c ()) = State (binOp (./.) v o c) ()
+  step (Mod v o) (State c ()) = State (binOp (.%.) v o c) ()
+  step (Eql v o) (State c ()) = State (binOp (.=.) v o c) ()
 
 var :: Parser Var
 var =  W <$ char 'w'
