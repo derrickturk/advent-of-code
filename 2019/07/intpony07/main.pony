@@ -85,8 +85,12 @@ actor Main
       end
 
       try
-        cpus(cpus.size() - 1)?.subscribe(mk)
-        waiter.wait(cpus(cpus.size() - 1)?)
+        let last_cpu = cpus(cpus.size() - 1)?
+        last_cpu.subscribe(mk)
+        waiter.wait(last_cpu)
+        last_cpu.subscribe_halt({() =>
+          waiter.done(last_cpu)
+        })
       end
 
       try
@@ -94,7 +98,6 @@ actor Main
       end
 
       for cpu in cpus.values() do
-        Debug("RUN")
         cpu.run()
       end
     })
@@ -138,16 +141,20 @@ actor Main
 
       let lk = LastKeeper
       try
-        cpus(cpus.size() - 1)?.subscribe(cpus(0)?)
-        cpus(cpus.size() - 1)?.subscribe(lk)
-        cpus(cpus.size() - 1)?.subscribe_halt({()(mk) =>
+        let last_cpu = cpus(cpus.size() - 1)?
+        last_cpu.subscribe(cpus(0)?)
+        last_cpu.subscribe(lk)
+        last_cpu.subscribe_halt({()(mk) =>
           lk.query({(word: (I64 | None)) =>
             match word
             | let word': I64 => mk.send(word')
             end
           })
         })
-        waiter.wait(cpus(cpus.size() - 1)?)
+        waiter.wait(last_cpu)
+        last_cpu.subscribe_halt({() =>
+          waiter.done(last_cpu)
+        })
       end
 
       try
@@ -155,7 +162,6 @@ actor Main
       end
 
       for cpu in cpus.values() do
-        Debug("RUN")
         cpu.run()
       end
     })
@@ -194,12 +200,6 @@ actor CpuWaiter
 
   be wait(cpu: Cpu tag) =>
     _waiting.set(cpu)
-    cpu.subscribe_halt({()(self = recover tag this end) =>
-      self._done(cpu)
-    })
-    cpu.subscribe_crash({()(self = recover tag this end) =>
-      self._done(cpu)
-    })
 
   be start_waiting() =>
     _wait = true
@@ -208,7 +208,7 @@ actor CpuWaiter
       _when_done()
     end
 
-  be _done(cpu: Cpu tag) =>
+  be done(cpu: Cpu tag) =>
     _waiting.unset(cpu)
     if _wait and (_waiting.size() == 0) then
       Debug("done, triggering")
