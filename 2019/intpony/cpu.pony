@@ -1,7 +1,7 @@
 use "collections"
 
 interface Sendable
-  fun tag send(word: I64)
+  fun tag apply(word: I64)
 
 primitive Running
 primitive Blocked
@@ -66,7 +66,7 @@ actor Cpu is Sendable
       | (Out, let src: Src) =>
           let word = _read(src)
           for rcvr in _subscribers.values() do
-            rcvr.send(word)
+            rcvr(word)
           end
           _ip = ip'
       | (Jnz, let cnd: Src, let tgt: Src) =>
@@ -116,7 +116,7 @@ actor Cpu is Sendable
       step()
     end
 
-  be send(word: I64) =>
+  be apply(word: I64) =>
     // TODO: apply backpressure if we keep receiving while Running?
     _input.push(word)
     if _status is Blocked then

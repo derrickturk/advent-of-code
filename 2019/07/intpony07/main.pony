@@ -41,28 +41,22 @@ actor Main
     let mem = recover val Memory(consume code) end
 
     let p1 = problem1(mem, env)
-    let p2 = problem2(mem, env)
+    // let p2 = problem2(mem, env)
     p1.next[None]({(max: I64)(env) =>
       env.out.print("Problem 1: " + max.string())
+      /*
       p2.next[None]({(max: I64)(env) =>
         env.out.print("Problem 2: " + max.string())
       } iso)
+      */
     } iso)
 
   fun problem1(mem: Memory val, env: Env): Promise[I64] =>
-    let mk = MaxKeeper
-    let p = Promise[I64]
-    let waiter = CpuWaiter({()(p) =>
-      mk.query({(max: (I64 | None)) =>
-        match max
-        | let m: I64 => p(m)
-        else
-          p.reject()
-        end
-      })
-    })
+    let ps = Array[Promise[I64]]
 
     Permuter[U8]([0; 1; 2; 3; 4]).for_each({(phases: Array[U8])(env) =>
+      let p = Promise[I64]
+
       var cpus = Array[Cpu]
       for (i, phase) in phases.pairs() do
         let mem' = mem.clone()
@@ -75,34 +69,38 @@ actor Main
         end
 
         cpu.subscribe_crash({() =>
+          p.reject()
           env.exitcode(1)
           env.err.print("cpu " + i.string() + " crashed")
         })
 
-        cpu.send(phase.i64())
+        cpu(phase.i64())
 
         cpus.push(cpu)
       end
 
       try
         let last_cpu = cpus(cpus.size() - 1)?
-        last_cpu.subscribe(mk)
-        waiter.wait(last_cpu)
-        last_cpu.subscribe_halt({() =>
-          waiter.done(last_cpu)
-        })
-      end
-
-      try
-        cpus(0)?.send(0)
+        last_cpu.subscribe(p)
+        cpus(0)?(0)
       end
 
       for cpu in cpus.values() do
         cpu.run()
       end
+
+      ps.push(p)
     })
-    waiter.start_waiting()
-    p
+
+    Promises[I64].join(ps.values()).next[I64]({(vals: Array[I64] val) =>
+      var max: I64 = I64.min_value()
+      for v in vals.values() do
+        if v > max then
+          max = v
+        end
+      end
+      max
+    })
 
   fun problem2(mem: Memory val, env: Env): Promise[I64] =>
     let mk = MaxKeeper
@@ -134,7 +132,7 @@ actor Main
           env.err.print("cpu " + i.string() + " crashed")
         })
 
-        cpu.send(phase.i64())
+        cpu(phase.i64())
 
         cpus.push(cpu)
       end
@@ -147,7 +145,7 @@ actor Main
         last_cpu.subscribe_halt({()(mk) =>
           lk.query({(word: (I64 | None)) =>
             match word
-            | let word': I64 => mk.send(word')
+            | let word': I64 => mk(word')
             end
           })
         })
@@ -158,7 +156,7 @@ actor Main
       end
 
       try
-        cpus(0)?.send(0)
+        cpus(0)?(0)
       end
 
       for cpu in cpus.values() do
@@ -171,7 +169,7 @@ actor Main
 actor LastKeeper
   var _last: (I64 | None) = None
 
-  be send(word: I64) =>
+  be apply(word: I64) =>
     _last = word
 
   be query(fn: {((I64 | None))} val) =>
@@ -180,7 +178,7 @@ actor LastKeeper
 actor MaxKeeper
   var _max: (I64 | None) = None
 
-  be send(word: I64) =>
+  be apply(word: I64) =>
     _max = match _max
     | let m: I64 => m.max(word)
     else
