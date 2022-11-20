@@ -1,3 +1,5 @@
+use std::mem;
+
 pub struct BinaryMinHeap<T>(Vec<T>);
 
 impl<T> BinaryMinHeap<T> where T: PartialOrd {
@@ -56,6 +58,45 @@ impl<T> BinaryMinHeap<T> where T: PartialOrd {
             i = smaller;
         }
     }
+
+    fn adjust_at_index(&mut self, i: usize, mut val: T) {
+        mem::swap(&mut val, &mut self.0[i]);
+        if self.0[i] < val {
+            self.upheap(i);
+        } else {
+            self.downheap(i);
+        }
+    }
+}
+
+impl<T> BinaryMinHeap<T> where T: PartialOrd + PartialEq {
+    pub fn replace(&mut self, old: &T, new: T) {
+        if let Some(i) = self.first_index_of(old, 0) {
+            self.adjust_at_index(i, new);
+        }
+    }
+
+    fn first_index_of(&self, val: &T, root: usize) -> Option<usize> {
+        if root >= self.0.len() { return None; }
+        if self.0[root].eq(val) { return Some(root); }
+        if val < &self.0[root] { return None; }
+        let lefty = root * 2 + 1;
+        let righty = root * 2 + 2;
+
+        if lefty < self.0.len() && &self.0[lefty] <= val {
+            if let Some(i) = self.first_index_of(val, lefty) {
+                return Some(i);
+            }
+        }
+
+        if righty < self.0.len() && &self.0[righty] <= val {
+            if let Some(i) = self.first_index_of(val, righty) {
+                return Some(i);
+            }
+        }
+
+        None
+    }
 }
 
 #[cfg(test)]
@@ -89,6 +130,28 @@ mod tests {
         assert_eq!(h.pop_minimum(), Some(5));
         assert_eq!(h.pop_minimum(), Some(7));
         assert_eq!(h.pop_minimum(), Some(8));
+        assert_eq!(h.pop_minimum(), Some(9));
+        assert_eq!(h.pop_minimum(), None);
+        assert_eq!(h.pop_minimum(), None);
+    }
+
+    #[test]
+    fn replace() {
+        let vals: [i32; 7] = [3, 7, 1, 9, 2, 6, 8];
+        let mut h = BinaryMinHeap::new();
+        for i in vals {
+            h.insert(i);
+        }
+
+        h.replace(&8, 5);
+        h.replace(&1, 4);
+
+        assert_eq!(h.pop_minimum(), Some(2));
+        assert_eq!(h.pop_minimum(), Some(3));
+        assert_eq!(h.pop_minimum(), Some(4));
+        assert_eq!(h.pop_minimum(), Some(5));
+        assert_eq!(h.pop_minimum(), Some(6));
+        assert_eq!(h.pop_minimum(), Some(7));
         assert_eq!(h.pop_minimum(), Some(9));
         assert_eq!(h.pop_minimum(), None);
         assert_eq!(h.pop_minimum(), None);
