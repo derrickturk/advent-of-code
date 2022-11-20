@@ -41,14 +41,12 @@ actor Main
     let mem = recover val Memory(consume code) end
 
     let p1 = problem1(mem, env)
-    // let p2 = problem2(mem, env)
+    let p2 = problem2(mem, env)
     p1.next[None]({(max: I64)(env) =>
       env.out.print("Problem 1: " + max.string())
-      /*
       p2.next[None]({(max: I64)(env) =>
         env.out.print("Problem 2: " + max.string())
       } iso)
-      */
     } iso)
 
   fun problem1(mem: Memory val, env: Env): Promise[I64] =>
@@ -103,19 +101,11 @@ actor Main
     })
 
   fun problem2(mem: Memory val, env: Env): Promise[I64] =>
-    let mk = MaxKeeper
-    let p = Promise[I64]
-    let waiter = CpuWaiter({()(p) =>
-      mk.query({(max: (I64 | None)) =>
-        match max
-        | let m: I64 => p(m)
-        else
-          p.reject()
-        end
-      })
-    })
+    let ps = Array[Promise[I64]]
 
-    Permuter[U8]([5; 6; 7; 8; 9]).for_each({(phases: Array[U8])(env, mk) =>
+    Permuter[U8]([5; 6; 7; 8; 9]).for_each({(phases: Array[U8])(env) =>
+      let p = Promise[I64]
+
       var cpus = Array[Cpu]
       for (i, phase) in phases.pairs() do
         let mem' = mem.clone()
@@ -128,6 +118,7 @@ actor Main
         end
 
         cpu.subscribe_crash({() =>
+          p.reject()
           env.exitcode(1)
           env.err.print("cpu " + i.string() + " crashed")
         })
@@ -137,21 +128,18 @@ actor Main
         cpus.push(cpu)
       end
 
-      let lk = LastKeeper
       try
         let last_cpu = cpus(cpus.size() - 1)?
+        Debug("run I even do?")
         last_cpu.subscribe(cpus(0)?)
-        last_cpu.subscribe(lk)
-        last_cpu.subscribe_halt({()(mk) =>
-          lk.query({(word: (I64 | None)) =>
-            match word
-            | let word': I64 => mk(word')
-            end
+
+        let last_tracker = LastTracker
+        last_cpu.subscribe(last_tracker)
+        last_cpu.subscribe_halt({()(last_tracker, p) =>
+          last_tracker.query({(word: I64) =>
+            Debug("do I even run")
+            p(word)
           })
-        })
-        waiter.wait(last_cpu)
-        last_cpu.subscribe_halt({() =>
-          waiter.done(last_cpu)
         })
       end
 
@@ -162,56 +150,28 @@ actor Main
       for cpu in cpus.values() do
         cpu.run()
       end
-    })
-    waiter.start_waiting()
-    p
 
-actor LastKeeper
-  var _last: (I64 | None) = None
+      ps.push(p)
+    })
+
+    Promises[I64].join(ps.values()).next[I64]({(vals: Array[I64] val) =>
+      var max: I64 = I64.min_value()
+      for v in vals.values() do
+        if v > max then
+          max = v
+        end
+      end
+      max
+    })
+
+actor LastTracker
+  var _last: I64 = I64.min_value()
 
   be apply(word: I64) =>
     _last = word
 
-  be query(fn: {((I64 | None))} val) =>
+  be query(fn: {(I64)} val) =>
     fn(_last)
-
-actor MaxKeeper
-  var _max: (I64 | None) = None
-
-  be apply(word: I64) =>
-    _max = match _max
-    | let m: I64 => m.max(word)
-    else
-      word
-    end
-
-  be query(fn: {((I64 | None))} val) =>
-    fn(_max)
-
-actor CpuWaiter
-  var _waiting: SetIs[Cpu tag] = SetIs[Cpu tag]
-  var _wait: Bool = false
-  let _when_done: {()} val
-
-  new create(when_done: {()} val) =>
-    _when_done = when_done
-
-  be wait(cpu: Cpu tag) =>
-    _waiting.set(cpu)
-
-  be start_waiting() =>
-    _wait = true
-    if _waiting.size() == 0 then
-      Debug("already done, triggering")
-      _when_done()
-    end
-
-  be done(cpu: Cpu tag) =>
-    _waiting.unset(cpu)
-    if _wait and (_waiting.size() == 0) then
-      Debug("done, triggering")
-      _when_done()
-    end
 
 class Permuter[A]
   var _vals: Array[A]
