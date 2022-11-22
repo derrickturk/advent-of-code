@@ -7,11 +7,12 @@ use std::{
 
 use crate::priority_queue::*;
 
-pub fn cost_to_win<C, S, MF, WF, I>(initial: S, moves: MF, win: WF) -> Option<C>
+pub fn cost_to_win<C, S, MF, WF, I>(initial: S, mut moves: MF, mut win: WF
+  ) -> Option<C>
   where C: Add<C, Output=C> + Copy + PartialEq + PartialOrd + Default,
         S: PartialEq + Eq + Hash, // C needs default() == 0
-        MF: for<'a> Fn(&'a S) -> I,
-        WF: for<'a> Fn(&'a S) -> bool,
+        MF: for<'a> FnMut(&'a S) -> I,
+        WF: for<'a> FnMut(&'a S) -> bool,
         I: Iterator<Item=(C, S)>, {
     let mut q = PriorityQueue::new();
     let mut seen = HashSet::new();
@@ -35,12 +36,12 @@ pub fn cost_to_win<C, S, MF, WF, I>(initial: S, moves: MF, win: WF) -> Option<C>
     None
 }
 
-pub fn states_to_win<C, S, MF, WF, I>(initial: S, moves: MF, win: WF
+pub fn states_to_win<C, S, MF, WF, I>(initial: S, mut moves: MF, mut win: WF
   ) -> Option<(C, Vec<Rc<S>>)>
   where C: Add<C, Output=C> + Copy + PartialEq + PartialOrd + Default,
         S: PartialEq + Eq + Hash + Clone, // C needs default() == 0
-        MF: for<'a> Fn(&'a S) -> I,
-        WF: for<'a> Fn(&'a S) -> bool,
+        MF: for<'a> FnMut(&'a S) -> I,
+        WF: for<'a> FnMut(&'a S) -> bool,
         I: Iterator<Item=(C, S)>, {
     let mut q = PriorityQueue::new();
     let mut seen = HashSet::new();
