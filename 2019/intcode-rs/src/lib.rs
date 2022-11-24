@@ -28,6 +28,7 @@ pub mod asm;
 pub mod asm_parser;
 pub mod disasm;
 pub mod map_file;
+pub mod blocking;
 
 pub async fn execute<T: ExpandoMemory>(program: &mut ProgramState<T>,
       input: &mut (impl Stream<Item = i64> + Unpin),

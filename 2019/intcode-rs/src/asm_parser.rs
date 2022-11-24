@@ -22,9 +22,9 @@ pub enum ParseErrorKind {
 
 #[derive(Debug, Copy, Clone)]
 pub struct ParseError {
-    kind: ParseErrorKind,
-    line: usize,
-    offset: usize,
+    pub kind: ParseErrorKind,
+    pub line: usize,
+    pub offset: usize,
 }
 
 pub type ParseResult<T> = Result<T, ParseError>;

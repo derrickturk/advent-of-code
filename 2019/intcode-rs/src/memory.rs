@@ -95,7 +95,7 @@ impl ExpandoMemory for ExpandoSparse {
 }
 
 #[derive(Debug, Clone)]
-pub struct ProgramState<T: ExpandoMemory> {
+pub struct ProgramState<T> {
     pub memory: T,
     pub ip: usize,
     pub relative_base: i64,
