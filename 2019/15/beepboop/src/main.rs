@@ -1,5 +1,6 @@
 use std::{
     cmp::Ordering,
+    collections::{HashMap, VecDeque},
     io,
     hash::{Hash, Hasher},
 };
@@ -140,6 +141,61 @@ fn io_pair<T: ExpandoMemory>(mut state: Unblocked<T>, input: i64
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Cell {
+    Open,
+    Oxygen,
+}
+
+fn map_it(initial: State) -> HashMap<(i32, i32), Cell> {
+    let mut map = HashMap::new();
+    let mut to_visit = VecDeque::new();
+    to_visit.push_back(initial);
+
+    while let Some(state) = to_visit.pop_front() {
+        if map.contains_key(&(state.x, state.y)) { continue; }
+        map.insert((state.x, state.y),
+          if state.oxygen { Cell::Oxygen } else { Cell::Open });
+        for (_, next) in state.moves() {
+            to_visit.push_back(next);
+        }
+    }
+
+    map
+}
+
+fn time_to_fill(mut map: HashMap<(i32, i32), Cell>) -> usize {
+    let mut i = 0;
+    loop {
+        let mut to_fill = Vec::new();
+        let mut seen_open = false;
+        for (&(x, y), v) in &map {
+            match v {
+                Cell::Open => {
+                    seen_open = true;
+                },
+
+                Cell::Oxygen => {
+                    let adj = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)];
+                    for k in adj.into_iter() {
+                        if map.get(&k) == Some(&Cell::Open) {
+                            to_fill.push(k);
+                        }
+                    }
+                },
+            }
+        }
+
+        if !seen_open { return i; }
+
+        for k in to_fill {
+            map.insert(k, Cell::Oxygen);
+        }
+
+        i += 1;
+    }
+}
+
 fn main() -> Result<(), IntCodeError> {
     let mut program = String::new();
     io::stdin().read_line(&mut program)
@@ -147,11 +203,17 @@ fn main() -> Result<(), IntCodeError> {
     let program: Vec<i64> = program.trim_end().split(',')
         .map(|word| word.parse().map_err(|_| IntCodeError::ParseError))
         .collect::<Result<_, _>>()?;
+
     let initial = State::from(program);
+    let initial2 = initial.clone();
     if let Some(moves) = cost_to_win(initial, |s| s.moves(), |s| s.oxygen) {
         println!("part 1 in {} moves", moves);
     } else {
         eprintln!("part 1 fail");
     }
+
+    let map = map_it(initial2);
+    println!("part 2 in {} minutes", time_to_fill(map));
+
     Ok(())
 }
