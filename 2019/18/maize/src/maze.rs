@@ -22,7 +22,7 @@ impl Display for Cell {
     }
 }
 
-#[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Debug)]
 pub struct KeySet(u32);
 
 impl KeySet {
@@ -66,7 +66,7 @@ impl Display for KeySet {
     }
 }
 
-#[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Debug)]
 pub struct State {
     pub x: usize,
     pub y: usize,
@@ -143,4 +143,15 @@ pub fn parse_world<B: BufRead>(buf: &mut B
     } else {
         Ok(None)
     }
+}
+
+pub fn all_keys(world: &World) -> KeySet {
+    let mut keys = KeySet::new();
+    for cell in world.values() {
+        match cell {
+            Cell::Key(k) => keys.insert(*k),
+            _ => { },
+        };
+    }
+    keys
 }

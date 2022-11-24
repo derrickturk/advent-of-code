@@ -3,21 +3,23 @@ use std::{
     io,
 };
 
+use aocrs::dijkstra::cost_to_win;
+
 mod maze;
 use maze::*;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut ks = KeySet::new();
-    ks.insert('a');
-    ks.insert('c');
-    ks.insert('z');
-    println!("{}", ks);
-    dbg!(ks.contains('C'));
-
     let mut stdin = io::stdin().lock();
-    let world = parse_world(&mut stdin)?
+    let (world, init) = parse_world(&mut stdin)?
       .ok_or("Invalid world description.")?;
-    dbg!(world);
+    let all = all_keys(&world);
+
+    let moves = cost_to_win(init,
+      |s| s.valid_moves(&world).map(|t| (1, t)),
+      |t| t.keys == all)
+      .ok_or("No path to win!")?;
+
+    println!("{}", moves);
 
     Ok(())
 }
