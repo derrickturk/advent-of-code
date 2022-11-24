@@ -147,8 +147,13 @@ async fn run_vm(pool: &ThreadPool, program: Vec<i64>, options: &Options,
     let output_handle = if options.text {
         pool.spawn_with_handle(async move {
             while let Some(out) = output_recv.next().await {
-                print!("{}", (out as u32).try_into()
-                    .unwrap_or(std::char::REPLACEMENT_CHARACTER));
+                match <u32 as TryInto::<char>>::try_into(out as u32) {
+                    Ok(c) => print!("{}", c),
+                    Err(_) => {
+                        print!("{}", std::char::REPLACEMENT_CHARACTER);
+                        eprintln!("unprintable output: {}", out);
+                    }
+                };
             }
         })?
     } else {
