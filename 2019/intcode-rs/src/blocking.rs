@@ -116,8 +116,13 @@ impl<T: ExpandoMemory> WaitInput<T> {
 }
 
 impl<T: ExpandoMemory> WaitOutput<T> {
-    pub fn step(self) -> Result<Unblocked<T>, IntCodeError> {
+    pub fn output(&self) -> i64 {
+        let WaitOutput(val, _) = self;
+        *val
+    }
+
+    pub fn step(self) -> Unblocked<T> {
         let WaitOutput(_, program) = self;
-        Ok(Unblocked(program))
+        Unblocked(program)
     }
 }

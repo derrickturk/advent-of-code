@@ -1,0 +1,10 @@
+[package]
+name = "beepboop"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+intcode = { path = "../../intcode-rs", version = "0.1.0" }
+aocrs = { path = "../../../util/aocrs", version = "0.1.0" }
