@@ -5,11 +5,10 @@ use std::{
 
 use aocrs::dijkstra::cost_to_win;
 
-mod maze;
-use maze::*;
-
-mod multimaze;
-use multimaze::*;
+use maize::{
+    maze::*,
+    multimaze::*,
+};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut stdin = io::stdin().lock();
