@@ -66,7 +66,7 @@ impl Display for KeySet {
     }
 }
 
-#[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Debug)]
 pub struct State {
     pub x: usize,
     pub y: usize,
