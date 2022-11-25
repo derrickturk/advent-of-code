@@ -4,7 +4,10 @@ use std::{
     io::{self, BufRead},
 };
 
-use crate::maze::{self, Cell, KeySet, State, World};
+use crate::{
+    maze::{self, Cell, KeySet, State, World},
+    multimaze,
+};
 
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Debug)]
 pub enum Point {
@@ -53,6 +56,29 @@ impl FastState {
     }
 }
 
+#[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Debug)]
+pub struct FastMultiState {
+    pub points: [Point; 4],
+    pub keys: KeySet,
+}
+
+impl FastMultiState {
+    pub fn valid_moves<'w>(&self, world: &'w FastWorld
+      ) -> impl Iterator<Item=(usize, FastMultiState)> + 'w {
+        let keys = self.keys;
+        let points = self.points;
+        points.into_iter().enumerate().flat_map(move |(i, point)| {
+            let this_guy = FastState { point, keys };
+            this_guy.valid_moves(world)
+              .map(move |(cost, FastState { point, keys: new_keys })| {
+                  let mut new_points = points;
+                  new_points[i] = point;
+                  (cost, FastMultiState { points: new_points, keys: new_keys })
+              })
+        })
+    }
+}
+
 pub type FastWorld = HashMap<Point, Vec<(usize, Point)>>;
 
 pub fn compile_fastworld(world: &World, initial: &State
@@ -71,7 +97,39 @@ pub fn compile_fastworld(world: &World, initial: &State
             _ => { },
         };
     }
-    (fast_world, FastState { point: Point::Start(0), keys: KeySet::new() })
+    (fast_world, FastState { point: Point::Start(0), keys: initial.keys })
+}
+
+pub fn compile_multify_fastworld(world: World, initial: State
+  ) -> (FastWorld, FastMultiState) {
+    let (world, initial) = multimaze::multify_world(world, initial);
+
+    let mut fast_world = HashMap::new();
+
+    for (i, &(x, y)) in initial.positions.iter().enumerate() {
+        fast_world.insert(Point::Start(i as u8), find_nearest(x, y, &world));
+    }
+
+    for (&(x, y), c) in &world {
+        match c {
+            Cell::Door(d) => {
+                fast_world.insert(Point::Door(*d), find_nearest(x, y, &world));
+            },
+            Cell::Key(k) => {
+                fast_world.insert(Point::Key(*k), find_nearest(x, y, &world));
+            },
+            _ => { },
+        };
+    }
+
+    let points = [
+        Point::Start(0),
+        Point::Start(1),
+        Point::Start(2),
+        Point::Start(3),
+    ];
+
+    (fast_world, FastMultiState { points, keys: initial.keys })
 }
 
 pub fn parse_fastworld<B: BufRead>(buf: &mut B
