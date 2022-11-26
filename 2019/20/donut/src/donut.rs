@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet, VecDeque},
     io::{self, BufRead},
 };
 
@@ -9,26 +9,43 @@ pub enum Side {
     Outside,
 }
 
+impl Side {
+    pub fn opposite(&self) -> Self {
+        match self {
+            Side::Inside => Side::Outside,
+            Side::Outside => Side::Inside,
+        }
+    }
+}
+
 pub type Portal = (Side, [char; 2]);
-pub type Donut = HashMap<Portal, Vec<Portal>>;
+pub type Donut = HashMap<Portal, Vec<(usize, Portal)>>;
 
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Debug)]
-pub(crate) enum RawCell {
+enum RawCell {
     Open,
     Letter(char),
 }
 
-pub(crate) type RawDonut = HashMap<(usize, usize), RawCell>;
+type RawDonut = HashMap<(usize, usize), RawCell>;
 
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Debug)]
-pub(crate) enum ProofedCell {
+enum ProofedCell {
     Open,
     Portal(Portal),
 }
 
-pub(crate) type ProofedDonut = HashMap<(usize, usize), ProofedCell>;
+type ProofedDonut = HashMap<(usize, usize), ProofedCell>;
 
-pub(crate) fn parse_raw_donut<B: BufRead>(buf: &mut B
+pub fn parse_donut<B: BufRead>(buf: &mut B) -> io::Result<Option<Donut>> {
+    if let Some(donut) = parse_raw_donut(buf)? {
+        Ok(Some(bake_donut(&proof_donut(&donut))))
+    } else {
+        Ok(None)
+    }
+}
+
+fn parse_raw_donut<B: BufRead>(buf: &mut B
   ) -> io::Result<Option<RawDonut>> {
     let mut donut = HashMap::new();
     for (y, l) in buf.lines().enumerate() {
@@ -44,7 +61,7 @@ pub(crate) fn parse_raw_donut<B: BufRead>(buf: &mut B
     Ok(Some(donut))
 }
 
-pub(crate) fn proof_donut(raw: &RawDonut) -> ProofedDonut {
+fn proof_donut(raw: &RawDonut) -> ProofedDonut {
     let min_x = raw.keys().map(|(x, _)| *x).min().unwrap_or(0);
     let max_x = raw.keys().map(|(x, _)| *x).max().unwrap_or(0);
     let min_y = raw.keys().map(|(_, y)| *y).min().unwrap_or(0);
@@ -121,4 +138,74 @@ pub(crate) fn proof_donut(raw: &RawDonut) -> ProofedDonut {
         }
     }
     donut
+}
+
+fn bake_donut(proofed: &ProofedDonut) -> Donut {
+    let mut donut = HashMap::new();
+    for (&(x, y), p) in proofed {
+        match p {
+            &ProofedCell::Portal(p) => {
+                donut.insert(p, find_neighbors(x, y, &proofed));
+            },
+            _ => { },
+        };
+    }
+
+    let mut to_portalize = Vec::new();
+    for p@&(side, lbl) in donut.keys() {
+        let oppo = (side.opposite(), lbl);
+        if donut.contains_key(&oppo) {
+            to_portalize.push((*p, oppo));
+        }
+    }
+
+    for (from, to) in to_portalize {
+        donut.get_mut(&from).unwrap().insert(0, (1, to));
+    }
+
+    donut
+}
+
+fn adjacent(x: usize, y: usize) -> [(usize, usize); 4] {
+    [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+}
+
+fn find_neighbors(x: usize, y: usize, proofed: &ProofedDonut
+  ) -> Vec<(usize, Portal)> {
+    let mut seen = HashSet::new();
+    let mut to_visit = VecDeque::new();
+    let mut neighbors: HashMap<Portal, usize> = HashMap::new();
+
+    seen.insert((x, y));
+    for (new_x, new_y) in adjacent(x, y) {
+        to_visit.push_back((new_x, new_y, 1));
+    }
+
+    while let Some((x, y, cost)) = to_visit.pop_front() {
+        seen.insert((x, y));
+        match proofed.get(&(x, y)) {
+            Some(&ProofedCell::Portal(p)) => {
+                neighbors.entry(p).and_modify(|old_cost| {
+                    *old_cost = (*old_cost).min(cost);
+                })
+                .or_insert(cost);
+            },
+
+            Some(ProofedCell::Open) => {
+                for (new_x, new_y) in adjacent(x, y) {
+                    if !seen.contains(&(new_x, new_y)) {
+                        to_visit.push_back((new_x, new_y, cost + 1));
+                    }
+                }
+            },
+
+            None => { },
+        }
+    }
+
+    let mut neighbors: Vec<(usize, Portal)> = neighbors.into_iter()
+      .map(|(p, cost)| (cost, p))
+      .collect();
+    neighbors.sort_unstable();
+    neighbors
 }
