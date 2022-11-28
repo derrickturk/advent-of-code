@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 
 import Data.Maybe (fromJust)
-import Data.List (foldl')
+import Data.List (elemIndex, foldl')
 import System.IO (hPutStrLn, stderr)
 
 import ModInv
@@ -41,6 +41,5 @@ main = do
   case prog of
     Nothing -> hPutStrLn stderr "fail"
     Just prog' -> do
-      let final = foldl' (\d s -> shuffle s d) (Deck 0 1 10) prog'
-      print $ final
-      print $ explicit final
+      let final = foldl' (\d s -> shuffle s d) (Deck 0 1 10007) prog'
+      print $ elemIndex 2019 $ explicit final
