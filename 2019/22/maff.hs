@@ -24,6 +24,9 @@ shuffle (Deal n) d@(Deck {..}) =
   let inv = fromJust $ n `modInv` size
    in d { step = (step * inv) `mod` size }
 
+run :: [Shuff] -> Deck -> Deck
+run prog deck = foldl' (\d s -> shuffle s d) deck prog
+
 explicit :: Deck -> [Int]
 explicit (Deck {..}) = take size $ iterate ((`mod` size) . (+ step)) start
 
@@ -41,5 +44,11 @@ main = do
   case prog of
     Nothing -> hPutStrLn stderr "fail"
     Just prog' -> do
-      let final = foldl' (\d s -> shuffle s d) (Deck 0 1 10007) prog'
+      let final = run prog' (Deck 0 1 10007)
       print $ elemIndex 2019 $ explicit final
+      mapM_ print $ take 25 $ iterate (run prog') final
+      {-
+      let hell =
+            iterate (run prog') (Deck 0 1 119315717514047) !! 101741582076661
+      print $ explicit hell !! 2020
+      -}
