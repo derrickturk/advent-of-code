@@ -54,6 +54,7 @@ actor Main
             _env.exitcode(1)
             return
           end
+          ew.finish_tally() // get the last guy
           ew.query_top_n(3, {(result: (Array[U64] box | None)) =>
             match result
             | None =>
