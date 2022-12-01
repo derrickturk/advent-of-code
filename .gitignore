@@ -11,4 +11,8 @@ input.*
 .mypy_cache
 *.swo
 *.idr~
+*.exp
+*.ilk
+*.pdb
+*.lib
 __pycache__
