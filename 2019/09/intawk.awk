@@ -1,8 +1,8 @@
 function read(src, mode) {
     switch (mode) {
-        case 0: return code[src]
-        case 1: return src
-        case 2: return code[rb + src]
+        case 0: return code[src] + 0
+        case 1: return src + 0
+        case 2: return code[rb + src] + 0
         default: print "Invalid read mode " mode >"/dev/stderr"; exit 1
     }
 }
