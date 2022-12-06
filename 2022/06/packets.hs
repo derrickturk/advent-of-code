@@ -1,12 +1,15 @@
-import Data.List (nub)
+import qualified Data.Set as S
 
-untilSignal :: Eq a => Int -> [a] -> Maybe Int
+{-# INLINE countUnique #-}
+countUnique :: Ord a => [a] -> Int
+countUnique = S.size . S.fromList
+
+untilSignal :: Ord a => Int -> [a] -> Maybe Int
 untilSignal k = go 0 where
   go _ [] = Nothing
   go n xs@(_:rest)
-    | length (nub $ take k xs) == k = Just (n + k)
+    | countUnique (take k xs) == k = Just (n + k)
     | otherwise = go (n + 1) rest
-
 
 main :: IO ()
 main = do
