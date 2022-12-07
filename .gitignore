@@ -16,3 +16,4 @@ input.*
 *.pdb
 *.lib
 __pycache__
+a.out
