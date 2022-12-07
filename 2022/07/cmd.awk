@@ -16,9 +16,14 @@
 }
 
 END {
+    gap = 30000000 - (70000000 - sizes["/"])
+    asort(sizes, sizes, "@val_num_asc")
     for (d in sizes) {
         if (sizes[d] <= 100000)
             result += sizes[d]
+        if (result2 == "" && sizes[d] >= gap)
+            result2 = sizes[d]
     }
     print result
+    print result2
 }
