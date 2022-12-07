@@ -1,3 +1,5 @@
+BEGIN { sizes["/"] = 0 }
+
 /^\$/ && $2 == "cd" {
     if ($3 == "/") {
         dir = "/"
@@ -9,10 +11,13 @@
 }
 
 /^[0-9]/ {
-    sizes[dir] += $1
     for (d in sizes)
-        if (d != dir && index(dir, d) == 1)
+        if (index(dir, d) == 1)
             sizes[d] += $1
+}
+
+/^dir/ {
+    sizes[dir $2 "/"] = sizes[dir $2 "/"] + 0
 }
 
 END {
