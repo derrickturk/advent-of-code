@@ -1,36 +1,40 @@
 import sys
 
+from typing import Iterable, Optional
+
 class Dir:
-    def __init__(self, name, parent = None):
+    def __init__(self, name: str, parent: Optional['Dir'] = None):
         self.name = name
         self.size = 0
-        self.children = {}
+        self.children: dict[str, 'Dir'] = {}
         self.parent = parent
 
-    def ensure_subdir(self, name):
+    def ensure_subdir(self, name: str) -> 'Dir':
         if not name in self.children:
             self.children[name] = Dir(name, self)
         return self.children[name]
 
-    def percolate_size(self, incr):
+    def percolate_size(self, incr: int) -> None:
         self.size += incr
         p = self.parent
         while p is not None:
             p.size += incr
             p = p.parent
 
-    def descendants(self):
+    def descendants(self) -> Iterable['Dir']:
         yield self
         for c in self.children.values():
             yield from c.descendants()
 
-def main():
+def main() -> None:
     root = Dir('/')
     for l in sys.stdin:
         match l.strip().split():
             case ['$', 'cd', '/']:
                 cd = root
             case ['$', 'cd', '..']:
+                if cd.parent is None:
+                    raise ValueError('cd .. at root!')
                 cd = cd.parent
             case ['$', 'cd', d]:
                 cd = cd.ensure_subdir(d)
