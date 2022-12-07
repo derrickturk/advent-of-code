@@ -26,6 +26,12 @@ class Dir:
         for c in self.children.values():
             yield from c.descendants()
 
+    def dump(self, indent = 0) -> None:
+        print(f'{" " * indent}{self.name}: {self.size}')
+        cs = sorted(self.children.keys())
+        for c in cs:
+            self.children[c].dump(indent = indent + 2)
+
 def main() -> None:
     root = Dir('/')
     for l in sys.stdin:
