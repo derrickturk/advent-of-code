@@ -2,7 +2,9 @@
 
 from enum import Enum, auto
 from functools import reduce
-from typing import Generic, NamedTuple, NewType, Protocol, TypeAlias, TypeVar
+from typing import (
+    Generic, Iterator, NamedTuple, NewType, Protocol, Tuple, TypeAlias, TypeVar
+)
 
 from plist import Cons, List
 
@@ -138,10 +140,40 @@ def remove(map: Map[K, V], key: K) -> Map[K, V]:
             z_new = z
     return z_new.root().focus
 
+def keys(map: Map[K, V]) -> Iterator[K]:
+    match map:
+        case _B(k, _, l, r):
+            yield from keys(l)
+            yield k
+            yield from keys(r)
+        case None:
+            return
+
+def values(map: Map[K, V]) -> Iterator[V]:
+    match map:
+        case _B(_, v, l, r):
+            yield from values(l)
+            yield v
+            yield from values(r)
+        case None:
+            return
+
+def items(map: Map[K, V]) -> Iterator[Tuple[K, V]]:
+    match map:
+        case _B(k, v, l, r):
+            yield from items(l)
+            yield (k, v)
+            yield from items(r)
+        case None:
+            return
+
 __all__ = [
     'Map',
     'empty',
     'get',
     'insert',
     'remove',
+    'keys',
+    'values',
+    'items',
 ]

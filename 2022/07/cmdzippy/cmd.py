@@ -4,11 +4,20 @@ from functools import reduce
 import pmap
 from plist import Cons, List
 
-from typing import NamedTuple
+from typing import Iterator, NamedTuple
 
 class Dir(NamedTuple):
     file_total: int
     children: pmap.Map[str, 'Dir']
+
+    def total_size(self) -> int:
+        return self.file_total + sum(
+          c.total_size() for c in pmap.values(self.children))
+
+    def rooted_total_sizes(self) -> Iterator[int]:
+        yield self.total_size()
+        for c in pmap.values(self.children):
+            yield from c.rooted_total_sizes()
 
 class _Step(NamedTuple):
     name: str
@@ -74,8 +83,11 @@ def apply(z: _Z, cmd: str) -> _Z:
     raise ValueError('impossible')
 
 def main() -> None:
-    root = reduce(apply, sys.stdin, _Z(None, Dir(0, pmap.empty()))).root()
-    print(root.focus)
+    root = reduce(apply, sys.stdin, _Z(None, Dir(0, pmap.empty()))).root().focus
+    gap = 30000000 - (70000000 - root.total_size())
+    sizes = list(root.rooted_total_sizes())
+    print(sum(s for s in sizes if s <= 100000))
+    print(min(s for s in sizes if s >= gap))
 
 if __name__ == '__main__':
     main()
