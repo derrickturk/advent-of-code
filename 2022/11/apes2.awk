@@ -35,9 +35,11 @@ function empty(q) {
     return q["head"] == ""
 }
 
+BEGIN { base = 1 }
+
 /Monkey/ { sub(/:/, "", $2); m = $2 }
 /Operation/ { op[m] = $5; operand[m] = $6 }
-/Test/ { test[m] = $4 }
+/Test/ { test[m] = $4; base *= $4 }
 /true/ { true[m] = $6 }
 /false/ { false[m] = $6 }
 /Starting/ {
@@ -53,9 +55,9 @@ function empty(q) {
 function apply(i, val, other) {
     other = operand[i] == "old" ? val : operand[i]
     if (op[i] == "+")
-        return int((val + other) / 3)
+        return (val + other) % base
     if (op[i] == "*")
-        return int((val * other) / 3)
+        return (val * other) % base
     print "bad operator: " op[i] >"/dev/stderr"
     exit 1
 }
@@ -73,7 +75,7 @@ function run_monkey(i, item) {
 }
 
 END {
-    for (round = 0; round < 20; ++round)
+    for (round = 0; round < 10000; ++round)
         for (j = 0; j <= m; ++j)
             run_monkey(j)
     asort(seen, seen, "@val_num_desc")
