@@ -67,10 +67,9 @@ monkeyP = do
 main :: IO ()
 main = do
   Just monkeys <- fmap M.fromList <$> parseStdin (some (lexeme monkeyP))
-  {- key assumption: all "test" values are DIFFERENT and PRIME
-   -   this is INFURIATINGLY DUMB in GENERAL
-   -   but is an inevitable CONSEQUENCE of the puzzle designer's
-   -     MODULAR ARITHMETIC FETISH
+  {- (I'm pretty confident that) for any set of "test" values t_i,
+   -   ∀ x . x mod (∏i ti) == x mod t_i
+   - (in our particular case all t_i are different and prime)
    -}
   let base = product $ (\m -> m.test) <$> M.elems monkeys
       worlds = iterate (runRound base) monkeys
