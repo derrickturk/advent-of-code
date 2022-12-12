@@ -71,6 +71,26 @@ function min_cost(q, s, s_pos, parts, seen) {
     }
 }
 
+# local q, s, s_pos, parts, seen
+function min_cost_multi(q, s, s_pos, parts, seen) {
+    delete q
+    delete seen
+    push(q, start SUBSEP 0)
+    for (begin in starts)
+        push(q, begin SUBSEP 0)
+    while (!empty(q)) {
+        s = pop(q)
+        split(s, parts, SUBSEP)
+        s_pos = parts[1] SUBSEP parts[2]
+        if (s_pos == end)
+            return parts[3]
+        if (seen[s_pos])
+            continue
+        seen[s_pos] = 1
+        push_neighbors(q, s)
+    }
+}
+
 BEGIN {
     for (i = 0; i < 26; ++i)
         elev[sprintf("%c", i + 97)] = i + 1
@@ -86,9 +106,12 @@ BEGIN {
             start = (i - 1) SUBSEP (NR - 1)
         if ($i == "E")
             end = (i - 1) SUBSEP (NR - 1)
+        if ($i == "a")
+            starts[(i - 1), (NR - 1)] = 1
     }
 }
 
 END {
     print min_cost()
+    print min_cost_multi()
 }
