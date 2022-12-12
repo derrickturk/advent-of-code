@@ -1,7 +1,8 @@
 import Control.Monad (guard)
 import qualified Data.Map.Strict as M
+import Data.Maybe (catMaybes, maybeToList)
 
-import Dijkstra (costToWin, countingSteps)
+import Beefs (seekSteps)
 
 type World = M.Map (Int, Int) Char
 
@@ -17,15 +18,12 @@ neighbors (i, j) = [(i - 1, j), (i + 1, j), (i, j - 1), (i, j + 1)]
 
 validMoves :: World -> (Int, Int) -> [(Int, Int)]
 validMoves w (i, j) = do
-  let this = case w M.! (i, j) of
-        'S' -> 'a'
-        c -> c
+  let this = w M.! (i, j)
+      this' = if this == 'S' then 'a' else this
   (i', j') <- neighbors (i, j)
-  that <- case M.lookup (i', j') w of
-    Just 'E' -> pure 'z'
-    Just c -> pure c
-    Nothing -> []
-  guard $ (fromEnum that - fromEnum this) <= 1
+  that <- maybeToList $ M.lookup (i', j') w
+  let that' = if that == 'E' then 'z' else that
+  guard $ (fromEnum that' - fromEnum this') <= 1
   pure (i', j')
 
 main :: IO ()
@@ -35,6 +33,6 @@ main = do
       ss = fmap fst $ filter ((\c -> c == 'S' || c == 'a') . snd) $
         M.toList world
       win p = world M.! p == 'E'
-  print $ costToWin s (countingSteps $ validMoves world) win
-  print $ minimum $
-    fmap (\s' -> costToWin s' (countingSteps $ validMoves world) win) ss
+  print $ seekSteps s (validMoves world) win
+  print $ minimum $ catMaybes $
+    fmap (\s' -> seekSteps s' (validMoves world) win) ss
