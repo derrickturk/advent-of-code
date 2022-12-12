@@ -1,8 +1,8 @@
 import Control.Monad (guard)
 import qualified Data.Map.Strict as M
-import Data.Maybe (catMaybes, maybeToList)
+import Data.Maybe (maybeToList)
 
-import Beefs (seekSteps)
+import Beefs (seekSteps, seekStepsN)
 
 type World = M.Map (Int, Int) Char
 
@@ -34,5 +34,4 @@ main = do
         M.toList world
       win p = world M.! p == 'E'
   print $ seekSteps s (validMoves world) win
-  print $ minimum $ catMaybes $
-    fmap (\s' -> seekSteps s' (validMoves world) win) ss
+  print $ seekStepsN ss (validMoves world) win
