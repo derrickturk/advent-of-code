@@ -18,8 +18,7 @@ instance Ord Packet where
 
 packetP :: Parser Packet
 packetP =  One <$> unsignedIntNum
-       <|> Many [] <$ "[]"
-       <|> Many <$> ("[" *> sepBy "," packetP <* "]")
+       <|> Many <$> ("[" *> sepBy' "," packetP <* "]")
 
 packetPairs :: Parser [(Packet, Packet)]
 packetPairs = some $ (,) <$> lexeme packetP <*> lexeme packetP

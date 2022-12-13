@@ -23,6 +23,7 @@ module FemtoParsec (
   , unsignedIntNum
   , intNum
   , sepBy
+  , sepBy'
   , parseStdin
   , many
   , some
@@ -163,6 +164,11 @@ intNum = fromIntegral <$> integer
 {-# INLINE sepBy #-}
 sepBy :: Parser a -> Parser b -> Parser [b]
 sepBy sep p = (:) <$> p <*> many (sep >> p)
+
+-- might be empty
+{-# INLINE sepBy' #-}
+sepBy' :: Parser a -> Parser b -> Parser [b]
+sepBy' sep p = sepBy sep p <|> pure []
 
 {-# INLINE sign #-}
 sign :: Parser (Integer -> Integer)
