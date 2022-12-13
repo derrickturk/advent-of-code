@@ -1,9 +1,6 @@
 import sys
-from enum import Enum, auto
 from functools import cmp_to_key
 from typing import Iterator, Tuple, TypeAlias
-
-BUF_SZ = 1024
 
 Packet: TypeAlias = int | list['Packet']
 
@@ -79,4 +76,3 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
-
