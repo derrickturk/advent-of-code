@@ -27,6 +27,35 @@ function drop_sand(sand_x, sand_y) {
     return 1
 }
 
+# local sand_x, sand_y
+function drop_sand2(sand_x, sand_y) {
+    sand_x = 500
+    sand_y = 0
+
+    while (1) {
+        if (sand_y + 1 == bottom + 2)
+            break
+        if (rock[sand_x, sand_y + 1] != 1 && sand2[sand_x, sand_y + 1] != 1) {
+            ++sand_y
+        } else if (rock[sand_x - 1, sand_y + 1] != 1 && sand2[sand_x - 1, sand_y + 1] != 1) {
+            --sand_x
+            ++sand_y
+        } else if (rock[sand_x + 1, sand_y + 1] != 1 && sand2[sand_x + 1, sand_y + 1] != 1) {
+            ++sand_x
+            ++sand_y
+        } else {
+            break
+        }
+    }
+
+    sand2[sand_x, sand_y] = 1
+
+    if (sand_x == 500 && sand_y == 0)
+        return 0
+
+    return 1
+}
+
 {
     for (i = 3; i < NF; i += 2) {
         if ($i == $(i - 2)) {
@@ -50,4 +79,10 @@ END {
         if (sand[cell] == 1)
             ++count
     print count
+
+    while (drop_sand2() == 1);
+    for (cell in sand2)
+        if (sand2[cell] == 1)
+            ++count2
+    print count2
 }
