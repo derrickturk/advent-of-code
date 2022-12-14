@@ -114,12 +114,14 @@ function drop_sand2(sand_x, sand_y) {
 
 END {
     bounds()
+    printf "\033[?47h"
     render(min_x, max_x, min_y, max_y, 1)
     while (drop_sand() == 1)
         render(min_x, max_x, min_y, max_y, 0)
     for (cell in sand)
         if (sand[cell] == 1)
             ++count
+    printf "\033[?47l"
     print count
 
     while (drop_sand2() == 1);
