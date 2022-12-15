@@ -6,6 +6,10 @@ function manhattan(x0, y0, x1, y1) {
     return abs(x0 - x1) + abs(y0 - y1)
 }
 
+function cmp_x_s(i1, v1, i2, v2) {
+    return v1["x_s"] - v2["x_s"]
+}
+
 BEGIN {
     FS = "[ =,:]+"
     part1_row = 2000000
@@ -24,6 +28,8 @@ BEGIN {
 }
 
 END {
+    asort(known, known, "cmp_x_s")
+
     for (i = 1; i <= NR; ++i) {
         x_s = known[i]["x_s"]
         y_s = known[i]["y_s"]
@@ -45,8 +51,8 @@ END {
 
     print count
 
-    # slow approach to part2
-    for (j = 0; j < part2_max_y; ++j) {
+    # slow approach to part2... or is?
+    for (j = 0; j <= part2_max_y; ++j) {
         i = 0
         while (1) {
             good = 1
