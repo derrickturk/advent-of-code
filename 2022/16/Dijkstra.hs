@@ -7,8 +7,6 @@ module Dijkstra (
 import Data.List (foldl')
 import qualified Data.Set as S
 
-import Debug.Trace
-
 import PQ
 
 -- TODO: fancyman fibonacci heap for fast decreaseKey operation
@@ -33,14 +31,14 @@ update' (cost, item, path) q =
     Nothing -> insert (cost, item, path) q
 
 -- need Ord for 'tiebreaker' ordering
-costToWin :: (Ord a, Num b, Bounded b, Ord b, Show a, Show b)
+costToWin :: (Ord a, Num b, Bounded b, Ord b)
           => a
           -> (a -> [(b, a)])
           -> (a -> Bool)
           -> b
 costToWin initial validMoves won = fst $
   costToWin' (fromList [(0, initial)]) S.empty where
-    costToWin' q seen = trace ("q: " <> show q) $ case takeMin q of
+    costToWin' q seen = case takeMin q of
       Nothing -> (maxBound, seen)
       Just ((cost, s), _) | won s -> (cost, seen)
       Just ((_, s), rest) | S.member s seen -> costToWin' rest seen

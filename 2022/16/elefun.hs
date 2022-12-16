@@ -1,13 +1,12 @@
-{-# LANGUAGE OverloadedRecordDot, OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms, OverloadedRecordDot, OverloadedStrings #-}
 
 import Data.Char (isAlpha)
 import qualified Data.Text as T
 import qualified Data.Map.Strict as M
-
-{-
-import Q
 import qualified Data.Set as S
--}
+
+import Q (pattern Empty, pattern (:<|))
+import qualified Q
 
 import Dijkstra
 import FemtoParsec
@@ -40,49 +39,42 @@ data State
   = State { open :: M.Map T.Text Int
           , position :: T.Text
           , minute :: Int
-          , totalFlow :: Int
           } deriving (Show, Eq, Ord)
 
 initial :: State
-initial = State M.empty "AA" 0 0
+initial = State M.empty "AA" 0
 
-validMoves :: World -> State -> [State]
-validMoves w s = open <> move where
-  totalFlow' = s.totalFlow + sum (M.elems s.open) 
+validMoves :: World -> State -> [(Int, State)]
+validMoves w s = (flow, ) <$> open <> move where
+  flow = sum (M.elems s.open)
   minute' = s.minute + 1
   move = do
     stepTo <- snd $ w M.! s.position
-    pure $ s { position = stepTo, totalFlow = totalFlow', minute = minute' }
-  open = if M.member s.position s.open
+    pure $ s { position = stepTo, minute = minute' }
+  open = if M.member s.position s.open || fst (w M.! s.position) == 0
     then []
     else [ s { open = M.insert s.position (fst $ w M.! s.position) s.open
-             , totalFlow = totalFlow'
              , minute = minute'
              }
          ]
 
-costlyMoves :: World -> State -> [(Int, State)]
-costlyMoves w s = fmap f $ validMoves w s where
-  f s' = (s.totalFlow - s'.totalFlow, s')
+costlyMoves :: World -> Int -> State -> [(Int, State)]
+costlyMoves w maxTotal s = (\(c, s') -> (maxTotal - c, s')) <$> validMoves w s
 
-succs :: World -> State -> [(Int, State)]
-succs w s = ss <> concatMap (succs w . snd) ss
-  where ss = costlyMoves w s
-
-{-
-bruteForce :: World -> State -> [State]
-bruteForce w s = go (singleton s) S.empty where
-  go Empty _ = []
-  go (s' :<| q') seen
-    | S.member s' seen = go q' seen
-    | s'.minute == 20 = s':go q' seen
-    | otherwise = go (append q' $ validMoves w s') (S.insert s' seen)
--}
+-- doesn't seem to help trim things at all
+totalAddressable :: World -> T.Text -> Int
+totalAddressable w n = go (Q.singleton n) S.empty 0 where
+  go Empty _ f = f
+  go (n' :<| q') seen f
+    | S.member n' seen = go q' seen f
+    | otherwise =
+        let (f', ns) = w M.! n'
+         in go (Q.append q' ns) (S.insert n' seen) (f + f')
 
 main :: IO ()
 main = do
   Just world <- parseStdin worldP -- fallacy
   -- print world
-  -- print $ take 250 $ succs world initial
-  print $ costToWin initial (costlyMoves world) (\s -> s.minute == 10)
-  -- print $ maximum $ totalFlow <$> bruteForce world initial
+  let maxTotal = sum $ fst <$> M.elems world
+  print $ (maxTotal * 30) - costToWin initial (costlyMoves world maxTotal) (\s -> s.minute == 30)
+  -- print $ totalAddressable world <$> M.keys world
