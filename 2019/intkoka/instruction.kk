@@ -1,4 +1,4 @@
-pub type dst
+pub value type dst
   Mem(ptr: int)
   Rel(offset: int)
 
@@ -7,7 +7,7 @@ pub fun show(dst: dst): string
     Mem(ptr) -> "Mem(" ++ ptr.show ++ ")"
     Rel(offset) -> "Rel(" ++ offset.show ++ ")"
 
-pub type src
+pub value type src
   Dst(dst: dst)
   Imm(num: int)
 
