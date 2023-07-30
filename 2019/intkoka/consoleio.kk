@@ -24,11 +24,9 @@ fun with-consoleio(action: () -> <intcode-io, console, exn | e> a
 
 pub fun main(): _ ()
   match get-args()
-    /*
     [file] ->
       val cpu = load(file.path)
       with-consoleio { cpu.run(); () }
       ()
-    */
     _ ->
       println("Usage: consoleio program.ic")
