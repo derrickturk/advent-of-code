@@ -28,17 +28,17 @@ pub fun exec(cpu: machine<h>, instr: instruction)
     Mul(src1, src2, dst) ->
       cpu.write(dst, cpu.read(src1) * cpu.read(src2))
       cpu(ip = cpu.ip + 4)
-    Inp(dst, _, _) ->
+    Inp(dst) ->
       cpu.write(dst, input())
       cpu(ip = cpu.ip + 2)
-    Out(src, _, _) ->
+    Out(src) ->
       output(cpu.read(src))
       cpu(ip = cpu.ip + 2)
-    Jnz(cmp, tgt, _) ->
+    Jnz(cmp, tgt) ->
       if cpu.read(cmp) != 0
         then cpu(ip = cpu.read(tgt))
         else cpu(ip = cpu.ip + 3)
-    Jz(cmp, tgt, _) ->
+    Jz(cmp, tgt) ->
       if cpu.read(cmp) == 0
         then cpu(ip = cpu.read(tgt))
         else cpu(ip = cpu.ip + 3)
@@ -48,7 +48,7 @@ pub fun exec(cpu: machine<h>, instr: instruction)
     Eql(src1, src2, dst) ->
       cpu.write(dst, if cpu.read(src1) == cpu.read(src2) then 1 else 0)
       cpu(ip = cpu.ip + 4)
-    Arb(src, _, _) ->
+    Arb(src) ->
       cpu(ip = cpu.ip + 2, rb = cpu.rb + cpu.read(src))
     Hlt -> cpu
 
@@ -78,18 +78,18 @@ pub fun decode(cpu: machine<h>): <read<h>, write<h>, exn> instruction
       Mul(src1, src2, dst)
     3 ->
       val dst = decode-dst(cpu.mem[cpu.ip + 1], mode1, cpu.ip)
-      Inp(dst, (), ())
+      Inp(dst)
     4 ->
       val src = decode-src(cpu.mem[cpu.ip + 1], mode1, cpu.ip)
-      Out(src, (), ())
+      Out(src)
     5 ->
       val src1 = decode-src(cpu.mem[cpu.ip + 1], mode1, cpu.ip)
       val src2 = decode-src(cpu.mem[cpu.ip + 2], mode2, cpu.ip)
-      Jnz(src1, src2, ())
+      Jnz(src1, src2)
     6 ->
       val src1 = decode-src(cpu.mem[cpu.ip + 1], mode1, cpu.ip)
       val src2 = decode-src(cpu.mem[cpu.ip + 2], mode2, cpu.ip)
-      Jz(src1, src2, ())
+      Jz(src1, src2)
     7 ->
       val src1 = decode-src(cpu.mem[cpu.ip + 1], mode1, cpu.ip)
       val src2 = decode-src(cpu.mem[cpu.ip + 2], mode2, cpu.ip)
@@ -102,7 +102,7 @@ pub fun decode(cpu: machine<h>): <read<h>, write<h>, exn> instruction
       Eql(src1, src2, dst)
     9 ->
       val src = decode-src(cpu.mem[cpu.ip + 1], mode1, cpu.ip)
-      Arb(src, (), ())
+      Arb(src)
     99 -> Hlt
     _ -> throw("Unknown opcode", InvalidOpcode(op))
 
