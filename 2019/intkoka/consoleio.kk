@@ -8,12 +8,12 @@ import machine
 
 fun with-consoleio(action)
   with handler
-    ctl input()
+    fun input()
       match readline().parse-int
-        Just(n) -> resume(n)
+        Just(n) -> n
         Nothing -> throw("Invalid input", IOError)
-    ctl output(word)
-      resume(println(word))
+    fun output(word)
+      println(word)
   action()
 
 pub fun main(): _ ()
