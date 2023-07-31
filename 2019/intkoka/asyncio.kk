@@ -7,22 +7,27 @@ import loader
 import machine
 import queue
 
-alias iotask<a, e> = a -> <intcode-io | e> ()
+// alias iotask<a, e> = a -> <intcode-io | e> ()
 alias mailbox<h> = ref<h, maybe<int>>
 
-fun run-on(task-queue: ref<_, queue<iotask<(), _>>>, inbox: mailbox<_>, outbox: mailbox<_>, task: iotask<(), _>)
-  fun next()
+fun run-on(
+    task-queue: ref<_, queue<() -> <intcode-io | _> ()>>,
+    inbox: mailbox<_>,
+    outbox: mailbox<_>,
+    task: () -> <intcode-io | _> ())
+
+  fun next(): _ ()
     match (!task-queue).pop
       Just((t, q)) ->
         task-queue := q
-        t(())
+        t()
       Nothing ->
         ()
 
-  fun defer(t: iotask<(), _>)
+  fun defer(t: () -> <intcode-io | _> ()): _ ()
     task-queue := (!task-queue).push(t)
 
-  fun try-read(k: iotask<int, _>)
+  fun try-read(k: int -> <intcode-io | _> ()): <intcode-io | _> ()
     match !inbox
       Just(n) ->
         inbox := Nothing
@@ -31,15 +36,16 @@ fun run-on(task-queue: ref<_, queue<iotask<(), _>>>, inbox: mailbox<_>, outbox: 
         defer({ try-read(k) })
         next()
 
-  fun try-write(word, k: iotask<(), _>)
+  fun try-write(word, k: () -> <intcode-io | _> ()): <intcode-io | _> ()
     match !outbox
       Just(_) ->
         defer({ try-write(word, k) })
         next()
       Nothing ->
         outbox := Just(word)
-        k(())
+        k()
 
+  /*
   with handler
     return(_)
       next()
@@ -47,6 +53,7 @@ fun run-on(task-queue: ref<_, queue<iotask<(), _>>>, inbox: mailbox<_>, outbox: 
       try-read(resume)
     ctl output(word)
       try-write(word, resume)
+  */
 
   next()
 
@@ -82,7 +89,7 @@ fun with-mailboxes(inbox: mailbox<h>, outbox: mailbox<h>,
 pub fun main(): _ ()
   match get-args()
     [file] ->
-      val task-queue = queue()
+      val task-queue = ref(queue())
       val cpu = load(file.path)
       val inbox = ref(Nothing)
       val outbox = ref(Nothing)
