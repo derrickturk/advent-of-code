@@ -11,12 +11,12 @@ import queue
 alias mailbox<h> = ref<h, maybe<int>>
 
 fun run-on(
-    task-queue: ref<_, queue<() -> <intcode-io | _> ()>>,
-    inbox: mailbox<_>,
-    outbox: mailbox<_>,
-    task: () -> <intcode-io | _> ())
+    task-queue: ref<h, queue<() -> <intcode-io, st<h>, div | e> ()>>,
+    inbox: mailbox<h>,
+    outbox: mailbox<h>,
+    task: () -> <intcode-io, st<h>, div | e> ()): <st<h>, div | e> ()
 
-  fun next(): _ ()
+  fun next(): <intcode-io | _> ()
     match (!task-queue).pop
       Just((t, q)) ->
         task-queue := q
@@ -36,7 +36,7 @@ fun run-on(
         defer({ try-read(k) })
         next()
 
-  fun try-write(word, k: () -> <intcode-io | _> ()): <intcode-io | _> ()
+  fun try-write(word: int, k: () -> <intcode-io | _> ()): <intcode-io | _> ()
     match !outbox
       Just(_) ->
         defer({ try-write(word, k) })
@@ -45,46 +45,15 @@ fun run-on(
         outbox := Just(word)
         k()
 
-  /*
   with handler
     return(_)
       next()
     ctl input()
       try-read(resume)
     ctl output(word)
-      try-write(word, resume)
-  */
+      try-write(word, { resume(()) })
 
-  next()
-
-/*
-fun with-mailboxes(inbox: mailbox<h>, outbox: mailbox<h>,
-    action: task<h, e>): <st<h>, div | e> ()
-  match !action
-    Just(a) ->
-      with handler
-        return(_)
-          action := Nothing;
-          ()
-        ctl input()
-          match !inbox
-            Just(n) ->
-              inbox := Nothing
-              resume(n)
-            Nothing ->
-              // TODO
-              action := Nothing
-              ()
-        ctl output(word)
-          match !outbox
-            Just(_) ->
-              ()
-            Nothing ->
-              outbox := Just(word)
-              resume(())
-      a()
-    Nothing -> ()
-*/
+  task()
 
 pub fun main(): _ ()
   match get-args()
