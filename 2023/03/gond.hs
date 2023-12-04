@@ -10,13 +10,6 @@ data Cell n
 -- Number = single digit
 type World = M.Map (Int, Int) (Cell Int)
 
-{-
-data SpanCell
-  = Number (Int, Int)
-  | Symbol Char
-  deriving (Show, Eq, Ord)
--}
-
 -- Number = span with length
 type SpanWorld = M.Map (Int, Int) (Cell (Int, Int))
 
@@ -67,19 +60,28 @@ adjacentSymbol w (i, j) len =
       Nothing -> False
       Just c -> isSymbol c
 
-partNumbers :: SpanWorld -> [Int]
+partNumbers :: SpanWorld -> [((Int, Int), (Int, Int))]
 partNumbers w = go $ M.toList w where
   go [] = []
   go ((_, Symbol _):rest) = go rest
   go ((pos, Number (n, len)):rest)
-    | adjacentSymbol w pos len = n:go rest
+    | adjacentSymbol w pos len = (pos, (n, len)):go rest
     | otherwise = go rest
+
+gearRatios :: SpanWorld -> [Int]
+gearRatios w = go $ M.toList w where
+  go [] = []
+  go ((pos, Symbol '*'):rest) = case adjacentNumbers pos of
+    [x, y] -> (x * y):go rest
+    _ -> go rest
+  go (_:rest) = go rest
+  adjacentNumbers pos = fst . snd <$> filter (adjacent pos) (partNumbers w)
+  adjacent (i, j) ((x, y), (_, len)) =
+    abs (i - x) <= 1 && j >= y - 1 && j <= y + len
 
 main :: IO ()
 main = do
   world <- parse . lines <$> getContents
-  {-
   let world' = consolidate world
-  print world'
-  -}
-  print $ sum $ partNumbers $ consolidate world
+  print $ sum $ fst . snd <$> partNumbers world'
+  print $ sum $ gearRatios world'
