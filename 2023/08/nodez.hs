@@ -43,7 +43,23 @@ navigate m init path = navigate' m init (cycle path) where
     | Just (_, r) <- M.lookup init m = r:navigate' m r rest
     | otherwise = []
 
+navigateMany :: Maze -> [T.Text] -> [Dir] -> [[T.Text]]
+navigateMany m inits path = navigate' m inits (cycle path) where
+  navigate' _ inits _
+    | all (T.isSuffixOf "Z") inits = []
+  navigate' _ _ [] = []
+  navigate' m inits (L:rest)
+    | Just ls <- fmap fst <$> traverse (m M.!?) inits = ls:navigate' m ls rest
+    | otherwise = []
+  navigate' m inits (R:rest)
+    | Just rs <- fmap snd <$> traverse (m M.!?) inits = rs:navigate' m rs rest
+    | otherwise = []
+
+starts :: Maze -> [T.Text]
+starts = filter (T.isSuffixOf "A") . M.keys
+
 main :: IO ()
 main = do
   Just (path, m) <- parseStdin spec
   print $ length $ navigate m "AAA" path
+  print $ length $ navigateMany m (starts m) path
