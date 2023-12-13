@@ -16,6 +16,7 @@ module FemtoParsec (
   , space1
   , digits
   , letters
+  , alnum
   , lexeme
   , lexeme'
   , unsignedInteger
@@ -32,7 +33,7 @@ module FemtoParsec (
 ) where
 
 import Data.String (IsString(..))
-import Data.Char (isSpace, isDigit, isAlpha)
+import Data.Char (isSpace, isDigit, isAlpha, isAlphaNum)
 import Control.Monad (MonadPlus(..), guard)
 import Control.Applicative (Alternative(..))
 -- import Text.Read (readMaybe)
@@ -135,6 +136,10 @@ digits = chars1 isDigit
 {-# INLINE letters #-}
 letters :: Parser T.Text
 letters = chars1 isAlpha
+
+{-# INLINE alnum #-}
+alnum :: Parser T.Text
+alnum = chars1 isAlphaNum
 
 {-# INLINE lexeme #-}
 lexeme :: Parser a -> Parser a
