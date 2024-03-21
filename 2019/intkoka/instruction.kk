@@ -2,7 +2,7 @@ pub value type dst
   Mem(ptr: int)
   Rel(offset: int)
 
-pub fun show(dst: dst): string
+pub fun dst/show(dst: dst): string
   match dst
     Mem(ptr) -> "Mem(" ++ ptr.show ++ ")"
     Rel(offset) -> "Rel(" ++ offset.show ++ ")"
@@ -11,7 +11,7 @@ pub value type src
   Dst(dst: dst)
   Imm(num: int)
 
-pub fun show(src: src): string
+pub fun src/show(src: src): string
   match src
     Dst(dst) -> "Dst(" ++ dst.show ++ ")"
     Imm(num) -> "Imm(" ++ num.show ++ ")"
@@ -28,7 +28,7 @@ pub type instruction
   Arb(offset: src)
   Hlt
 
-pub fun show(instr: instruction): string
+pub fun instr/show(instr: instruction): string
   match instr
     Add(src1, src2, src3) ->
       "Add(" ++ src1.show ++ ", " ++ src2.show ++ ", " ++ src3.show ++ ")"
