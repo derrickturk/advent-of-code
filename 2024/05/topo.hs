@@ -29,6 +29,13 @@ parseBooks ("":rest) = traverse parseBook rest where
   parseBook line = traverse readMaybe $ split ',' line
 parseBooks _ = Nothing
 
+parseSpec :: String -> Maybe (M.Map Int [Int], [[Int]])
+parseSpec spec = do
+  let specLines = lines spec
+  (edges, rest) <- parseEdges specLines
+  books <- parseBooks rest
+  pure (toAdjacencyMap edges, books)
+
 toAdjacencyMap :: [(Int, Int)] -> AdjacencyMap
 toAdjacencyMap = foldl' f M.empty where
   f m (x, y) = M.insertWith (<>) x [y] m
@@ -39,13 +46,6 @@ fromAdjacencyMap
 fromAdjacencyMap m =
   let noded = (\(k, v) -> ((), k, v)) <$> M.toList m
    in G.graphFromEdges noded
-
-parseSpec :: String -> Maybe (M.Map Int [Int], [[Int]])
-parseSpec spec = do
-  let specLines = lines spec
-  (edges, rest) <- parseEdges specLines
-  books <- parseBooks rest
-  pure (toAdjacencyMap edges, books)
 
 sortBook :: AdjacencyMap -> Book -> Book
 sortBook m b =
