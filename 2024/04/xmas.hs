@@ -10,6 +10,7 @@ data Xmas
 
 type Direction = (Int -> Int, Int -> Int)
 type WordSearch = M.Map (Int, Int) Xmas
+type AIndex = S.Set (Int, Int)
 type XIndex = S.Set (Int, Int)
 
 directions :: [Direction]
@@ -22,6 +23,15 @@ directions =
   , ((+ 1), (subtract 1)) -- UL
   , ((subtract 1), (+ 1)) -- DR
   , ((subtract 1), (subtract 1)) -- DL
+  ]
+
+xCoords :: (Int, Int) -> [(Int, Int)]
+xCoords (i, j) =
+  [ (i, j)
+  , (i - 1, j - 1)
+  , (i + 1, j + 1)
+  , (i - 1, j + 1)
+  , (i + 1, j - 1)
   ]
 
 xmasChar :: Char -> Maybe Xmas
@@ -38,12 +48,13 @@ indexChars s = [
     , (j, c) <- zip [0..] line
   ]
 
-parse :: String -> (WordSearch, XIndex)
-parse = foldl' f (M.empty, S.empty) . indexChars where
-  f (m, s) (i, j, c) = case xmasChar c of
-    Nothing -> (m, s)
-    Just X -> (M.insert (i, j) X m, S.insert (i, j) s)
-    Just a -> (M.insert (i, j) a m, s)
+parse :: String -> (WordSearch, XIndex, AIndex)
+parse = foldl' f (M.empty, S.empty, S.empty) . indexChars where
+  f (m, xs, as) (i, j, c) = case xmasChar c of
+    Nothing -> (m, xs, as)
+    Just X -> (M.insert (i, j) X m, S.insert (i, j) xs, as)
+    Just A -> (M.insert (i, j) A m, xs, S.insert (i, j) as)
+    Just z -> (M.insert (i, j) z m, xs, as)
 
 isXmas :: WordSearch -> (Int, Int) -> Direction -> Bool
 isXmas w ix (fi, fj) =
@@ -53,11 +64,23 @@ isXmas w ix (fi, fj) =
         [Just X, Just M, Just A, Just S] -> True
         _ -> False
 
+isXmas' :: WordSearch -> (Int, Int) -> Bool
+isXmas' w ix = case (w M.!?) <$> xCoords ix of
+  [Just A, Just M, Just S, Just M, Just S] -> True
+  [Just A, Just S, Just M, Just M, Just S] -> True
+  [Just A, Just M, Just S, Just S, Just M] -> True
+  [Just A, Just S, Just M, Just S, Just M] -> True
+  _ -> False
+
 countXmas :: WordSearch -> XIndex -> Int
 countXmas w xi = length $
   [ () | ix <- S.toList xi, d <- directions, isXmas w ix d ]
 
+countXmas' :: WordSearch -> AIndex -> Int
+countXmas' w ai = length $ filter (isXmas' w) $ S.toList ai
+
 main :: IO ()
 main = do
-  (w, xi) <- parse <$> getContents
+  (w, xi, ai) <- parse <$> getContents
   print $ countXmas w xi
+  print $ countXmas' w ai
