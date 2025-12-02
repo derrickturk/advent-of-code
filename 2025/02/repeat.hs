@@ -1,7 +1,6 @@
--- import Data.Maybe (isJust)
+import Data.Maybe (isJust)
 import Text.Read (readMaybe)
 
-{- this actually solves a much more difficult problem!
 repeated :: String -> Maybe String
 repeated [] = Nothing
 repeated [_] = Nothing
@@ -17,7 +16,9 @@ repeated s =
               then Just prefix
               else go rest
    in go trySeqLens
--}
+
+repeatedInRange :: Int -> Int -> [Int]
+repeatedInRange m n = filter (isJust . repeated . show) [m..n]
 
 repeated2 :: String -> Bool
 repeated2 s = case length s `divMod` 2 of
@@ -25,8 +26,8 @@ repeated2 s = case length s `divMod` 2 of
   (half, 0) -> let (pre, suf) = splitAt half s in pre == suf
   (_, _) -> False
 
-repeatedInRange :: Int -> Int -> [Int]
-repeatedInRange m n = filter (repeated2 . show) [m..n]
+repeated2InRange :: Int -> Int -> [Int]
+repeated2InRange m n = filter (repeated2 . show) [m..n]
 
 split :: Eq a => a -> [a] -> [[a]]
 split _ [] = []
@@ -42,4 +43,5 @@ parseRanges = traverse (parseRange . split '-') . split ',' where
 main :: IO ()
 main = do
   Just ranges <- parseRanges <$> getContents
+  print $ sum $ concatMap (uncurry repeated2InRange) ranges
   print $ sum $ concatMap (uncurry repeatedInRange) ranges
