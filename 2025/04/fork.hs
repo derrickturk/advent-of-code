@@ -25,7 +25,20 @@ adjacent (x, y) =
 neighbors :: S.Set (Int, Int) -> (Int, Int) -> Int
 neighbors s p = length $ filter (`S.member` s) $ adjacent p
 
+removable :: S.Set (Int, Int) -> [(Int, Int)]
+removable grid = filter ((< 4) . neighbors grid) $ S.elems grid
+
+totalRemovable :: S.Set (Int, Int) -> Int
+totalRemovable s =
+  let r = removable s
+      n = length r
+      s' = s S.\\ S.fromList r
+   in if n == 0
+        then 0
+        else n + totalRemovable s'
+
 main :: IO ()
 main = do
   grid <- sparseGrid '@' . lines <$> getContents
-  print $ length $ filter (< 4) $ neighbors grid <$> S.elems grid
+  print $ length $ removable grid
+  print $ totalRemovable grid
