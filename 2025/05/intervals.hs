@@ -1,5 +1,5 @@
 import Data.List (sortOn)
-import Prelude hiding (Left, Right, min, max)
+import Prelude hiding (Left, Right)
 import Text.Read (readMaybe)
 
 -- https://en.wikipedia.org/wiki/Interval_tree
@@ -19,9 +19,9 @@ data IntervalCompare
 
 -- interval is [Left, Right, Center] of point
 intervalCompare :: Interval -> Int -> IntervalCompare
-intervalCompare (min, max) x
-  | x < min = Right
-  | x > max = Left
+intervalCompare (a, b) x
+  | x < a = Right
+  | x > b = Left
   | otherwise = Contains
 
 partition :: Int -> [Interval] -> ([Interval], [Interval], [Interval])
@@ -35,8 +35,8 @@ partition = go [] [] [] where
 fromList :: [Interval] -> IntervalTree
 fromList [] = Empty
 fromList is =
-  let (min, max) = (minimum $ fst <$> is, maximum $ snd <$> is)
-      center = min + (max - min) `div` 2
+  let (a, b) = (minimum $ fst <$> is, maximum $ snd <$> is)
+      center = a + (b - a) `div` 2
       (lefts, rights, overlap) = partition center is
    in Node center
            (fromList lefts)
@@ -50,6 +50,22 @@ contains (Node c l r byMin byMax) x
   | x < c = contains l x || any ((<= x) . fst) byMin
   | x > c =  contains r x || any ((>= x) . snd) byMax
   | otherwise = not $ null byMin
+
+toListByMin :: IntervalTree -> [Interval]
+toListByMin Empty = []
+toListByMin (Node _ ls rs byMin _) = toListByMin ls <> byMin <> toListByMin rs
+
+consolidateSortedByMin :: [Interval] -> [Interval]
+consolidateSortedByMin [] = []
+consolidateSortedByMin ((a0, b0):is) = go a0 b0 is where
+  go a b [] = [(a, b)]
+  go a b ((a', b'):rest)
+    | b' <= b = go a b rest
+    | a' <= b = go a (max b b') rest 
+    | otherwise = (a, b):go a' b' rest
+
+size :: Interval -> Int
+size (a, b) = b - a + 1
 
 data ProblemSpec
   = ProblemSpec [Interval] [Int]
@@ -69,3 +85,4 @@ main = do
   Just (ProblemSpec is pts) <- parse . lines <$> getContents
   let tree = fromList is
   print $ length $ filter (contains tree) pts
+  print $ sum $ size <$> consolidateSortedByMin (toListByMin tree)
