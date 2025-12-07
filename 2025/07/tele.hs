@@ -1,5 +1,6 @@
 import Control.Monad (foldM)
 import qualified Data.Set as S
+import qualified Data.Map.Strict as M
 
 data Manifold = Manifold Int (Int, Int) (S.Set (Int, Int)) deriving Show
 
@@ -63,7 +64,24 @@ runCountingSplits m =
     f (n, beams) = let ms = moves m beams
                     in (n + countSplits ms, newPositions ms)
 
+runCountingTimelines :: Manifold -> Int
+runCountingTimelines m@(Manifold _ o _) = go 0 (M.fromList [(o, 1)]) where
+  go n beams
+    | M.null beams = n
+    | otherwise =
+        go'
+          n
+          M.empty
+          (zip (M.toList beams) (moves m $ S.fromList $ M.keys beams))
+  go' n beams [] = go n beams
+  go' n beams (((_, tls), Fizzle):rest) = go' (n + tls) beams rest
+  go' n beams (((_, tls), Continue ix):rest) =
+    go' n (M.insertWith (+) ix tls beams) rest
+  go' n beams (((_, tls), Split ix1 ix2):rest) =
+    go' n (M.insertWith (+) ix1 tls $ M.insertWith (+) ix2 tls beams) rest
+
 main :: IO ()
 main = do
   Just mani <- parse . lines <$> getContents
   print $ runCountingSplits mani
+  print $ runCountingTimelines mani
