@@ -38,6 +38,9 @@ merge p1 p2 = go S.empty where
 mergeAll :: [Circuit] -> [(Point3D, Point3D)] -> [Circuit]
 mergeAll = foldl' (flip $ uncurry merge)
 
+mergeResults :: [Circuit] -> [(Point3D, Point3D)] -> [[Circuit]]
+mergeResults = scanl (flip $ uncurry merge)
+
 main :: IO ()
 main = do
   Just points <- traverse parsePoint3D . lines <$> getContents
@@ -45,6 +48,12 @@ main = do
   let hmm = zip (uncurry distance <$> pairs points) $ pairs points
   print $ take 5 $ sortBy (comparing fst) hmm
   -}
-  let merged = mergeAll (initCircuits points) $
-        take 1000 $ sortBy (comparing $ uncurry distance) $ pairs points
-  print $ product $ take 3 $ sortBy (comparing negate) $ S.size <$> merged
+  let nearest = sortBy (comparing $ uncurry distance) $ pairs points
+  let merged1000 = mergeAll (initCircuits points) $
+        take 1000 nearest
+  print $ product $ take 3 $ sortBy (comparing negate) $ S.size <$> merged1000
+
+  let mergedAll = zip nearest $ tail $ mergeResults (initCircuits points) nearest
+      (Point3D x1 _ _, Point3D x2 _ _) = fst $ head $
+        dropWhile ((> 1) . length . snd) mergedAll
+  print $ x1 * x2
