@@ -24,6 +24,22 @@ movesMachine m lights = (1,) . toggle lights <$> buttons m where
 solveMachine :: Machine -> Int
 solveMachine m = costToWin (initMachine m) (movesMachine m) (== spec m)
 
+initVoltage :: Machine -> [Int]
+initVoltage = (0 <$) . reqs
+
+movesVoltage :: Machine -> [Int] -> [(Int, [Int])]
+movesVoltage m volts = (1,) . incr volts <$> buttons m where
+  incr = go 0
+  go i (v:restV) flips@(j:restF)
+    | i == j = (v + 1):go (i + 1) restV restF
+    | otherwise = v:go (i + 1) restV flips
+  go _ bs [] = bs
+  go _ [] _ = []
+
+-- this won't do, it's linear combination business
+solveVoltage :: Machine -> Int
+solveVoltage m = costToWin (initVoltage m) (movesVoltage m) (== reqs m)
+
 machineP :: Parser Machine
 machineP = Machine <$> specP <*> buttonsP <*> reqsP where
   specP = do
@@ -43,3 +59,4 @@ main :: IO ()
 main = do
   Just machines <- parseStdin (some machineP)
   print $ sum $ solveMachine <$> machines
+  print $ sum $ solveVoltage <$> machines
