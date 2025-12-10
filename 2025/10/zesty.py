@@ -12,7 +12,7 @@ class Machine(NamedTuple):
     buttons: list[list[int]]
     voltage: list[int]
 
-    def constraints(self):
+    def constraints_minimize(self):
         bs = [Int(f'b{i}') for i in range(len(self.buttons))]
         nonegative = [b >= 0 for b in bs]
         addy = []
@@ -25,7 +25,9 @@ class Machine(NamedTuple):
             for r in relevant_bs[1:]:
                 this_cons = this_cons + r
             addy.append(this_cons == v)
-        return [*nonegative, *addy]
+
+        total = Int('total')
+        return total, [total == sum(bs), *nonegative, *addy]
 
 
 def parse_machines(inp: IO[str]) -> Iterable[Machine]:
@@ -47,15 +49,18 @@ def parse_machines(inp: IO[str]) -> Iterable[Machine]:
 
 
 def main(argv: list[str]) -> int:
+    all_presses = 0
     for m in parse_machines(sys.stdin):
-        s = z3.Solver()
-        s.add(*m.constraints())
-        r = s.check()
+        o = z3.Optimize()
+        total, cs = m.constraints_minimize()
+        o.add(*cs)
+        h = o.minimize(total)
+        r = o.check()
         if r != sat:
             raise ValueError(f'not sat! for {m}')
-        mdl = s.model()
-        print(sum(mdl[d].as_long() for d in mdl.decls()))
-        print(s.model())
+        mdl = o.model()
+        all_presses += mdl[total].as_long()
+    print(all_presses)
     return 0
 
 
